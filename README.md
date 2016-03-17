@@ -3,4 +3,4 @@
 
 Game in making:
 
-![Alt text](hex.png?raw=true "Title")
+![Alt text](game.png?raw=true "Title")
