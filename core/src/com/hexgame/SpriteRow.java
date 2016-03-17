@@ -12,8 +12,8 @@ import java.util.List;
  */
 public class SpriteRow {
 
-    private List<Sprite> list=new ArrayList<Sprite>();
-    private List<Sprite> row2=new ArrayList<Sprite>();
+    public List<GameObject> list=new ArrayList<GameObject>();
+    //private List<GameObject> row2=new ArrayList<GameObject>();
     public  static final float scaleFactor=0.5f;
     public SpriteRow(int nrOfHexes,Texture texture){
 
@@ -30,9 +30,9 @@ public class SpriteRow {
     }
 
 
-    private static void addRow(List<Sprite> list ,Texture texture,int nrOfHexes ,int howMany,int paddBy){
+    private static void addRow(List<GameObject> list ,Texture texture,int nrOfHexes ,int howMany,int paddBy){
         for (int i = 0; i < nrOfHexes; i++) {
-            Sprite sprite=new Sprite(texture);
+            GameObject sprite=new GameObject(texture,howMany,i);
             sprite.scale(-0.5f);
             sprite.setY(howMany*getRow2Y(sprite));
             sprite.setX(paddBy*padding(sprite)+getNextX(i,sprite));
