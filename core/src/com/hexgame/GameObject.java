@@ -8,20 +8,17 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
  */
 public class GameObject extends Sprite {
 
-    public final int hexX;
-    public final int hexY;
-    public final int hexZ;
-    public final String identity;
+
+    public final GridLocation location;
     public boolean clickable=true;
 
-    public GameObject(Texture texture, int gridX, int gridY, int gridZ) {
+    public GameObject(Texture texture, GridLocation location) {
         super(texture);
-        this.hexX = gridX;
-        this.hexY = gridY;
-        this.hexZ=gridZ;
-        //System.out.println("x:" + gridX + " y:" + gridY + " z:" + gridZ);
-        this.identity="{y:" + gridY + " z:" + gridZ + " x:" + gridX+"},";
+        this.location=location;
     }
+
+
+
 
 
 

@@ -8,8 +8,10 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
  */
 public class Deck extends Sprite {
 
+public Sides side;
 public Deck(){
     super(getNextTexture());
+    next();
 }
 
 
@@ -18,7 +20,8 @@ private static Texture getNextTexture (){
 }
 
     public void next(){
-        this.setTexture(getNextTexture());
+        this.side=Utils.randomEnum(Sides.class);
+        this.setTexture(new Texture(side.textureFile));
     }
 
 

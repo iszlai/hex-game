@@ -45,8 +45,14 @@ public class Hex extends ApplicationAdapter {
 			for (GameObject sprite : row.list) {
 				if (sprite.getBoundingRectangle().contains(x, y)&&sprite.clickable) {
 					sprite.clickable=false;
+                    sprite.setColor(Color.RED);
 					sprite.setTexture(hex.getTexture());
-					hex.next();
+                    GridLocation neighbour = sprite.location.getNeighbour(hex.side);
+                    GameObject gameObject = row.grid.get(neighbour);
+                    if(gameObject!=null) {
+                        gameObject.setColor(Color.GREEN);
+                    }
+                    hex.next();
 				}
 			}
 
