@@ -12,7 +12,7 @@ public class Hex extends ApplicationAdapter {
     SpriteBatch batch;
     Texture img;
     SpriteRow row;
-    Sprite hex;
+    Deck hex;
 
 
     @Override
@@ -20,10 +20,10 @@ public class Hex extends ApplicationAdapter {
         batch = new SpriteBatch();
         img = new Texture("hex.png");
         row = new SpriteRow(5, img);
-        hex = new Sprite(img);
+        hex = new Deck();
         hex.setX(400);
         hex.scale(-0.5f);
-        hex.setColor(Color.CORAL);
+       // hex.setColor(Color.CORAL);
     }
 
     @Override
@@ -44,10 +44,8 @@ public class Hex extends ApplicationAdapter {
             float y = Gdx.graphics.getHeight() - Gdx.input.getY();
             for (GameObject sprite : row.list) {
                 if (sprite.getBoundingRectangle().contains(x, y)) {
-                    System.out.println(sprite.hexX+" "+sprite.hexY+" "+sprite.hexZ);
-                    System.out.println(sprite.identity);
-                    //hex.setX(sprite.getX());
-                    //hex.setY(sprite.getY());
+                   sprite.setTexture(hex.getTexture());
+                    hex.next();
                 }
             }
 
