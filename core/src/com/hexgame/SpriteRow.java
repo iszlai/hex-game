@@ -12,63 +12,89 @@ import java.util.List;
  */
 public class SpriteRow {
 
-    public List<GameObject> list=new ArrayList<GameObject>();
-    //private List<GameObject> row2=new ArrayList<GameObject>();
-    public  static final float scaleFactor=0.5f;
-    public SpriteRow(int nrOfHexes,Texture texture){
+    public List<GameObject> list = new ArrayList<GameObject>();
+    public static final float scaleFactor = 0.5f;
 
-            addRow(list,texture,3,0,3);
-            addRow(list,texture,4,1,2);
-            addRow(list,texture,5,2,1);
-            addRow(list,texture,6,3,0);
-            addRow(list,texture,5,4,1);
-            addRow(list,texture,4,5,2);
-            addRow(list,texture,3,6,3);
+    public SpriteRow(int nrOfHexes, Texture texture) {
 
-
-
+        addRow(list, texture, 4, 0, -3, Xrow0);
+        addRow(list, texture, 5, 1, -2, Xrow1);
+        addRow(list, texture, 6, 2, -1, Xrow2);
+        addRow(list, texture, 7, 3, 0, Xrow3);
+        addRow(list, texture, 6, 4, -1, Xrow4);
+        addRow(list, texture, 5, 5, -2, Xrow5);
+        addRow(list, texture, 4, 6, -3, Xrow6);
     }
 
 
-    private static void addRow(List<GameObject> list ,Texture texture,int nrOfHexes ,int howMany,int paddBy){
+    private static void addRow(List<GameObject> list, Texture texture, int nrOfHexes, int rowNum, int paddBy, int[] XRowCoordinates) {
         for (int i = 0; i < nrOfHexes; i++) {
-            GameObject sprite=new GameObject(texture,howMany,i);
+
+            int gridX = XRowCoordinates[i];
+            int gridZ = getZ(rowNum);
+            int gridY = getOther(gridX, gridZ);
+
+            GameObject sprite = new GameObject(texture, gridX, gridY, gridZ);
             sprite.scale(-0.5f);
-            sprite.setY(howMany*getRow2Y(sprite));
-            sprite.setX(paddBy*padding(sprite)+getNextX(i,sprite));
+            sprite.setY(rowNum * getRow2Y(sprite));
+            sprite.setX(Math.abs(paddBy) * padding(sprite) + getNextX(i, sprite));
             list.add(sprite);
+            System.out.print(sprite.identity);
         }
+        System.out.println();
 
     }
 
-    private static float getRow2Y(Sprite hex){
-        return getScaledHeight(hex)-2-getScaledHeight(hex)/4;
+    private static int getOther(int gridY, int gridZ) {
+        return (-gridY) - gridZ;
     }
 
-    private static float padding(Sprite hex){
-        return (getScaledWidth(hex)-5)/2;
+    private static int getZ(int nrInRow) {
+        return 3 - nrInRow;
     }
 
-    private static float getNextX(int nr,Sprite hex) {
-        float s= nr==0 ? 0 : nr*(getScaledWidth(hex)-5);
-        return s;
+    private static float getRow2Y(Sprite hex) {
+        return getScaledHeight(hex) - 2 - getScaledHeight(hex) / 4;
     }
 
-    private static float getScaledWidth(Sprite hex){
-        return  scaleFactor*hex.getWidth();
+    private static float padding(Sprite hex) {
+        return (getScaledWidth(hex) - 5) / 2;
     }
 
-    private static float getScaledHeight(Sprite hex){
-        return  scaleFactor*hex.getHeight();
+    private static float getNextX(int nr, Sprite hex) {
+        return nr == 0 ? 0 : nr * (getScaledWidth(hex) - 5);
     }
 
-    public void draw(Batch batch){
-        for (Sprite sprite:list) {
+    private static float getScaledWidth(Sprite hex) {
+        return scaleFactor * hex.getWidth();
+    }
+
+    private static float getScaledHeight(Sprite hex) {
+        return scaleFactor * hex.getHeight();
+    }
+
+    public void draw(Batch batch) {
+        for (Sprite sprite : list) {
             sprite.draw(batch);
         }
     }
 
+    public static final int[] Xrow0 = generateXRow(-3, 0);
+    public static final int[] Xrow1 = generateXRow(-3, 1);
+    public static final int[] Xrow2 = generateXRow(-3, 2);
+    public static final int[] Xrow3 = generateXRow(-3, 3);
+    public static final int[] Xrow4 = generateXRow(-2, 3);
+    public static final int[] Xrow5 = generateXRow(-1, 3);
+    public static final int[] Xrow6 = generateXRow(0, 3);
 
+    public static int[] generateXRow(int from, int to) {
+        int lenght = Math.abs(from) + Math.abs(to) + 1;
+        int[] res = new int[lenght];
+        for (int i = 0; i < lenght; i++) {
+            res[i] = from + i;
+        }
+        return res;
+    }
 
 
 }

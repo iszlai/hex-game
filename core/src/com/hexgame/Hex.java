@@ -39,14 +39,15 @@ public class Hex extends ApplicationAdapter {
 
 
     private void update() {
-        if (Gdx.input.isTouched()) {
+        if (Gdx.input.justTouched()) {
             float x = Gdx.input.getX();
             float y = Gdx.graphics.getHeight() - Gdx.input.getY();
             for (GameObject sprite : row.list) {
                 if (sprite.getBoundingRectangle().contains(x, y)) {
-                    System.out.println(sprite.gridX+" "+sprite.gridY);
-                    hex.setX(sprite.getX());
-                    hex.setY(sprite.getY());
+                    System.out.println(sprite.hexX+" "+sprite.hexY+" "+sprite.hexZ);
+                    System.out.println(sprite.identity);
+                    //hex.setX(sprite.getX());
+                    //hex.setY(sprite.getY());
                 }
             }
 
