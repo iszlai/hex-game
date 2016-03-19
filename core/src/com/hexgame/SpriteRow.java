@@ -1,5 +1,6 @@
 package com.hexgame;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.Sprite;
@@ -26,7 +27,12 @@ public class SpriteRow {
         addRow(list,grid, texture, 7, 3, 0, Xrow3);
         addRow(list,grid, texture, 6, 4, -1, Xrow4);
         addRow(list,grid, texture, 5, 5, -2, Xrow5);
-        addRow(list,grid, texture, 4, 6, -3, Xrow6);
+        addRow(list, grid, texture, 4, 6, -3, Xrow6);
+
+        GameObject start = list.get(0);
+        start.setColor(Color.GREEN);
+        GameObject end = list.get(list.size()-1);
+        end.setColor(Color.GREEN);
     }
 
 
