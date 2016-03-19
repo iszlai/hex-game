@@ -12,6 +12,7 @@ public class GameObject extends Sprite {
     public final int hexY;
     public final int hexZ;
     public final String identity;
+    public boolean clickable=true;
 
     public GameObject(Texture texture, int gridX, int gridY, int gridZ) {
         super(texture);
