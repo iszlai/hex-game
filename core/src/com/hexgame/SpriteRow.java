@@ -17,7 +17,7 @@ public class SpriteRow {
 
     public List<GameObject> list = new ArrayList<GameObject>();
     public Map<GridLocation,GameObject> grid= new HashMap<GridLocation, GameObject>();
-    public static final float scaleFactor = 0.5f;
+   // public static final float scaleFactor = 0.5f;
 
     public SpriteRow(int nrOfHexes, Texture texture) {
 
@@ -44,7 +44,7 @@ public class SpriteRow {
             int gridY = getOther(gridX, gridZ);
 
             GameObject sprite = new GameObject(texture, new GridLocation(gridX,gridY,gridZ));
-            sprite.scale(-0.5f);
+            //sprite.scale(-0.5f);
             sprite.setY(rowNum * getRow2Y(sprite));
             sprite.setX(Math.abs(paddBy) * padding(sprite) + getNextX(i, sprite));
             list.add(sprite);
@@ -75,11 +75,11 @@ public class SpriteRow {
     }
 
     private static float getScaledWidth(Sprite hex) {
-        return scaleFactor * hex.getWidth();
+        return hex.getWidth();
     }
 
     private static float getScaledHeight(Sprite hex) {
-        return scaleFactor * hex.getHeight();
+        return hex.getHeight();
     }
 
     public void draw(Batch batch) {

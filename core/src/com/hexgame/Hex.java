@@ -21,8 +21,10 @@ public class Hex extends ApplicationAdapter {
 		img = new Texture("hex.png");
 		row = new SpriteRow(5, img);
 		hex = new Deck();
-		hex.setX(400);
-		hex.scale(-0.5f);
+		hex.setX(1000);
+		//hex.scale(-0.5f);
+		System.out.println(Gdx.graphics.getWidth());
+		System.out.println(Gdx.graphics.getHeight());
 		// hex.setColor(Color.CORAL);
 	}
 
