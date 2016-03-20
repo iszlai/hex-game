@@ -101,6 +101,7 @@ project(":core") {
 
 
     dependencies {
+        testCompile "junit:junit:4.11"
         compile "com.badlogicgames.gdx:gdx:$gdxVersion"
         compile "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
     }
