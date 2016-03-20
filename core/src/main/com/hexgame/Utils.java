@@ -1,5 +1,7 @@
 package com.hexgame;
 
+import com.badlogic.gdx.graphics.Color;
+
 import java.security.SecureRandom;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -22,20 +24,15 @@ public class Utils {
 
 
    public static boolean isGameOver(GameObject current,GameObject end){
-       System.out.println("Started:");
-       boolean gameOver = isGameOver(current, end, new HashSet<GameObject>(), new LinkedList<GameObject>());
-       System.out.println("End:");
-   return  gameOver;
+       return isGameOver(current, end, new HashSet<GameObject>(), new LinkedList<GameObject>());
    }
 
 
     private static boolean isGameOver(GameObject current,GameObject end ,Set<GameObject> traversed, Queue<GameObject> frontier){
-        if(current == end){
-            return true;
-        }
 
-        if(frontier.isEmpty()){
-            return false;
+
+        if(current.location.equals(end.location) ){
+            return true;
         }
 
         Set<GameObject> availableNeighbours = current.getAvailableNeighbours();
@@ -44,6 +41,10 @@ public class Utils {
                 frontier.add(neighbour);
             }
 
+        }
+
+        if(frontier.isEmpty()){
+            return false;
         }
         traversed.add(current);
         GameObject toVisit = frontier.remove();

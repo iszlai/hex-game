@@ -1,13 +1,14 @@
 package com.hexgame;
 
 import com.badlogic.gdx.ApplicationAdapter;
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
-public class Hex extends ApplicationAdapter {
+public class Hex extends Game {
 	SpriteBatch batch;
 	Texture img;
 	HiveGrid row;
@@ -52,9 +53,12 @@ public class Hex extends ApplicationAdapter {
                     GameObject gameObject = row.grid.get(neighbour);
                     if(gameObject!=null) {
                         gameObject.setColor(Color.GREEN);
+						gameObject.walkAble=true;
                     }
                     hex.next();
-					System.out.println("isGameOver:"+Utils.isGameOver(row.start, row.end));
+					if(Utils.isGameOver(row.start, row.end)){
+                        this.create();
+                    }
 				}
 			}
 

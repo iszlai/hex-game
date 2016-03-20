@@ -33,8 +33,10 @@ public class HiveGrid {
 
         start = list.get(0);
         start.setColor(Color.GREEN);
+        start.walkAble=true;
         end = list.get(list.size()-1);
         end.setColor(Color.GREEN);
+        end.walkAble=true;
     }
 
 
