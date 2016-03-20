@@ -71,4 +71,13 @@ public class GridLocation {
         }
         return  neighbour;
     }
+
+    @Override
+    public String toString() {
+        return "GL:{" +
+                "x=" + x +
+                ", y=" + y +
+                ", z=" + z +
+                '}';
+    }
 }

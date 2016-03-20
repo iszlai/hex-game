@@ -5,13 +5,12 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 public class Hex extends ApplicationAdapter {
 	SpriteBatch batch;
 	Texture img;
-	SpriteRow row;
+	HiveGrid row;
 	Deck hex;
 
 
@@ -19,7 +18,7 @@ public class Hex extends ApplicationAdapter {
 	public void create() {
 		batch = new SpriteBatch();
 		img = new Texture("hex.png");
-		row = new SpriteRow(5, img);
+		row = new HiveGrid(5, img);
 		hex = new Deck();
 		hex.setX(1000);
 		//hex.scale(-0.5f);
@@ -55,6 +54,7 @@ public class Hex extends ApplicationAdapter {
                         gameObject.setColor(Color.GREEN);
                     }
                     hex.next();
+					System.out.println("isGameOver:"+Utils.isGameOver(row.start, row.end));
 				}
 			}
 
