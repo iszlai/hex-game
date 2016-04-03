@@ -1,4 +1,4 @@
-package com.hexgame;
+package com.hexgame.model;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -10,18 +10,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.hexgame.utils.Utils.getElementsToBlock;
+
 /**
  * Created by leheli on 2016.03.14..
  */
 public class HiveGrid {
 
-    public List<GameObject> list = new ArrayList<GameObject>();
-    public Map<GridLocation,GameObject> grid= new HashMap<GridLocation, GameObject>();
+    public List<com.hexgame.model.GameObject> list = new ArrayList<com.hexgame.model.GameObject>();
+    public Map<com.hexgame.model.GridLocation, com.hexgame.model.GameObject> grid= new HashMap<com.hexgame.model.GridLocation, com.hexgame.model.GameObject>();
    // public static final float scaleFactor = 0.5f;
-    public GameObject start;
-    public GameObject end;
+    public com.hexgame.model.GameObject start;
+    public com.hexgame.model.GameObject end;
 
-    public HiveGrid(int nrOfHexes, Texture texture) {
+    public HiveGrid(int nrOfHexes, Texture texture,int nrOfObstacles) {
 
         addRow(list,grid, texture, 4, 0, -3, Xrow0);
         addRow(list,grid, texture, 5, 1, -2, Xrow1);
@@ -37,17 +39,27 @@ public class HiveGrid {
         end = list.get(list.size()-1);
         end.setColor(Color.GREEN);
         end.walkAble=true;
+
+        blockElements(getElementsToBlock(list,nrOfObstacles));
+    }
+
+    private void blockElements(List<GameObject> elementsToBlock) {
+        for (GameObject e: elementsToBlock ) {
+            e.setColor(Color.BLACK);
+            e.clickable=false;
+
+        }
     }
 
 
-    private static void addRow(List<GameObject> list,Map<GridLocation,GameObject> grid,Texture texture, int nrOfHexes, int rowNum, int paddBy, int[] XRowCoordinates) {
+    private static void addRow(List<com.hexgame.model.GameObject> list,Map<com.hexgame.model.GridLocation, com.hexgame.model.GameObject> grid,Texture texture, int nrOfHexes, int rowNum, int paddBy, int[] XRowCoordinates) {
         for (int i = 0; i < nrOfHexes; i++) {
 
             int gridX = XRowCoordinates[i];
             int gridZ = getZ(rowNum);
             int gridY = getOther(gridX, gridZ);
 
-            GameObject sprite = new GameObject(texture, new GridLocation(gridX,gridY,gridZ),grid);
+            com.hexgame.model.GameObject sprite = new com.hexgame.model.GameObject(texture, new com.hexgame.model.GridLocation(gridX,gridY,gridZ),grid);
             //sprite.scale(-0.5f);
             sprite.setY(rowNum * getRow2Y(sprite));
             sprite.setX(Math.abs(paddBy) * padding(sprite) + getNextX(i, sprite));

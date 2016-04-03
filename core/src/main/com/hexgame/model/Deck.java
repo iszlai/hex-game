@@ -1,7 +1,8 @@
-package com.hexgame;
+package com.hexgame.model;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.hexgame.utils.Utils;
 
 /**
  * Created by leheli on 2016.03.19..

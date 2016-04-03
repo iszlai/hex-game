@@ -1,4 +1,4 @@
-package com.hexgame;
+package com.hexgame.model;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;

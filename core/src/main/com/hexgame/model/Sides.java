@@ -1,4 +1,4 @@
-package com.hexgame;
+package com.hexgame.model;
 
 /**
  * Created by leheli on 2016.03.19..
