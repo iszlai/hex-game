@@ -31,6 +31,7 @@ public class Hex extends Game {
 		batch=new SpriteBatch();
 		font=new BitmapFont();
 		font.setColor(Color.BLACK);
+		font.getData().setScale(8f);
 		this.setScreen(new SplashScreen(this));
 	}
 

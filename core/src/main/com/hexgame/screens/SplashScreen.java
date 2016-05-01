@@ -59,7 +59,7 @@ public class SplashScreen implements Screen {
 
         update(delta);
         app.batch.begin();
-        app.font.draw(app.batch,"SpashScreen",900,stage.getHeight()/4);
+        app.font.draw(app.batch,"SpashScreen",stage.getWidth()/2,stage.getHeight()/2);
         app.batch.end();
     }
 

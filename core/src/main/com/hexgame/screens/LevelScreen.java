@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.utils.Timer;
 import com.hexgame.Hex;
 import com.hexgame.model.Deck;
 import com.hexgame.model.HiveGrid;
@@ -56,7 +57,15 @@ public class LevelScreen implements Screen {
                     }
                     hex.next();
                     if(com.hexgame.utils.Utils.isGameOver(row.start, row.end)){
-                        this.app.setScreen(new LevelScreen(app,lvl+1));
+
+                        Timer.schedule(new Timer.Task() {
+                            @Override
+                            public void run() {
+                                app.setScreen(new StarsScreen(app,lvl+1));
+                            }
+                        },1);
+
+
                     }
                 }
             }
