@@ -25,7 +25,7 @@ public class Utils {
     }
 
 
-    private static Set<Integer> randomListNrOfElements(int to, int howMany) {
+    public static Set<Integer> randomListNrOfElements(int to, int howMany) {
         Set<Integer> res = new HashSet<Integer>();
 
         while (res.size() < howMany) {
