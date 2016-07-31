@@ -14,6 +14,24 @@ android {
 
         instrumentTest.setRoot('tests')
     }
+    lintOptions {
+        abortOnError false // make sure you're paying attention to the linter output!
+    }
+
+// FIXME: How can we apply this simply for all builds? Copy-pasta makes me sad.
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFile getDefaultProguardFile('proguard-android-optimize.txt')
+            proguardFile 'proguard-project.txt'
+        }
+        debug {
+            minifyEnabled true
+            proguardFile getDefaultProguardFile('proguard-android-optimize.txt')
+            proguardFile 'proguard-project.txt'
+        }
+    }
+
     defaultConfig {
         applicationId "com.hexgame"
         minSdkVersion 8

@@ -20,6 +20,9 @@
 #}
 
 -verbose
+-dontwarn sun.misc.*
+-dontwarn java.lang.management.**
+-dontwarn java.beans.**
 
 -dontwarn android.support.**
 -dontwarn com.badlogic.gdx.backends.android.AndroidFragmentApplication

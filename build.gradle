@@ -98,12 +98,15 @@ project(":html") {
 
 project(":core") {
     apply plugin: "java"
+    apply plugin: "scala"
+
 
 
     dependencies {
         testCompile "junit:junit:4.11"
         compile "com.badlogicgames.gdx:gdx:$gdxVersion"
         compile "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
+        compile "org.scala-lang:scala-library:2.11.8"
     }
 }
 
