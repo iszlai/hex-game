@@ -16,4 +16,6 @@ object Side {
   val sides = Array(SIDE_A,SIDE_B,SIDE_C,SIDE_D,SIDE_E,SIDE_F)
 
   def getRandomSide():Side=sides(((Math.random()*sides.length ) % 10).toInt)
+  def getTexture (c: Character):String  ="hex_" + c + ".png"
+
 }
