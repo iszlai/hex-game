@@ -3,27 +3,19 @@ package com.hexgame.screen
 import com.badlogic.gdx.{Gdx, Screen}
 import com.badlogic.gdx.graphics.{GL20, Texture}
 import com.badlogic.gdx.graphics.g2d.{SpriteBatch, Sprite}
+import com.hexgame.Hex
 
 /**
   * Created by leheli on 2016.08.01..
   */
-class StarsScreen extends Screen {
+class StarsScreen(app: Hex, i: Int) extends Screen {
   private val currentLevel: Int = 0
-  private val app: Hex = null
-  private[screens] var star: Sprite = null
-  private[screens] var batch: SpriteBatch = null
-  private[screens] var starTexture: Texture = null
-
-  def this (app: Hex, i: Int) {
-  this ()
-  this.app = app
-  this.currentLevel = i
-  starTexture = new Texture ("star.png")
-  star = new Sprite (starTexture)
+  val starTexture = new Texture ("star.png")
+  val star = new Sprite (starTexture)
   star.setX (Gdx.graphics.getWidth / 2)
   star.setY (Gdx.graphics.getHeight / 2)
-  batch = new SpriteBatch
-}
+  val batch = new SpriteBatch
+
 
   def show {
 }

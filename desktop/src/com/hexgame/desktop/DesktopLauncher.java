@@ -4,7 +4,6 @@ import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 import com.hexgame.Hex;
 
-import scala.com.hexgame.utils.s.Main;
 
 public class DesktopLauncher {
 	public static void main (String[] arg) {

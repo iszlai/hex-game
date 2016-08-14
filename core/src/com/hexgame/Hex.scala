@@ -2,11 +2,10 @@ package com.hexgame
 
 import com.badlogic.gdx.Game
 import com.badlogic.gdx.assets.AssetManager
-import com.badlogic.gdx.graphics.{Color, OrthographicCamera}
 import com.badlogic.gdx.graphics.g2d.{BitmapFont, SpriteBatch}
+import com.badlogic.gdx.graphics.{Color, OrthographicCamera}
 import com.badlogic.gdx.scenes.scene2d.Stage
-import com.hexgame.UtilsT._
-import com.hexgame.screens.SplashScreen
+import com.hexgame.screen.SplashScreen
 
 /**
   * Created by leheli on 2016.08.01..
@@ -22,6 +21,7 @@ class Hex extends Game {
   var font: BitmapFont = null
   var camera: OrthographicCamera = null
   var assets: AssetManager = null
+  val isReady=true;
 
   def create {
     assets = new AssetManager

@@ -1,19 +1,24 @@
-package com.hexgame.utils.s
+package com.hexgame.helper
 
 import java.security.SecureRandom
+import java.util
 import java.util.Random
 
+import com.badlogic.gdx.graphics.Texture
+import com.hexgame.model.{Side, GameObject}
+
 /**
-  * Created by leheli on 2016.08.01..
+  * Created by leheli on 2016.08.14..
   */
-class Utils {
+object HexHelper {
   private val RANDOM: Random = new SecureRandom
 
+  /*
   def randomEnum[T <: Enum[(_$1) forSome {type _$1}]](clazz: Class[T]): T = {
     val x: Int = RANDOM.nextInt(clazz.getEnumConstants.length)
     return clazz.getEnumConstants(x)
   }
-
+*/
   def randomListNrOfElements(to: Int, howMany: Int): util.Set[Integer] = {
     val res: util.Set[Integer] = new util.HashSet[Integer]
     while (res.size < howMany) {
@@ -57,5 +62,9 @@ class Utils {
     traversed.add(current)
     val toVisit: GameObject = frontier.remove
     return isGameOver(toVisit, end, traversed, frontier)
+  }
+
+  def getNextTexture(): Texture = {
+    return new Texture(Side.getRandomSide().getTexture())
   }
 }

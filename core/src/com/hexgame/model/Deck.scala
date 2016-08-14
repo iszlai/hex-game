@@ -1,23 +1,15 @@
+package com.hexgame.model
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.Sprite
-import com.hexgame.model.Sides
-import com.hexgame.utils.Utils
+import com.hexgame.helper.HexHelper
+import com.hexgame.model.Side
 
-class Deck extends Sprite {
-  var side: Sides.Side = null
+class Deck (val text: Texture=HexHelper.getNextTexture()) extends Sprite(text) {
+  var side: Side = null
+  next()
 
-  def this() {
-    this()
-    `super`(getNextTexture)
-    next
-  }
-
-  private def getNextTexture: Texture = {
-    return new Texture(Utils.randomEnum(classOf[Sides]).textureFile)
-  }
-
-  def next {
-    this.side = Utils.randomEnum(classOf[Sides])
-    this.setTexture(new Texture(side.textureFile))
+  def next() {
+    this.side = Side.getRandomSide()
+    this.setTexture(new Texture(side.getTexture()))
   }
 }

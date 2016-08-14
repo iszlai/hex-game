@@ -4,17 +4,19 @@ import com.badlogic.gdx.graphics.g2d.{Sprite, Batch}
 import com.badlogic.gdx.graphics.{Texture, Color}
 import java.util
 
+import com.hexgame.helper.HexHelper
+
 /**
   * Created by leheli on 2016.08.01..
   */
-class HiveGrid {
+class HiveGrid(nrOfHexes: Int, texture: Texture, nrOfObstacles: Int) {
   var list: util.List[GameObject] = new util.ArrayList[GameObject]
   var grid: util.Map[GridLocation, GameObject] = new util.HashMap[GridLocation, GameObject]
   var start: GameObject = null
   var end: GameObject = null
+  init()
+  def init() {
 
-  def this(nrOfHexes: Int, texture: Texture, nrOfObstacles: Int) {
-    this()
     addRow(list, grid, texture, 4, 0, -3, Xrow0)
     addRow(list, grid, texture, 5, 1, -2, Xrow1)
     addRow(list, grid, texture, 6, 2, -1, Xrow2)
@@ -28,7 +30,7 @@ class HiveGrid {
     end = list.get(list.size - 1)
     end.setColor(Color.GREEN)
     end.walkAble = true
-    blockElements(getElementsToBlock(list, nrOfObstacles))
+    blockElements(HexHelper.getElementsToBlock(list, nrOfObstacles))
   }
 
   private def blockElements(elementsToBlock: util.List[GameObject]) {
@@ -106,18 +108,8 @@ class HiveGrid {
 
   def generateXRow(from: Int, to: Int): Array[Int] = {
     val lenght: Int = Math.abs(from) + Math.abs(to) + 1
-    val res: Array[Int] = new Array[Int](lenght)
-    {
-      var i: Int = 0
-      while (i < lenght) {
-        {
-          res(i) = from + i
-        }
-        ({
-          i += 1; i - 1
-        })
-      }
-    }
-    return res
+    val res = for (i <- 0 to lenght) yield from + i
+    res.toArray
+
   }
 }
