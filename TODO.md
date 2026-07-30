@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 147 tests / 12,561 asserts green in ~58 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 162 tests / 12,638 asserts green in ~59 s, 60 frozen
 level files re-verified.
 
 ---
@@ -197,8 +197,15 @@ the headless/test view — if a 3D change breaks the grey-box tests, the 3D chan
       `tests/unit/test_hex_layout.gd` is also the layout's *first* direct test: the conversion, both
       round trips, §4.4's size table and the margin the fit rule claims to leave were all covered
       only transitively through `BoardView` before
-- [ ] `Camera3D`, `projection = ORTHOGONAL`, fixed pitch; yaw snaps to the six 60° lattice positions,
-      tweened; §4.4's fit rule applied to the **projected** bounds
+- [x] `Camera3D`, `projection = ORTHOGONAL`, fixed pitch; yaw snaps to the six 60° lattice positions,
+      tweened; §4.4's fit rule applied to the **projected** bounds — `src/view/board_camera.gd`. The
+      numbers C-18 left open are now **C-21**: 55° elevation, a 260 ms `CUBIC EASE_IN_OUT` yaw that
+      Reduce Motion scales, and a fit swept *across* the rotation rather than evaluated at the six
+      stops, because the yaws in between bulge and would clip the board mid-turn. `s` = 82 / 59 / 46
+      for radius 2 / 3 / 4 against the head-on 74 / 53 / 42. **Not in `level.tscn` yet**: a camera
+      with no meshes to render would black out the grey-box, so the scene wiring lands with the
+      `MultiMeshInstance3D` below. What is demonstrated is the camera itself —
+      `tests/unit/test_board_camera.gd`, including that "clockwise" is clockwise *on screen*
 - [ ] Pointer hit-test as camera ray ∩ `y = 0`, then the existing `HexLayout.from_pixel` — B7's fix
       must survive the move to 3D
 - [ ] `Camera3D.unproject_position` feeds `InputRouter`, recomputed on yaw change, never per frame (C4)
@@ -298,8 +305,8 @@ parameter and the campaign ships radius 2, 3 and 4 — but `solver.gd`'s 64-bit 
 62 cells, and radius 5 is 91. Late-game difficulty escalates walls, goals, gates and budget instead.
 
 Unresolved items live in **Appendix C** of the spec (C-1 … C-8, C-19). Decisions already taken during
-M0–M3 are recorded there too (C-9 … C-17) — add to that table rather than inventing an answer, per
-constraint C7.
+M0–M7 are recorded there too (C-9 … C-18, C-20, C-21) — add to that table rather than inventing an
+answer, per constraint C7.
 
 ---
 
