@@ -26,6 +26,29 @@ static func id_for(chapter: int, index: int) -> String:
 	return "c%d_l%02d" % [chapter, index]
 
 
+## The inverse of [method id_for], for anything that stored an id rather than a
+## pair — a resumed run (§18.2) is the first, and a level-select deep link will be
+## the next. Returns `null` for anything that is not a campaign id, so a stale or
+## hand-edited save cannot make the loader guess.
+static func load_by_id(id: String) -> Level:
+	var at: Vector2i = locate(id)
+	if at.x <= 0:
+		return null
+	return load_level(at.x, at.y)
+
+
+## `c3_l07` → `(3, 7)`, or `(0, 0)` for anything that is not one.
+static func locate(id: String) -> Vector2i:
+	var parts: PackedStringArray = id.split("_")
+	if parts.size() != 2 or not parts[0].begins_with("c") or not parts[1].begins_with("l"):
+		return Vector2i.ZERO
+	var chapter: String = parts[0].substr(1)
+	var index: String = parts[1].substr(1)
+	if not chapter.is_valid_int() or not index.is_valid_int():
+		return Vector2i.ZERO
+	return Vector2i(int(chapter), int(index))
+
+
 static func exists(chapter: int, index: int) -> bool:
 	return ResourceLoader.exists(path_for(chapter, index)) \
 		or FileAccess.file_exists(path_for(chapter, index))

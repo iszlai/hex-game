@@ -38,7 +38,11 @@ func _leave() -> void:
 		return
 	_left = true
 	# M6: GameDirector.go_to(GameDirector.Screen.MAIN_MENU)
-	GameDirector.start_level(_first_level())
+	# §18.2: the level the player was in the middle of comes back before the one
+	# the campaign would otherwise open on. Autosave has been writing this since
+	# M5 and nothing read it until now.
+	if not GameDirector.resume_in_progress():
+		GameDirector.start_level(_first_level())
 	GameDirector.go_to(GameDirector.Screen.LEVEL)
 
 

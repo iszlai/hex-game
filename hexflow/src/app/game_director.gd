@@ -91,6 +91,45 @@ func start_level(p_level: Level) -> void:
 	_begin(p_level)
 
 
+## §18.2: picks up the campaign level the player was in the middle of, if there is
+## one. Returns whether it resumed, so the caller can fall back rather than guess.
+##
+## Everything about the payload is treated as untrusted. It is written by an
+## earlier version of the game, edited by hand, or truncated by a suspend that lost
+## power — and none of those may leave the player at a black screen, so every step
+## that can fail is checked and any failure clears the payload and returns false.
+## §18's promise is that a bad save costs you your place, never your game.
+func resume_in_progress() -> bool:
+	var payload: Variant = SaveService.data.get("in_progress")
+	if not (payload is Dictionary):
+		return false
+	var saved: Dictionary = payload
+	if str(saved.get("mode", "")) != "campaign":
+		return false
+	var resumed: Level = LevelRepository.load_by_id(str(saved.get("level_id", "")))
+	if resumed == null:
+		push_warning("in-progress save names a level that does not exist; starting fresh")
+		SaveService.set_in_progress(null)
+		return false
+
+	mode = Mode.CAMPAIGN
+	_endless = null
+	_begin(resumed)
+	state.restore(saved)
+	if state.status != GameState.Status.PLAYING:
+		# A finished run has no business being resumed, and §18.1 should already
+		# have cleared it — belt and braces, because the alternative is dropping the
+		# player into a level that is already over.
+		SaveService.set_in_progress(null)
+		_begin(resumed)
+		return false
+	# The state changed under the view's feet, so it is republished rather than
+	# left as `_begin` emitted it.
+	EventBus.state_reset.emit(state)
+	_publish(state.drain_events())
+	return true
+
+
 func start_endless(p_seed: int) -> void:
 	mode = Mode.ENDLESS
 	_endless = EndlessRun.new(p_seed)

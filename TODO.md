@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 283 tests / 14,451 asserts green in ~63 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 292 tests / 14,497 asserts green in ~65 s, 60 frozen
 level files re-verified.
 
 ---
@@ -23,7 +23,7 @@ level files re-verified.
 | M2 | Generator & solver | ✅ done | — |
 | M3 | Grey-box playable | ✅ done | — |
 | M4 | Input & Deck | ✅ done | — |
-| M5 | Persistence & settings | 🟨 services only | resume-on-boot; settings and pause screens |
+| M5 | Persistence & settings | 🟨 services + resume | suspend/resume; settings and pause screens |
 | M6 | Campaign data | 🟨 data only | level select, chapter unlocks, results screen |
 | M7 | Art & feel | 🟨 board + rail | greyscale under lighting, fonts, all §14 animation, all §15 audio |
 | M8 | Tutorial | ⬜ not started | T1–T12 data-driven, naive playtest |
@@ -159,8 +159,14 @@ Exit: persistence `@e2e` scenarios pass, including corrupted-save recovery and s
 - [x] `save_service.gd` — atomic write, migration, corruption recovery with backup
 - [x] `settings_service.gd` — defaults and typed access
 - [x] Autosave of in-progress state on every commit, discard and undo (§18.1)
-- [ ] **Read it back** — boot always restarts chapter 1 level 1; `in_progress` is written and never
-      resumed (§18.2)
+- [x] **Read it back** (§18.2) — `GameDirector.resume_in_progress()`, called by boot before it falls
+      back to chapter 1 level 1. Autosave had been writing `in_progress` since M5 and nothing read
+      it. The payload is treated as untrusted throughout, because it is written by an older build,
+      truncated by a suspend that lost power, or edited by hand: a level id that names nothing, a
+      mode that is not campaign, a run that had already finished, or a value that is not a dictionary
+      at all each end with no resume and a playable level rather than a black screen.
+      `tests/unit/test_resume.gd` covers every one of those, plus the stream resuming with the state
+      — without it the next tile handed to the player is not the one they stopped looking at
 - [ ] Suspend/resume on focus loss (§18.3); undo history deliberately not persisted (C-16)
 - [ ] Settings screen with all five tabs: Gameplay, Controls, Video, Audio, Accessibility (§12.2).
       Three controls are already wired and only need surfacing: cursor mode (snap/free), the haptics
