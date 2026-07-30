@@ -137,6 +137,43 @@ func test_reduce_motion_scales_the_yaw_like_every_other_duration() -> void:
 	assert_almost_eq(_camera.yaw_seconds(), BoardCamera.YAW_SECONDS * 0.4, EPS)
 
 
+## `unproject_at` is a second copy of the camera's projection, kept because the
+## rotation is tweened and §11.2 wants the yaw the player is heading for rather than
+## the one the camera is passing through. A second copy has to be pinned to the
+## first or it drifts, so it is compared against the engine's own answer — at the
+## six stops and at two yaws that are not stops.
+func test_unproject_at_matches_the_cameras_own_projection() -> void:
+	var probes: Array[Vector3] = [
+		Vector3.ZERO,
+		Vector3(180.0, 0.0, 0.0),
+		Vector3(-90.0, 0.0, 240.0),
+		Vector3(60.0, 30.0, -150.0),
+	]
+	var yaws: Array[float] = [17.0, 43.0]
+	for step: int in range(BoardCamera.YAW_STOPS):
+		yaws.append(rad_to_deg(BoardCamera.YAW_STOP_RADIANS * float(step)))
+	for degrees: float in yaws:
+		var yaw := deg_to_rad(degrees)
+		_camera.transform = BoardCamera.transform_at(yaw)
+		for p: Vector3 in probes:
+			var mine: Vector2 = _camera.unproject_at(p, yaw)
+			var theirs: Vector2 = _camera.unproject_position(p)
+			assert_almost_eq(mine.x, theirs.x, 0.01, "%v x at %.0f°" % [p, degrees])
+			assert_almost_eq(mine.y, theirs.y, 0.01, "%v y at %.0f°" % [p, degrees])
+
+
+## The pointer half of C-18: ray ∩ y = 0 must be the exact inverse of the
+## projection, or B7 comes back as a click that lands one cell over.
+func test_plane_point_inverts_the_projection() -> void:
+	for degrees: int in [0, 60, 137]:
+		_camera.transform = BoardCamera.transform_at(deg_to_rad(float(degrees)))
+		for p: Vector3 in [Vector3.ZERO, Vector3(150.0, 0.0, -220.0), Vector3(-300.0, 0.0, 90.0)]:
+			var back: Vector3 = _camera.plane_point(_camera.unproject_position(p))
+			assert_almost_eq(back.x, p.x, 0.01, "%v x at %d°" % [p, degrees])
+			assert_almost_eq(back.y, 0.0, 0.01, "the hit is on the plane")
+			assert_almost_eq(back.z, p.z, 0.01, "%v z at %d°" % [p, degrees])
+
+
 ## The oblique projection foreshortens depth, so the same box holds a bigger board
 ## than it does head-on. If this ever inverts, the fit is being applied to the
 ## board's own plane again rather than to what the camera sees.

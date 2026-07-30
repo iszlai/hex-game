@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 162 tests / 12,638 asserts green in ~59 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 173 tests / 13,055 asserts green in ~60 s, 60 frozen
 level files re-verified.
 
 ---
@@ -206,11 +206,24 @@ the headless/test view — if a 3D change breaks the grey-box tests, the 3D chan
       with no meshes to render would black out the grey-box, so the scene wiring lands with the
       `MultiMeshInstance3D` below. What is demonstrated is the camera itself —
       `tests/unit/test_board_camera.gd`, including that "clockwise" is clockwise *on screen*
-- [ ] Pointer hit-test as camera ray ∩ `y = 0`, then the existing `HexLayout.from_pixel` — B7's fix
-      must survive the move to 3D
-- [ ] `Camera3D.unproject_position` feeds `InputRouter`, recomputed on yaw change, never per frame (C4)
+- [x] Pointer hit-test as camera ray ∩ `y = 0`, then the existing `HexLayout.from_pixel` — B7's fix
+      must survive the move to 3D — `BoardCamera.plane_point` into `HexLayout.from_plane`, which
+      shares `from_pixel`'s rounding rather than forking it. Every cell round-trips from its own
+      screen position *and* lands on its centre, not merely somewhere inside it
+- [x] `Camera3D.unproject_position` feeds `InputRouter`, recomputed on yaw change, never per frame (C4)
+      — `src/view/board_view_3d.gd`, a `SubViewportContainer` whose viewport coordinates *are* the
+      space the level screen already works in, so `InputRouter` and `level.gd` learn nothing new.
+      Asserted with a real router: the ±75° cone picks a cell that is genuinely up on screen and a
+      *different* one after a 60° turn, and clockwise cycling comes back cyclically rotated rather
+      than scrambled. Positions jump to the stop being travelled *to*, so a press during the tween
+      behaves like the board about to be seen; a pointer still resolves against the live camera.
+      `mouse_filter = IGNORE` on the container, pinned by a test — the default `STOP` is exactly
+      what hid B7 through all of M3
 - [ ] One `MultiMeshInstance3D` of hex prisms for the whole board, per-instance custom data, single
-      draw call (§13.3's requirement, new geometry)
+      draw call (§13.3's requirement, new geometry). **Carries the scene switch**: `BoardView3D` goes
+      into `level.tscn` here, because until it has meshes it would only black out the grey-box. Set
+      `BoardView3D.TILE_TOP_RATIO` to the prism height at the same time — the projected fit already
+      reserves room for it, and a wrong value there is a board that overflows the play area
 - [ ] Tile thickness, drop shadows and one `DirectionalLight3D` + `WorldEnvironment`
 - [ ] Connectors with the depth gradient, as 3D geometry rather than §13.3's capsule SDF
 - [ ] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile

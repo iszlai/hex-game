@@ -143,6 +143,41 @@ func rotate_by(steps: int) -> void:
 	_tween_to(_yaw + YAW_STOP_RADIANS * float(steps))
 
 
+## Where a pointer at [param screen] meets the board's plane: the camera ray
+## intersected with `y = 0` (C-18). Feed the result to
+## [method HexLayout.from_plane] — never hit-test in screen coordinates (B7).
+##
+## The elevation is fixed and well away from edge-on, so the ray always meets the
+## plane; the guard exists so a future elevation of 0 fails visibly at the board
+## centre rather than by propagating a `null`.
+func plane_point(screen: Vector2) -> Vector3:
+	var from := project_ray_origin(screen)
+	var dir := project_ray_normal(screen)
+	var hit: Variant = Plane(Vector3.UP, 0.0).intersects_ray(from, dir)
+	if hit == null:
+		push_error("board camera is edge-on to its own plane")
+		return Vector3.ZERO
+	return hit
+
+
+## Where [param point] lands on screen at [param yaw], without moving the camera.
+## The rotation is tweened, so the yaw the player is heading for is not the yaw the
+## camera is currently at, and the screen-space positions §11.2 works from want the
+## former.
+##
+## Orthographic, and the camera orbits the board centre — so the position along the
+## view axis contributes nothing, and the projection is just the two basis vectors
+## and the viewport centre. This is a second copy of a projection, which is exactly
+## the kind of thing that drifts, so the test pins it against
+## [method Camera3D.unproject_position] at every stop and in between.
+func unproject_at(point: Vector3, yaw: float) -> Vector2:
+	var b := basis_at(yaw)
+	var view := Vector2(get_viewport().size)
+	var pixels_per_unit: float = view.y / size
+	# Screen y grows downward, world up is `b.y`.
+	return view * 0.5 + Vector2(point.dot(b.x), -point.dot(b.y)) * pixels_per_unit
+
+
 func is_rotating() -> bool:
 	return _tween != null and _tween.is_running()
 
