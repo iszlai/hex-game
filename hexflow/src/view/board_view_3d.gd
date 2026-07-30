@@ -229,6 +229,11 @@ func set_flat(flat: bool) -> void:
 func _on_setting_changed(key: String, value: Variant) -> void:
 	if key == "flat_board":
 		set_flat(bool(value))
+	elif key == "reduce_motion":
+		# §14.5 reaches a board already on screen: the loops stop where they are
+		# rather than at the next level.
+		tiles.set_motion()
+		marks.set_motion()
 
 
 func _recompute_positions(yaw: float) -> void:

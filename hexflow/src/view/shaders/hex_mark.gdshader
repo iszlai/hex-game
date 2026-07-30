@@ -43,7 +43,16 @@ const int MARK_ARROW = 4;
 // below stays inside 0.9 so this has somewhere to go.
 const float OUTLINE = 0.085;
 
+// §14.1's goal pulse: ring scale 1.0 to 1.08, and a brightness swing standing in
+// for its glow until §13.1's bloom pass exists.
+const float PULSE_SCALE = 1.08;
+const float PULSE_DIM = 0.78;
+
 uniform vec4 outline : source_color;
+
+// §14.1's goal pulse, as a period in seconds, zero when §14.5 has stopped it.
+// Same one-uniform trick as the tiles' breathing.
+uniform float pulse_seconds = 0.0;
 
 varying vec2 quad;
 varying vec3 tint;
@@ -160,11 +169,19 @@ void fragment() {
 	float c = cos(spin);
 	float s = sin(spin);
 	vec2 p = vec2(quad.x * c + quad.y * s, -quad.x * s + quad.y * c);
+	// A goal breathes; nothing else does (§14.1). Dividing the sample point grows
+	// the glyph, so the ring scales without the quad having to.
+	float glow = 1.0;
+	if (int(mark + 0.5) == MARK_GOAL && pulse_seconds > 0.0) {
+		float phase = 0.5 + 0.5 * sin(TIME * TAU / pulse_seconds);
+		p /= mix(1.0, PULSE_SCALE, phase);
+		glow = mix(PULSE_DIM, 1.0, phase);
+	}
 	float d = mark_sdf(int(mark + 0.5), p, open);
 	// Resolution-independent edge, as §13.3 does it for the cell SDF.
 	float aa = max(fwidth(d), 0.0005);
 	float ink = 1.0 - smoothstep(-aa, aa, d);
 	float shell = 1.0 - smoothstep(-aa, aa, d - OUTLINE);
-	ALBEDO = mix(outline.rgb, tint, ink);
+	ALBEDO = mix(outline.rgb, tint * glow, ink);
 	ALPHA = shell;
 }

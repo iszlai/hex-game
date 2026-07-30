@@ -83,6 +83,7 @@ func bind(state: GameState, layout: HexLayout) -> void:
 		mat.set_shader_parameter("hatch_ink", palette.wall_stroke)
 		mat.set_shader_parameter("side_ink", palette.board_tile_side)
 	set_flat(SettingsService.flat_board())
+	set_motion()
 
 	rebuild()
 
@@ -264,3 +265,12 @@ func _depth_ratio(cell: Vector3i) -> float:
 func set_flat(flat: bool) -> void:
 	if material_override is ShaderMaterial:
 		(material_override as ShaderMaterial).set_shader_parameter("flat_board", flat)
+
+
+## §14.1's candidate breathing, at §14.5's discretion: the period when it runs, and
+## zero when Reduce Motion has stopped it. [Motion] owns both answers.
+func set_motion() -> void:
+	if material_override is ShaderMaterial:
+		var period: float = Motion.seconds("candidate_breathing") \
+			if Motion.loops("candidate_breathing") else 0.0
+		(material_override as ShaderMaterial).set_shader_parameter("breathe_seconds", period)

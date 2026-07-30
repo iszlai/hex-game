@@ -41,7 +41,12 @@ const float SIDE_INK = 0.5;
 /// luminance, so on a greyscale palette the hatch is what tells a wall from an
 /// empty cell — height alone is a band a few pixels deep on a near-black tile.
 /// Pitch is a fraction of the tile's own width, so it holds at every §4.4 size.
+const int KIND_CANDIDATE = 1;
 const int KIND_WALL = 4;
+
+// §14.1: stroke alpha 0.55 to 1.0. The 3D board has no stroke, so it is the
+// candidate's own highlight that travels between the two.
+const float BREATHE_LOW = 0.55;
 /// Sparse on purpose: the grey-box drew five thin lines across a cell, and §13.1
 /// wants generous negative space. At half the period inked, a wall stops being a
 /// dark quiet block and starts competing with the path for attention.
@@ -51,6 +56,12 @@ const float HATCH_DUTY = 0.24;
 uniform bool flat_board = false;
 uniform vec4 hatch_ink : source_color;
 uniform vec4 side_ink : source_color;
+
+// §14.1's candidate breathing, as a period in seconds — and **zero when it must
+// not run at all**, which is what §14.5 asks for: a loop under Reduce Motion does
+// not go faster, it stops, and the candidate holds the bright end of its stroke.
+// One uniform rather than a period plus a flag, so the two cannot disagree.
+uniform float breathe_seconds = 0.0;
 
 varying vec3 tint;
 varying float cursor;
@@ -77,6 +88,16 @@ void fragment() {
 	float up = clamp((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, 0.0, 1.0);
 
 	vec3 base = tint;
+	if (int(kind + 0.5) == KIND_CANDIDATE) {
+		// Driven by TIME rather than by a per-instance phase, which is exactly what
+		// makes every candidate breathe **in phase** as §14.1 requires.
+		float breath = 1.0;
+		if (breathe_seconds > 0.0) {
+			breath = mix(BREATHE_LOW, 1.0,
+				0.5 + 0.5 * sin(TIME * TAU / breathe_seconds));
+		}
+		base *= breath;
+	}
 	if (int(kind + 0.5) == KIND_WALL && up > 0.5) {
 		// 45° on the board plane is a stripe in x + z. The triangle wave and
 		// `fwidth` keep the edges resolution-independent, as §13.3 does elsewhere.

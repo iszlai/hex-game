@@ -87,8 +87,17 @@ func bind(state: GameState, layout: HexLayout, tiles: BoardTiles) -> void:
 		mat.shader = load(SHADER)
 		mat.set_shader_parameter("outline", palette.board_mark_outline)
 		material_override = mat
+	set_motion()
 
 	rebuild()
+
+
+## §14.1's goal pulse, at §14.5's discretion — the period when it runs and zero
+## when Reduce Motion has stopped it, exactly as the tiles' breathing works.
+func set_motion() -> void:
+	if material_override is ShaderMaterial:
+		var period: float = Motion.seconds("goal_pulse") if Motion.loops("goal_pulse") else 0.0
+		(material_override as ShaderMaterial).set_shader_parameter("pulse_seconds", period)
 
 
 ## Recomputes everything derived from the live state, in place: the tile under a

@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 243 tests / 14,208 asserts green in ~60 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 253 tests / 14,297 asserts green in ~60 s, 60 frozen
 level files re-verified.
 
 ---
@@ -316,10 +316,22 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       vendor. Worth doing before the store build, not before the next feature
 - [ ] Icon atlas, 9 line icons on a 24×24 grid (§13.5)
 - [ ] Real §12.3 HUD layout: 56 px top bar, 400 px rail, 140 px NOW tile, 72 px NEXT, 56 px banner
-- [ ] Every §14.1 timing, exactly as tabulated
+- [ ] Every §14.1 timing, exactly as tabulated — **the table is built and pinned**, the animations
+      mostly are not. `src/view/motion.gd` holds all fourteen rows as data the way Appendix A's
+      directions are, so a tween built anywhere reads its duration *and* its curve from one place;
+      `tests/unit/test_motion.gd` asserts every row against §14.1 and would fail a silent retune.
+      **Wired so far:** candidate breathing and the goal pulse, both in the shader off `TIME` so
+      every candidate breathes in phase for free. Still to do: the placement pop, connector draw,
+      flow pulse, queue advance, auto-discard arc, illegal shake, board ripple, screen transition,
+      results stars and dead-state desaturate
 - [ ] Goal-reached sequence §14.2; camera limited to §14.3 (2 px shake, once per completion)
 - [ ] Four GPU emitters, hard cap 120 live particles (§14.4)
-- [ ] Reduce Motion path: durations ×0.4, no shake/parallax/particles/breathing, still fully legible (§14.5)
+- [ ] Reduce Motion path: durations ×0.4, no shake/parallax/particles/breathing, still fully legible
+      (§14.5) — **the rule is implemented, and it is not just a multiplier**: §14.5 also names 120 ms
+      for screen transitions outright (not a scaled 320), and says the loops *stop* rather than
+      shorten. `Motion` gets all three right and the test names the two traps. Verified on screen for
+      the loops: two captures 0.9 s apart are byte-identical with it on and differ with it off.
+      Outstanding until the animations that do not exist yet do — shake, parallax, particles
 - [ ] Audio: 5 chapter beds + menu track, two stems, ducking (§15.1)
 - [ ] All 16 SFX (§15.2); `place.note` pentatonic ascent, resets per level, steps **down** on undo
       — `AudioDirector` already keeps the index, playback is what is missing
