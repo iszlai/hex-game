@@ -183,6 +183,39 @@ func test_the_path_gradient_follows_depth() -> void:
 		"so the gradient is visible along the path")
 
 
+## §14.1's placement pop, which is the one animation the board owes the player for
+## the only action they take. Asserted through the arithmetic rather than by
+## watching it: the instance transform is the same function either way, times a
+## factor that is 1.0 whenever nothing is popping.
+func test_a_placed_tile_pops_from_below_full_size() -> void:
+	var target: Vector3i = _state.legal_targets()[0]
+	assert_true(_state.place(target), "the fixture's first tile must be placeable")
+	_tiles.rebuild()
+	var settled: Transform3D = _transform_of(target)
+
+	_tiles.pop(target)
+	assert_eq(_tiles.pop_scale(target), BoardTiles.POP_FROM, "§14.1 starts at 0.82")
+	var popped: Transform3D = _transform_of(target)
+	assert_lt(popped.basis.get_scale().x, settled.basis.get_scale().x, "narrower on the way in")
+	assert_lt(popped.basis.get_scale().y, settled.basis.get_scale().y, "and shorter")
+	assert_eq(popped.origin, settled.origin, "but in the same place")
+
+	# And it lands exactly where it was, rather than near it.
+	await wait_seconds(Motion.seconds("placement_pop") + 0.15)
+	assert_eq(_tiles.pop_scale(target), 1.0, "a pop that never finishes is a shrunken tile")
+	assert_eq(_transform_of(target), settled)
+
+
+## Nothing else on the board moves while one tile pops.
+func test_a_pop_touches_only_the_tile_that_popped() -> void:
+	var target: Vector3i = _state.legal_targets()[0]
+	var neighbour: Vector3i = _state.board.start
+	var before: Transform3D = _transform_of(neighbour)
+	_tiles.pop(target)
+	assert_eq(_transform_of(neighbour), before, "%v must not move" % neighbour)
+	assert_eq(_tiles.pop_scale(neighbour), 1.0)
+
+
 ## The winding is the engine's, not my reading of it: `generate_normals` derives the
 ## normals from the triangle order, so normals pointing the wrong way is a board
 ## rendered inside out — caught here rather than at the first screenshot.

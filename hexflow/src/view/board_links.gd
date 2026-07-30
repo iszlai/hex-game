@@ -72,6 +72,8 @@ var _state: GameState = null
 var _layout: HexLayout = null
 var _depth: Dictionary = {}
 var _segments: Array = []    # of [Vector3 from, Vector3 to, Kind, Color]
+## §14.1's connector draw, mid-flight: how much of the newest bar exists yet.
+var _drawing: float = 1.0
 
 
 func _ready() -> void:
@@ -131,6 +133,7 @@ func rebuild() -> void:
 		return
 	_depth = PathDepth.of(_state)
 	_segments = segments()
+	_drawing = 1.0
 	var live: int = mini(_segments.size(), multimesh.instance_count)
 	for i: int in range(live):
 		multimesh.set_instance_transform(i, transform_of(i))
@@ -168,6 +171,33 @@ func segments() -> Array:
 	return out
 
 
+## §14.1's connector draw: the bar that was just added grows from its anchor to its
+## target over 160 ms, `CUBIC` / `EASE_OUT`. Only the newest one animates — the rest
+## of the ribbon is already there and must not flicker when one more joins it.
+func draw_newest() -> void:
+	if multimesh == null or _segments.is_empty():
+		return
+	# Set to zero *now*, not on the tween's first step. A tween does not run until
+	# the next idle frame, so the bar would otherwise be drawn at full length for
+	# one frame and then snap back to nothing to grow again.
+	_set_drawing(0.0)
+	var tween := create_tween()
+	Motion.shape(tween, "connector_draw")
+	tween.tween_method(_set_drawing, 0.0, 1.0, Motion.seconds("connector_draw"))
+
+
+## How much of the newest bar is drawn, 0 to 1. Always 1 for every other bar.
+func draw_progress(i: int) -> float:
+	return _drawing if i == _segments.size() - 1 else 1.0
+
+
+func _set_drawing(value: float) -> void:
+	_drawing = value
+	if multimesh != null and not _segments.is_empty():
+		var last: int = _segments.size() - 1
+		multimesh.set_instance_transform(last, transform_of(last))
+
+
 ## A point [param t] of the way along the hop from [param a] to [param b], peaking
 ## [param rise] above the straight line between them. A plain parabola: it is zero
 ## at both ends, so the tether still meets the two tiles it belongs to.
@@ -187,11 +217,16 @@ func kind_of(i: int) -> Kind:
 ## up, width across. The bar mesh is a unit cube, so the basis is the whole shape.
 func transform_of(i: int) -> Transform3D:
 	var from: Vector3 = _segments[i][0]
-	var to: Vector3 = _segments[i][1]
+	var full: Vector3 = _segments[i][1]
 	var tether: bool = kind_of(i) == Kind.TETHER
-	var along: Vector3 = to - from
-	var length: float = along.length()
-	var dir: Vector3 = along / maxf(length, 0.0001)
+	# Orientation comes from the whole segment and only the *length* is animated,
+	# so a bar one frame into its 160 ms draw still points where it is going. Taking
+	# the direction from the drawn portion instead leaves it undefined at zero.
+	var along: Vector3 = full - from
+	var span: float = along.length()
+	var dir: Vector3 = along / maxf(span, 0.0001)
+	var length: float = span * draw_progress(i)
+	var to: Vector3 = from + dir * length
 	# `side` is horizontal by construction and `up` is square to both, so a bar
 	# between tiles of different heights still lies flat rather than rolling.
 	var side: Vector3 = dir.cross(Vector3.UP).normalized()

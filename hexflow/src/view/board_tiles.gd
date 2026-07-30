@@ -37,6 +37,9 @@ const MAX_TOP := WALL_TOP
 ## on the full cell, so a press in the gap still lands on the nearest tile.
 const TILE_INSET := 0.93
 
+## §14.1's placement pop starts here and settles at 1.0.
+const POP_FROM := 0.82
+
 @export var palette: Palette = null
 
 var _board: Board = null
@@ -47,6 +50,9 @@ var _candidates: Dictionary = {}    # Vector3i -> true
 var _cursor: Vector3i = Vector3i.ZERO
 var _has_cursor: bool = false
 var _depth: Dictionary = {}
+## Cells mid-pop, and how far through §14.1's 0.82 → 1.0 they are. Empty almost
+## always; one entry for the 220 ms after a placement.
+var _pop: Dictionary = {}       # Vector3i -> scale factor
 
 
 func _ready() -> void:
@@ -202,11 +208,48 @@ static func _add_triangle(st: SurfaceTool, points: Array[Vector3], uvs: Array[Ve
 		st.add_vertex(points[i])
 
 
+## §14.1's placement pop: the tile that was just joined scales 0.82 → 1.0 over
+## 220 ms, `BACK` / `EASE_OUT`, both taken from [Motion] rather than typed here.
+##
+## One tween writing one instance, for thirteen frames. It is not a `_process` —
+## there is still nothing on this node that runs every frame in the ordinary case,
+## which is the property C4 actually cares about.
+func pop(cell: Vector3i) -> void:
+	if multimesh == null or not _index.has(cell):
+		return
+	_pop[cell] = POP_FROM
+	var tween := create_tween()
+	Motion.shape(tween, "placement_pop")
+	tween.tween_method(func(v: float) -> void: _set_pop(cell, v),
+		POP_FROM, 1.0, Motion.seconds("placement_pop"))
+	tween.finished.connect(func() -> void: _clear_pop(cell))
+
+
+## How far through its pop [param cell] is: 1.0 when it is not popping, which is
+## what makes [method transform_of] the same function either way.
+func pop_scale(cell: Vector3i) -> float:
+	return float(_pop.get(cell, 1.0))
+
+
+func _set_pop(cell: Vector3i, value: float) -> void:
+	_pop[cell] = value
+	if multimesh != null and _index.has(cell):
+		_write(cell)
+
+
+func _clear_pop(cell: Vector3i) -> void:
+	_pop.erase(cell)
+	if multimesh != null and _index.has(cell):
+		_write(cell)
+
+
 ## Where [param cell]'s prism stands and how tall it is: the layout's plane position,
-## scaled to the cell size, with the height its kind earns it.
+## scaled to the cell size, with the height its kind earns it — times its pop, which
+## is 1.0 unless it was placed in the last 220 ms.
 func transform_of(cell: Vector3i) -> Transform3D:
-	var height: float = _layout.size * top_ratio(kind_of(cell))
-	var width: float = _layout.size * TILE_INSET
+	var pop_factor: float = pop_scale(cell)
+	var height: float = _layout.size * top_ratio(kind_of(cell)) * pop_factor
+	var width: float = _layout.size * TILE_INSET * pop_factor
 	return Transform3D(
 		Basis().scaled(Vector3(width, height, width)),
 		_layout.to_plane(cell)

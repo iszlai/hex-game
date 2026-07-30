@@ -427,8 +427,11 @@ func _on_cycling_hint_wanted() -> void:
 	])
 
 
-func _on_cell_joined(_target: Vector3i, _anchor: Vector3i, _dir: int) -> void:
+func _on_cell_joined(target: Vector3i, _anchor: Vector3i, _dir: int) -> void:
 	_haptics.play("commit")
+	# The board has already been rebuilt with the new cell in it; this is §14.1's
+	# 220 ms pop and 160 ms connector draw played over the top of that.
+	board_view.play_placement(target)
 
 
 func _on_goal_reached(_cell: Vector3i) -> void:

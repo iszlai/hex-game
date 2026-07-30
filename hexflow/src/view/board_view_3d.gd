@@ -88,6 +88,14 @@ func rebuild() -> void:
 	marks.rebuild()
 
 
+## §14.1's placement feedback, in the order the eye reads it: the tile pops and the
+## connector that reached it draws. Called by the screen when a cell joins, because
+## a view is told what happened — it does not listen for it.
+func play_placement(cell: Vector3i) -> void:
+	tiles.pop(cell)
+	links.draw_newest()
+
+
 func set_candidates(targets: Array[Vector3i]) -> void:
 	tiles.set_candidates(targets)
 

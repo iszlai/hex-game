@@ -217,6 +217,52 @@ func test_a_tether_runs_between_its_two_portal_cells() -> void:
 				"dash %d strays off the line between the twins" % i)
 
 
+## §14.1's connector draw: the newest bar grows out of its anchor over 160 ms, and
+## nothing already on the board grows with it.
+func test_the_newest_connector_draws_itself_from_its_anchor() -> void:
+	_place_along_the_route(3)
+	var last: int = _links.count() - 1
+	var full: Transform3D = _links.transform_of(last)
+
+	# Asserted the instant the call returns, not a frame later: a tween's first step
+	# lands on the next idle frame, and until this was set eagerly the bar showed at
+	# full length for that one frame before snapping back to grow.
+	_links.draw_newest()
+	assert_eq(_links.draw_progress(last), 0.0, "the newest bar starts at nothing")
+	assert_lt(_links.transform_of(last).basis.get_scale().x, full.basis.get_scale().x,
+		"and is shorter than it will be")
+	for i: int in range(last):
+		assert_eq(_links.draw_progress(i), 1.0, "bar %d was already there" % i)
+
+	await wait_seconds(Motion.seconds("connector_draw") + 0.15)
+	assert_eq(_links.draw_progress(last), 1.0)
+	assert_almost_eq(_links.transform_of(last).basis.get_scale().x,
+		full.basis.get_scale().x, 0.01, "and ends the length it always was")
+
+
+## A bar grows out of the cell it left, not out of thin air in the middle. Stated
+## twice because it has to hold at both ends of the draw: at zero length the bar
+## sits *on* its anchor, and at every length after that its near end is still there.
+func test_a_connector_grows_out_of_its_anchor() -> void:
+	_place_along_the_route(2)
+	var last: int = _links.count() - 1
+	var anchor: Vector3 = (_links.segments()[last] as Array)[0]
+
+	_links.draw_newest()
+	var zero: Transform3D = _links.transform_of(last)
+	assert_almost_eq(zero.basis.get_scale().x, 0.0, 0.001, "nothing drawn yet")
+	assert_almost_eq(zero.origin.x, anchor.x, 0.01, "and it sits on the anchor")
+	assert_almost_eq(zero.origin.z, anchor.z, 0.01)
+
+	# Whatever the tween has reached by now — the claim does not depend on how far.
+	await wait_process_frames(2)
+	var t: Transform3D = _links.transform_of(last)
+	var half: float = t.basis.get_scale().x * 0.5
+	var near: Vector3 = t.origin - t.basis.x.normalized() * half
+	assert_almost_eq(near.x, anchor.x, 0.5, "the near end never leaves the anchor")
+	assert_almost_eq(near.z, anchor.z, 0.5)
+
+
 ## The tether is thrown over the board, not dragged across it. Straight, it read as
 ## a scratch on the board and was chopped up by every wall it passed — a wall
 ## stands taller than the tiles the tether's ends rest on.
