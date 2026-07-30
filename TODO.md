@@ -25,7 +25,7 @@ level files re-verified.
 | M4 | Input & Deck | ⬜ not started | gamepad-only and touch-only `@e2e` playthroughs |
 | M5 | Persistence & settings | 🟨 services only | resume-on-boot; settings and pause screens |
 | M6 | Campaign data | 🟨 data only | level select, chapter unlocks, results screen |
-| M7 | Art & feel | ⬜ not started | shaders, fonts, all §14 animation, all §15 audio |
+| M7 | Art & feel | ⬜ not started | the 3D board (C-18), fonts, all §14 animation, all §15 audio |
 | M8 | Tutorial | ⬜ not started | T1–T12 data-driven, naive playtest |
 | M9 | Modes & Steam | 🟨 logic only | mode screens, GodotSteam, leaderboards |
 | M10 | Accessibility & i18n | ⬜ not started | palettes, text scale, Reduce Motion, extraction |
@@ -33,9 +33,17 @@ level files re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** M4. The game is already playable, so controller support is what turns the grey-box into
-something handable to a person, and `InputRouter` already solves the hard part (directional input
-over a hex lattice).
+**Next up:** M4, then the orthographic-3D board. The game is already playable, so controller support
+is what turns the grey-box into something handable to a person, and `InputRouter` already solves the
+hard part (directional input over a hex lattice).
+
+> **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
+> **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a
+> physical stack. Nothing in `src/core/` is affected — cells stay cube `Vector3i`, and the rules, the
+> solver, every stored par and all 60 frozen level files are perspective-agnostic. It lands in M7,
+> whose checklist below is rewritten for it; §13.3's SDF-shader plan was never built. M4 is
+> unaffected beyond one binding pair, because `InputRouter` works from screen-space positions the
+> view hands it, so the cone and the cycling order simply follow the camera.
 
 ---
 
@@ -101,6 +109,8 @@ over 200 random inputs.
       B back, Select legend, hold-Select restart
 - [ ] Hold gestures for every destructive action — nothing destructive on a single press (§11.3)
 - [ ] L1/R1 bumper cycling bound to the existing `InputRouter.cycle()`
+- [ ] `board_rotate_cw` / `board_rotate_ccw` in the binding table, so the M7 camera (C-18) does not
+      rewrite it — inert until the 3D board exists
 - [ ] Steam Input action sets: `Menu`, `Board`, `Modal` (§11.1)
 - [ ] Touch-only path; every on-screen button ≥44 px at 1280×800 (§11.4)
 - [ ] Controller glyph atlas, data-driven by `Input.get_joy_name`, Deck names for View/Menu (§11.4)
@@ -145,9 +155,25 @@ Exit: every level file validates and reproduces its par; the whole campaign is p
 
 Exit: every §12.4 feedback requirement met against the grey-box; §20 frame budget met at 1280×800.
 
-- [ ] `src/shaders/hex_cell.gdshader` — pointy-top SDF, fill / stroke / glow (§13.3)
-- [ ] One `MultiMeshInstance2D` for the whole board, per-instance custom data, single draw call
-- [ ] Connector pass as rounded capsules with the depth gradient (§13.3)
+Rewritten for the orthographic-3D perspective of **C-18**. The 2D grey-box stays alive underneath as
+the headless/test view — if a 3D change breaks the grey-box tests, the 3D change is wrong.
+
+- [ ] Cube → ground plane: `hex_layout.gd` gains `(x, z)` output, same §4.3 formula, floats still
+      confined to the view (C-13)
+- [ ] `Camera3D`, `projection = ORTHOGONAL`, fixed pitch; yaw snaps to the six 60° lattice positions,
+      tweened; §4.4's fit rule applied to the **projected** bounds
+- [ ] Pointer hit-test as camera ray ∩ `y = 0`, then the existing `HexLayout.from_pixel` — B7's fix
+      must survive the move to 3D
+- [ ] `Camera3D.unproject_position` feeds `InputRouter`, recomputed on yaw change, never per frame (C4)
+- [ ] One `MultiMeshInstance3D` of hex prisms for the whole board, per-instance custom data, single
+      draw call (§13.3's requirement, new geometry)
+- [ ] Tile thickness, drop shadows and one `DirectionalLight3D` + `WorldEnvironment`
+- [ ] Connectors with the depth gradient, as 3D geometry rather than §13.3's capsule SDF
+- [ ] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
+      array only, never for the unbounded endless/daily bag (C-18)
+- [ ] Glyph legibility through rotation — billboarded, and still readable at every one of the six stops
+- [ ] Unshaded material path so §21's greyscale requirement survives lighting (C-18)
+- [ ] `board_rotate_cw` / `board_rotate_ccw` given an effect — bound in M4, inert until the camera exists
 - [ ] Full palette token set audited — never a colour in a script or scene (§13.2)
 - [ ] Fonts vendored, SIL-OFL only: Space Grotesk, Inter, JetBrains Mono; 18 px absolute floor (§13.4)
 - [ ] Icon atlas, 9 line icons on a 24×24 grid (§13.5)
@@ -160,7 +186,8 @@ Exit: every §12.4 feedback requirement met against the grey-box; §20 frame bud
 - [ ] All 16 SFX (§15.2); `place.note` pentatonic ascent, resets per level, steps **down** on undo
       — `AudioDirector` already keeps the index, playback is what is missing
 - [ ] Buses and sliders, −16 LUFS / −1 dBTP, `place.*` voice cap 4 (§15.3)
-- [ ] Renderer measured Forward+ vs Mobile for the Deck export, result documented (C-3)
+- [ ] Renderer measured Forward+ vs Mobile for the Deck export, result documented (C-3) — now with 3D
+      shadows in the measurement, and no longer deferrable (C-18)
 
 ## M8 — Tutorial ⬜
 

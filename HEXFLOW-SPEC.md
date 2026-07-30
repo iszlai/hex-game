@@ -210,6 +210,9 @@ across platforms.
 
 ### 4.3 Cube → pixel layout (pointy-top)
 
+> The formula below is unchanged, but it now projects onto the **ground plane** of an orthographic 3D
+> board rather than straight to the screen — see **C-18**.
+
 Let `s` = circumradius in pixels (centre to vertex). Convert with axial `q = x`, `r = z`:
 
 ```
@@ -234,6 +237,9 @@ then round `(q_f, -q_f - r_f, r_f)` by rounding all three and correcting the com
 rounding delta so the sum returns to zero.
 
 ### 4.4 Board sizing on screen
+
+> The footprint below is the board's size **on its own plane**. An oblique camera foreshortens it, so
+> the fit rule is applied to the projected bounds instead — see **C-18**.
 
 For a radius-`R` hexagonal board, the full rendered footprint is:
 
@@ -732,6 +738,9 @@ The state machine lives in one place (`GameDirector`, §16.3). No screen may pus
 
 ### 12.3 Level screen layout at 1280×800
 
+> **Superseded by C-18** on one point: the flat NEXT pair becomes a stack of the upcoming tiles. The
+> band sizes, the rail width and the "board never overlaps the rail" rule are unchanged.
+
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │  ← Ch2 · Level 7          placements 11 / par 9        ★★☆   [Menu]  │ 56 px top bar
@@ -827,6 +836,11 @@ Define once in `src/data/palettes/neon_dark.tres`; never hardcode a colour in a 
 | `focus` | `#FFFFFF` | Focus ring |
 
 ### 13.3 Hex cell rendering
+
+> **Superseded by C-18.** The board renders as orthographic 3D hex prisms in a `MultiMeshInstance3D`,
+> not as a canvas-shader SDF. The single-draw-call and per-instance-custom-data requirements below
+> carry over verbatim; the SDF listing is retained only as the reference for any 2D fallback and for
+> the grey-box.
 
 Draw all cells in **one** `MultiMeshInstance2D` of unit quads, with per-instance custom data carrying
 state, so the whole board is a single draw call. Fragment shader sketch:
@@ -930,6 +944,9 @@ t=700   if all goals reached: Results card slides up (400 ms, CUBIC EASE_OUT)
 ```
 
 ### 14.3 Camera
+
+> **Superseded by C-18** on one point: the camera yaws between the six 60° lattice positions on player
+> request. Everything below still holds for camera motion the player did not ask for.
 
 The camera does not move during play. Permitted motion only: a 0.35° parallax lean of the background
 layer following the cursor (disabled by Reduce Motion), and a 2 px screen shake on the goal burst
@@ -1696,7 +1713,7 @@ Log anything discovered during implementation here rather than inventing an answ
 | C-7 | Whether the daily should be one-attempt-scored instead of best-of-retries | Best-of-retries, per §7.3 — friendlier, and no anti-cheat burden |
 | C-8 | Current Valve Deck Verified criteria and Steamworks asset specs | Re-read Valve's live documentation at M11; §23 is a starting checklist, not the authority |
 
-### Resolved during implementation (M0–M3)
+### Resolved during implementation (M0–M4)
 
 Each of these was an underspecification found while building. Per §1.1 C7 the simplest workable
 option was taken and recorded here rather than invented silently.
@@ -1712,6 +1729,7 @@ option was taken and recorded here rather than invented silently.
 | C-15 | §6 does not say whether spending a wild charge consumes the drawn tile | It does: the wild placement replaces the normal placement and the stream advances. Otherwise a charge would grant a free extra move on top of the tile |
 | C-16 | §18.3 requires a suspended level to resume identically, but §17.2's `in_progress` has no field for the undo history | Undo history is not persisted. §5.9 does not require undo to survive a suspend, and persisting it would grow the ~2 KB save without bound |
 | C-17 | §5.7's auto-discard loop never terminates if every direction is blocked but the goal still looks reachable — reachable to a flood fill that ignores gates, unreachable in fact through an unsatisfiable gate | Before the loop, a path with no enterable neighbour at all is declared `DEAD`. The path can never change again, so no gate can ever become satisfiable. The solver uses an equivalent bound: 12 consecutive unplaceable draws, which always spans a full bag |
+| C-18 | §4.3, §4.4, §12.3, §13.3 and §14.3 all assume a flat board drawn head-on: a canvas-shader SDF, a static camera, and a rail whose NEXT tiles are flat panels. The intended presentation is an oblique, **rotatable** board with the upcoming tiles as a physical stack | The board renders in **orthographic 3D**. `Camera3D` with `projection = ORTHOGONAL` and a fixed pitch; yaw snaps to the six 60° positions of the hex lattice, tweened, so the lattice reads identically at every stop and the six direction glyphs stay legible at fixed angles. §4.3's formula is unchanged and now maps cube → the ground plane's `(x, z)`. Pointer input intersects the camera ray with `y = 0` and feeds the result to the existing `HexLayout.from_pixel`, so B7's fix survives. `InputRouter` keeps receiving screen-space positions, obtained via `Camera3D.unproject_position`, so §11.2's ±75° cone and clockwise cycling need no change — they simply follow the camera. §13.3's SDF pass becomes a `MultiMeshInstance3D` of hex prisms; §12.3's NEXT pair becomes a stack; §14.3 gains the player-requested yaw. Those sections are rewritten when the M7 view lands; until then **this row is the authority**. Two consequences: C-3 (Forward+ vs Mobile) stops being deferrable, and §21's greyscale requirement now has to survive lighting, so the accessibility palettes need an unshaded material path. Open: whether the stack shows a remaining count — default **yes** for a campaign level's fixed tile array, **no number** for the endless/daily bag, which is unbounded by construction (§5.3) |
 
 ---
 
