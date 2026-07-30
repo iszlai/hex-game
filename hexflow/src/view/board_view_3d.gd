@@ -17,9 +17,9 @@
 ## Both are the best available answer, and both are computed once per event — never
 ## per frame (C4).
 ##
-## The meshes are not here yet: this is the camera, the layout and the screen-space
-## mapping. `BoardView`'s grey-box stays the headless/test view until the prisms
-## land, per §26's sequencing note.
+## What it holds: the camera, the layout, the screen-space mapping, and two
+## multimeshes — [BoardTiles] for the cells and [BoardMarks] for the §6 modifiers
+## standing on them.
 class_name BoardView3D
 extends SubViewportContainer
 
@@ -37,6 +37,7 @@ signal screen_positions_changed
 var camera: BoardCamera = null
 var viewport: SubViewport = null
 var tiles: BoardTiles = null
+var marks: BoardMarks = null
 var layout: HexLayout = null
 
 var _board: Board = null
@@ -70,6 +71,7 @@ func bind(state: GameState, play_area: Vector2) -> void:
 		TILE_TOP_RATIO)))
 	camera.frame_play_area(play_area)
 	tiles.bind(state, layout)
+	marks.bind(state, layout, tiles)
 	_recompute_positions(camera.yaw_radians())
 
 
@@ -77,6 +79,9 @@ func bind(state: GameState, play_area: Vector2) -> void:
 ## level screen: the same four calls, in the same order, meaning the same things.
 func rebuild() -> void:
 	tiles.rebuild()
+	# After the tiles, always: a mark sits on top of the tile it labels, so it has
+	# to be told where that top is *after* a placement has raised it.
+	marks.rebuild()
 
 
 func set_candidates(targets: Array[Vector3i]) -> void:
@@ -155,6 +160,13 @@ func _ensure_nodes() -> void:
 	tiles.name = "BoardTiles"
 	tiles.palette = palette
 	viewport.add_child(tiles)
+	# The §6 modifiers, in a second multimesh: they are marks on tiles rather than
+	# kinds of tile, so they cannot ride C-22's height channel and cannot share the
+	# tiles' mesh either (C-23).
+	marks = BoardMarks.new()
+	marks.name = "BoardMarks"
+	marks.palette = palette
+	viewport.add_child(marks)
 	_add_lighting()
 
 

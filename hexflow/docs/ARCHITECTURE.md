@@ -370,7 +370,8 @@ the solver cannot model makes every generated par wrong, silently. Then the view
 **A new modifier.** §6 says exactly five ship and "do not invent more". Every extra mechanic
 multiplies tutorial, art, solver and test cost. If one is genuinely needed: add the flag to
 `Board`, the predicate to `Rules`, the mask lane to `Solver.Topology`, the placement to
-`Generator`, and the glyph to `BoardView`. Missing any one of those five is a silent bug.
+`Generator`, and the glyph to **both** boards — `BoardView`'s grey-box and `BoardMarks` plus a
+silhouette in `hex_mark.gdshader`. Missing any one of those six is a silent bug.
 
 **A new screen.** Add it to `GameDirector.Screen` and `SCENES`, and give it a row in
 `GameDirector.ACTION_SETS` so it runs under the right §11.1 action set. No screen may push another

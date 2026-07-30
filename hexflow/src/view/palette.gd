@@ -29,12 +29,19 @@ extends Resource
 @export var gate: Color = Color("6F8CFF")
 @export var wild: Color = Color("F7F16B")
 
-@export_group("Board lighting")
+@export_group("Board 3D")
 ## The single key light of the C-18 board and the ambient it sits in. Tokens rather
 ## than literals for the same reason every other colour is: §21's palettes swap the
 ## `.tres`, and a light hardcoded in a script would keep the neon cast in all four.
 @export var board_key_light: Color = Color("FFF6E8")
 @export var board_ambient: Color = Color("2A3A55")
+## Outline carried by every modifier mark (C-23). A mark is drawn on top of a tile
+## whose own colour is a palette token too, so a mark and its tile can be a similar
+## luminance under a greyscale or high-contrast palette — the outline is what keeps
+## the glyph's silhouette readable regardless, which is the half of §21 that shape
+## alone does not cover. It must invert with the surfaces in a light palette, so it
+## is its own token rather than a reuse of `bg.deep`.
+@export var board_mark_outline: Color = Color("070B12")
 
 @export_group("Feedback")
 @export var danger: Color = Color("FF5470")

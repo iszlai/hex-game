@@ -1,0 +1,146 @@
+// The four modifier marks of §6 — goal, portal, gate, wild — as camera-facing
+// signed-distance glyphs, all of them in one draw call (C-23).
+//
+// Two jobs, one per stage.
+//
+// **vertex** billboards. The quad is rebuilt every frame around the camera's own
+// basis, so a mark is always a screen-aligned square: it never rotates, shears or
+// foreshortens as the board yaws, and it is exactly as legible at each of the six
+// 60° stops as it is at every angle in between. Doing it here rather than by
+// rewriting instance transforms costs no CPU at all and stays correct *during*
+// C-21's 260 ms tween, not just at its ends.
+//
+// **fragment** draws the silhouette. §21 asks for a channel that is not colour;
+// [BoardTiles] already spent height on the tile's kind (C-22), so a modifier is
+// told apart by its outline: one ring around a dot, two concentric rings, a
+// padlock, a five-pointed star. The glyph is ringed in `outline` so the shape
+// survives being drawn over a tile of similar luminance under a greyscale or
+// high-contrast palette.
+//
+// Every colour arrives per instance from `palette.gd` (§13.2) or as the `outline`
+// uniform — deliberately not one literal colour in here, so §21's palettes stay a
+// `.tres` swap.
+//
+// INSTANCE_CUSTOM:
+//   r  mark id (BoardMarks.Mark)
+//   g  1.0 when a gate is currently enterable, so its lock opens (§6)
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled,
+	world_vertex_coords;
+
+const int MARK_GOAL = 0;
+const int MARK_PORTAL = 1;
+const int MARK_GATE = 2;
+const int MARK_WILD = 3;
+
+// Width of the ring drawn around every glyph, in quad units. Each silhouette
+// below stays inside 0.9 so this has somewhere to go.
+const float OUTLINE = 0.085;
+
+uniform vec4 outline : source_color;
+
+varying vec2 quad;
+varying vec3 tint;
+varying flat float mark;
+varying flat float open;
+
+float sd_circle(vec2 p, float r) {
+	return length(p) - r;
+}
+
+float sd_ring(vec2 p, float r, float w) {
+	return abs(length(p) - r) - w;
+}
+
+float sd_box(vec2 p, vec2 b) {
+	vec2 d = abs(p) - b;
+	return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+float sd_round_box(vec2 p, vec2 b, float r) {
+	return sd_box(p, b - vec2(r)) - r;
+}
+
+// Upper half of an annulus, with round caps where the legs end — a padlock
+// shackle standing on the lock body.
+float sd_arc(vec2 p, float r, float w) {
+	p.x = abs(p.x);
+	if (p.y > 0.0) {
+		return abs(length(p) - r) - w;
+	}
+	return length(p - vec2(r, 0.0)) - w;
+}
+
+// Five-pointed star, one point up. iq's construction: fold the plane about the
+// two mirror lines of the 5-fold symmetry, then measure one edge.
+float sd_star5(vec2 p, float r, float rf) {
+	const vec2 k1 = vec2(0.809016994375, -0.587785252292);
+	const vec2 k2 = vec2(-k1.x, k1.y);
+	p.x = abs(p.x);
+	p -= 2.0 * max(dot(k1, p), 0.0) * k1;
+	p -= 2.0 * max(dot(k2, p), 0.0) * k2;
+	p.x = abs(p.x);
+	p.y -= r;
+	vec2 ba = rf * vec2(-k1.y, k1.x) - vec2(0.0, 1.0);
+	float h = clamp(dot(p, ba) / dot(ba, ba), 0.0, r);
+	return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
+}
+
+// The four silhouettes. They differ in shape before they differ in anything else,
+// which is the whole of §21's requirement on them.
+float mark_sdf(int id, vec2 p, float lock_open) {
+	if (id == MARK_GOAL) {
+		// A reticle: ring, solid centre, and four ticks. Ring-and-dot alone is a
+		// pair of concentric circles, which is what a portal is — in greyscale the
+		// two were told apart only by whether the middle was filled. The ticks make
+		// the silhouettes differ outright, which is what §21 actually asks for.
+		vec2 a = abs(p);
+		float ticks = min(
+			sd_box(vec2(a.x - 0.81, a.y), vec2(0.07, 0.055)),
+			sd_box(vec2(a.x, a.y - 0.81), vec2(0.055, 0.07))
+		);
+		return min(min(sd_ring(p, 0.60, 0.11), sd_circle(p, 0.20)), ticks);
+	}
+	if (id == MARK_PORTAL) {
+		// Two concentric rings and an empty middle (§6), so it cannot be read as
+		// a goal at a glance or in a monochrome capture.
+		return min(sd_ring(p, 0.74, 0.10), sd_ring(p, 0.40, 0.10));
+	}
+	if (id == MARK_GATE) {
+		float body = sd_round_box(p - vec2(0.0, -0.28), vec2(0.52, 0.40), 0.12);
+		float keyhole = min(
+			sd_circle(p - vec2(0.0, -0.20), 0.13),
+			sd_box(p - vec2(0.0, -0.38), vec2(0.05, 0.16))
+		);
+		body = max(body, -keyhole);
+		// Open, the shackle swings clear of the body: the lock opens the moment
+		// the gate's condition becomes satisfiable (§6).
+		vec2 q = p - vec2(lock_open * 0.30, 0.10 + lock_open * 0.12);
+		return min(body, sd_arc(q, 0.30, 0.10));
+	}
+	return sd_star5(p, 0.86, 0.45);
+}
+
+void vertex() {
+	quad = UV * 2.0 - 1.0;
+	tint = COLOR.rgb;
+	mark = INSTANCE_CUSTOM.r;
+	open = INSTANCE_CUSTOM.g;
+	// The instance transform contributes its origin and its (uniform) scale; its
+	// orientation is the camera's, taken fresh here. INV_VIEW_MATRIX's first two
+	// columns are screen right and screen up in world space.
+	vec3 centre = MODEL_MATRIX[3].xyz;
+	float radius = length(MODEL_MATRIX[0].xyz);
+	VERTEX = centre
+		+ (quad.x * INV_VIEW_MATRIX[0].xyz + quad.y * INV_VIEW_MATRIX[1].xyz) * radius;
+}
+
+void fragment() {
+	float d = mark_sdf(int(mark + 0.5), quad, open);
+	// Resolution-independent edge, as §13.3 does it for the cell SDF.
+	float aa = max(fwidth(d), 0.0005);
+	float ink = 1.0 - smoothstep(-aa, aa, d);
+	float shell = 1.0 - smoothstep(-aa, aa, d - OUTLINE);
+	ALBEDO = mix(outline.rgb, tint, ink);
+	ALPHA = shell;
+}

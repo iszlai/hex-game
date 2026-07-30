@@ -141,6 +141,14 @@ static func top_ratio(kind: Kind) -> float:
 			return EMPTY_TOP
 
 
+## How high [param cell]'s tile top stands above the plane, in world units. The
+## marks of §6 sit on top of the tile they belong to and the tile under a mark can
+## stand up mid-level, so [BoardMarks] asks the node that owns C-22's heights
+## rather than keeping a second copy of them.
+func top_of(cell: Vector3i) -> float:
+	return _layout.size * top_ratio(kind_of(cell))
+
+
 ## A unit hex prism: pointy-top, circumradius 1 on the `(x, z)` plane, standing from
 ## `y = 0` to `y = 1`, so a per-instance scale is all a tile needs.
 ##

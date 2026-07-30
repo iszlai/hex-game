@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 188 tests / 13,447 asserts green in ~60 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 200 tests / 13,668 asserts green in ~61 s, 60 frozen
 level files re-verified.
 
 ---
@@ -25,7 +25,7 @@ level files re-verified.
 | M4 | Input & Deck | ✅ done | — |
 | M5 | Persistence & settings | 🟨 services only | resume-on-boot; settings and pause screens |
 | M6 | Campaign data | 🟨 data only | level select, chapter unlocks, results screen |
-| M7 | Art & feel | 🟨 board only | modifier glyphs (C5 gap), connectors, fonts, all §14 animation, all §15 audio |
+| M7 | Art & feel | 🟨 board + marks | connectors, NEXT stack, fonts, all §14 animation, all §15 audio |
 | M8 | Tutorial | ⬜ not started | T1–T12 data-driven, naive playtest |
 | M9 | Modes & Steam | 🟨 logic only | mode screens, GodotSteam, leaderboards |
 | M10 | Accessibility & i18n | ⬜ not started | palettes, text scale, Reduce Motion, extraction |
@@ -33,9 +33,11 @@ level files re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** the modifier glyphs (M7). The C-18 board is on screen and playable — `make run` shows
-prisms, `[` / `]` turn it — but it cannot yet draw a goal, a portal, a gate or a wild, which is a C5
-gap against the grey-box it replaced. Nothing else in M7 goes in front of it.
+**Next up:** the path connectors (M7). The C-18 board is on screen, playable and now legible — `make
+run` shows prisms, `[` / `]` turn it, and the four §6 modifiers carry their marks again, so the C5
+gap the board opened is shut. What the board still cannot draw is the *path* as one continuous
+stroke: §13.3's capsule SDF has no 3D equivalent yet, so a route currently reads as a row of raised
+tiles rather than as a line of light.
 
 > **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
 > **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a
@@ -236,15 +238,23 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       region is unchanged — the rounding is still on the full cell
 - [x] **`BoardView3D` is live in `level.tscn`** — `make run` is the 3D board, `make shot` captures
       it, and `[` / `]` turn it. Landed early, on request, rather than with the glyphs
-- [ ] **C5 gap, knowingly open**: the 3D board draws no modifier glyphs, so goals, portals, gates and
-      wilds are currently invisible on it — the grey-box distinguished all four. The glyph item below
-      closes it. Nothing else in M7 should land before it
+- [x] **C5 gap closed.** It was knowingly open for one step: the 3D board drew no modifier glyphs, so
+      goals, portals, gates and wilds were invisible on it where the grey-box distinguished all four.
+      The glyph item below closed it
 - [ ] Connectors with the depth gradient, as 3D geometry rather than §13.3's capsule SDF
 - [ ] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
       array only, never for the unbounded endless/daily bag (C-18)
-- [ ] Glyph legibility through rotation — billboarded, and still readable at every one of the six
-      stops. **Closes the C5 gap above**, so it comes before anything else in M7: goal, portal, gate
-      and wild all need their mark back
+- [x] Glyph legibility through rotation — billboarded, and still readable at every one of the six
+      stops. **Closed the C5 gap above**: goal, portal, gate and wild all have their mark back —
+      `src/view/board_marks.gd` plus `shaders/hex_mark.gdshader`, a second multimesh of one instance
+      per mark, billboarded **in the vertex shader** from the camera's basis. Decision **C-23**:
+      shader billboarding rather than a `Label3D` per cell, which costs a node and a draw call each
+      and needs a font §13.4 has not vendored; procedural SDF silhouettes rather than §13.5's atlas,
+      which is what §13.1 asks for and stays crisp at every §4.4 size. Each modifier is a different
+      *shape* first (§21): reticle, two rings, padlock, star — ring-and-dot for the goal reads as
+      "concentric circles" in greyscale, which is exactly what a portal is, so it gained four ticks.
+      §6's lock opens live off `Rules.gate_satisfied`. Verified as a **greyscale** capture at two yaw
+      stops, not only by test: `make shot LEVEL=5.1` is the one board carrying all four at once
 - [ ] Unshaded material path so §21's greyscale requirement survives lighting (C-18)
 - [x] `board_rotate_cw` / `board_rotate_ccw` given an effect — bound in M4, live now. Turning re-feeds
       `InputRouter` with the new screen positions, so the cone and the cycling turn with the board
@@ -335,7 +345,7 @@ parameter and the campaign ships radius 2, 3 and 4 — but `solver.gd`'s 64-bit 
 62 cells, and radius 5 is 91. Late-game difficulty escalates walls, goals, gates and budget instead.
 
 Unresolved items live in **Appendix C** of the spec (C-1 … C-8, C-19). Decisions already taken during
-M0–M7 are recorded there too (C-9 … C-18, C-20 … C-22) — add to that table rather than inventing an
+M0–M7 are recorded there too (C-9 … C-18, C-20 … C-23) — add to that table rather than inventing an
 answer, per constraint C7.
 
 ---
