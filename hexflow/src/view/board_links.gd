@@ -37,9 +37,21 @@ const LINK_LIGHTEN := 0.15
 ## thinner ribbon. Two channels that are not colour (§21) — the grey-box used the
 ## same dashes for the same reason.
 const TETHER_WIDTH := 0.12
-const TETHER_DASHES := 5
+const TETHER_DASHES := 7
 ## Fraction of each dash's slot left empty, which is what makes it a dash.
 const TETHER_GAP := 0.45
+
+## How high the tether arcs over the board at its midpoint, as a fraction of the
+## distance it spans.
+##
+## It arcs rather than running straight for three reasons. A straight bar lying
+## across the board reads as a scratch on it rather than as a link between two
+## cells; it is chopped up by every wall it passes, because a wall stands taller
+## than the tiles the tether's ends rest on; and a portal *is* a jump, so a line
+## that leaves the board and comes back down says what the mechanic does. The rise
+## clears the tallest thing on the board ([constant BoardTiles.WALL_TOP]) by a wide
+## margin at every span a radius-4 board can produce.
+const TETHER_RISE := 0.22
 
 ## Lift above the tile top, as a fraction of the circumradius. Enough to sit *on*
 ## the tiles rather than inside them; small enough that the ribbon still reads as
@@ -82,6 +94,13 @@ func bind(state: GameState, layout: HexLayout, tiles: BoardTiles) -> void:
 		var mat := ShaderMaterial.new()
 		mat.shader = load(SHADER)
 		material_override = mat
+
+	# The ribbon takes light but never casts it. A connector lying on a tile would
+	# drop a shadow onto the tile it is lying on, and the tether — which arcs over
+	# the board — laid a trail of dark streaks across everything it passed. C-22
+	# reads *tile* height from the shadows, so the board's shadows have a job and
+	# these were noise in the middle of it.
+	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 	rebuild()
 
@@ -129,14 +148,24 @@ func segments() -> Array:
 		var b: Vector3 = _top_of(to)
 		if int(edge[1]) == Direction.PORTAL:
 			# A tether spans two cells that are not neighbours, so it is cut into
-			# dashes rather than drawn as one long bar.
+			# dashes rather than drawn as one long bar — and thrown over the board
+			# rather than dragged across it.
+			var rise: float = a.distance_to(b) * TETHER_RISE
 			for i: int in range(TETHER_DASHES):
 				var t0: float = (float(i) + TETHER_GAP * 0.5) / float(TETHER_DASHES)
 				var t1: float = (float(i) + 1.0 - TETHER_GAP * 0.5) / float(TETHER_DASHES)
-				out.append([a.lerp(b, t0), a.lerp(b, t1), Kind.TETHER, palette.portal])
+				out.append([arc_point(a, b, rise, t0), arc_point(a, b, rise, t1),
+					Kind.TETHER, palette.portal])
 		else:
 			out.append([a, b, Kind.LINK, _colour_at(to)])
 	return out
+
+
+## A point [param t] of the way along the hop from [param a] to [param b], peaking
+## [param rise] above the straight line between them. A plain parabola: it is zero
+## at both ends, so the tether still meets the two tiles it belongs to.
+static func arc_point(a: Vector3, b: Vector3, rise: float, t: float) -> Vector3:
+	return a.lerp(b, t) + Vector3.UP * (rise * 4.0 * t * (1.0 - t))
 
 
 func count() -> int:

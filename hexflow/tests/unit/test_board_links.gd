@@ -217,6 +217,36 @@ func test_a_tether_runs_between_its_two_portal_cells() -> void:
 				"dash %d strays off the line between the twins" % i)
 
 
+## The tether is thrown over the board, not dragged across it. Straight, it read as
+## a scratch on the board and was chopped up by every wall it passed — a wall
+## stands taller than the tiles the tether's ends rest on.
+func test_the_tether_arcs_clear_of_the_tallest_thing_on_the_board() -> void:
+	var state := _portal_state()
+	_bind(state)
+	for i: int in range(2):
+		assert_true(state.place(state.legal_targets()[0]), "step %d" % i)
+	_view.rebuild()
+
+	var segs: Array = _links.segments()
+	var highest := 0.0
+	var ends: Array[float] = []
+	for i: int in range(_links.count()):
+		if _links.kind_of(i) != BoardLinks.Kind.TETHER:
+			continue
+		for end: Variant in [(segs[i] as Array)[0], (segs[i] as Array)[1]]:
+			highest = maxf(highest, (end as Vector3).y)
+	assert_gt(highest, _layout.size * BoardTiles.WALL_TOP,
+		"the arc must clear a wall, or it is cut in half by one")
+
+	# And it still meets the two tiles it belongs to: the hop is zero at both ends.
+	var a: Vector3 = Vector3(1.0, 2.0, 3.0)
+	var b: Vector3 = Vector3(9.0, 2.0, -4.0)
+	assert_eq(BoardLinks.arc_point(a, b, 50.0, 0.0), a, "no rise at the near end")
+	assert_eq(BoardLinks.arc_point(a, b, 50.0, 1.0), b, "nor at the far one")
+	assert_almost_eq(BoardLinks.arc_point(a, b, 50.0, 0.5).y, a.y + 50.0, 0.001,
+		"and the rise is the rise at the top")
+
+
 func test_the_bar_is_a_unit_cube_wound_outward() -> void:
 	var mesh := BoardLinks.build_bar_mesh()
 	var arrays: Array = mesh.surface_get_arrays(0)
