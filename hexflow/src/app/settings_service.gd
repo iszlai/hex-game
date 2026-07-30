@@ -13,6 +13,10 @@ const DEFAULTS := {
 	"haptics": 70,
 	"cursor_mode": "snap",      # snap | free
 	"reduce_motion": false,
+	# §21 through C-18's lit board: with it on, the board takes no light at all, so
+	# a tile's colour on screen is its palette colour and nothing else. Off by
+	# default — the key light is what gives C-22's tile heights something to cast.
+	"flat_board": false,
 	"palette": "neon_dark",     # neon_dark | deuter | protan | tritan | high_contrast
 	"text_scale": 1.0,          # 1.0 .. 1.5
 	"show_glyphs": true,
@@ -45,6 +49,10 @@ func set_value(key: String, value: Variant) -> void:
 
 func reduce_motion() -> bool:
 	return bool(get_value("reduce_motion"))
+
+
+func flat_board() -> bool:
+	return bool(get_value("flat_board"))
 
 
 func load_from_disk() -> void:

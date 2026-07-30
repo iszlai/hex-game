@@ -94,6 +94,7 @@ func bind(state: GameState, layout: HexLayout, tiles: BoardTiles) -> void:
 		var mat := ShaderMaterial.new()
 		mat.shader = load(SHADER)
 		material_override = mat
+	set_flat(SettingsService.flat_board())
 
 	# The ribbon takes light but never casts it. A connector lying on a tile would
 	# drop a shadow onto the tile it is lying on, and the tether — which arcs over
@@ -254,3 +255,12 @@ static func build_bar_mesh() -> ArrayMesh:
 				st.add_vertex(q[k] as Vector3)
 	st.generate_normals()
 	return st.commit()
+
+
+## §21's escape hatch (C-24): with [param flat] the board takes no light, so a
+## tile's colour on screen is its palette colour and a greyscale palette cannot be
+## undone by a highlight. A uniform rather than a second shader, so there is one
+## place the geometry and the colours are described.
+func set_flat(flat: bool) -> void:
+	if material_override is ShaderMaterial:
+		(material_override as ShaderMaterial).set_shader_parameter("flat_board", flat)

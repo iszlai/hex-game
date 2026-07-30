@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 222 tests / 14,031 asserts green in ~61 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 227 tests / 14,047 asserts green in ~61 s, 60 frozen
 level files re-verified.
 
 ---
@@ -33,11 +33,10 @@ level files re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** the unshaded material path (M7). Everything C-18 promised is now on screen — prisms,
-the four §6 marks, the path as one stroke, and the upcoming tiles as a stack whose arrows turn with
-the board. What has not been checked is the thing C-18 warned about: §21's greyscale requirement now
-has to survive *lighting*, and nothing yet proves a key light plus an accessibility palette leaves
-the board readable.
+**Next up:** the wall hatch (M7). Everything C-18 promised is on screen and §21 now has its
+lighting-independent path (C-24) — but checking that in greyscale turned up a gap it did not cause:
+a wall and an empty cell are within 1% of each other in luminance, so with colour gone they are
+separated only by height. §6 asks for a 45° hatch on walls and the 3D board has never drawn one.
 
 > **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
 > **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a
@@ -275,7 +274,19 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       "concentric circles" in greyscale, which is exactly what a portal is, so it gained four ticks.
       §6's lock opens live off `Rules.gate_satisfied`. Verified as a **greyscale** capture at two yaw
       stops, not only by test: `make shot LEVEL=5.1` is the one board carrying all four at once
-- [ ] Unshaded material path so §21's greyscale requirement survives lighting (C-18)
+- [x] Unshaded material path so §21's greyscale requirement survives lighting (C-18) — a `flat_board`
+      setting, off by default, as a `uniform bool` in both board shaders rather than a second pair of
+      shaders. `ALBEDO` goes to zero and the tile is emitted at its own colour, so every lit term
+      multiplies out and a tile on screen *is* its palette colour. Decision **C-24** for the part
+      C-18 left open: fully flat would have taken C-22's heights with it, so the side faces still
+      step down by a fixed fraction of the face's own normal. Live rather than on the next load, and
+      the key light stops casting while it is on (§20). `tests/unit/test_flat_board.gd`
+- [ ] **Walls have no non-colour cue but their height (C5).** Found while checking the above in
+      greyscale: `wall.fill` and `cell.empty.fill` are within 1% of each other in luminance, so on a
+      greyscale palette a wall and an empty cell are told apart *only* by how tall they stand — which
+      at 55° is a band a few pixels deep on a near-black tile. §6 specifies a **45° hatch** for walls
+      and the grey-box drew one; the 3D board never got it. Same family as the modifier marks, and
+      the same fix
 - [x] `board_rotate_cw` / `board_rotate_ccw` given an effect — bound in M4, live now. Turning re-feeds
       `InputRouter` with the new screen positions, so the cone and the cycling turn with the board
 - [ ] Full palette token set audited — never a colour in a script or scene (§13.2)
@@ -365,7 +376,7 @@ parameter and the campaign ships radius 2, 3 and 4 — but `solver.gd`'s 64-bit 
 62 cells, and radius 5 is 91. Late-game difficulty escalates walls, goals, gates and budget instead.
 
 Unresolved items live in **Appendix C** of the spec (C-1 … C-8, C-19). Decisions already taken during
-M0–M7 are recorded there too (C-9 … C-18, C-20 … C-23) — add to that table rather than inventing an
+M0–M7 are recorded there too (C-9 … C-18, C-20 … C-24) — add to that table rather than inventing an
 answer, per constraint C7.
 
 ---

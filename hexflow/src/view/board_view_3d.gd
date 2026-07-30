@@ -56,6 +56,7 @@ func _ready() -> void:
 	# M3 (B7): this node must never re-introduce it.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ensure_nodes()
+	SettingsService.changed.connect(_on_setting_changed)
 
 
 ## Binds a level and sizes the board to [param play_area] (§4.4, projected). Called
@@ -211,6 +212,23 @@ func _add_lighting() -> void:
 	holder.name = "BoardEnvironment"
 	holder.environment = env
 	viewport.add_child(holder)
+
+
+## §21's escape hatch, live: a player turning it on mid-level sees the board go
+## flat under them rather than on the next load (C-24). The key light stops
+## casting too — with the board taking no light, a shadow pass would render
+## nothing anyone can see and still cost what it costs (§20).
+func set_flat(flat: bool) -> void:
+	tiles.set_flat(flat)
+	links.set_flat(flat)
+	var key: DirectionalLight3D = viewport.get_node_or_null("KeyLight")
+	if key != null:
+		key.shadow_enabled = not flat
+
+
+func _on_setting_changed(key: String, value: Variant) -> void:
+	if key == "flat_board":
+		set_flat(bool(value))
 
 
 func _recompute_positions(yaw: float) -> void:

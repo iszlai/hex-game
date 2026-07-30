@@ -78,6 +78,7 @@ func bind(state: GameState, layout: HexLayout) -> void:
 		var mat := ShaderMaterial.new()
 		mat.shader = load(SHADER)
 		material_override = mat
+	set_flat(SettingsService.flat_board())
 
 	rebuild()
 
@@ -250,3 +251,12 @@ func _depth_ratio(cell: Vector3i) -> float:
 	if not _depth.has(cell) or _depth.size() <= 1:
 		return 0.0
 	return clampf(float(_depth[cell]) / float(_depth.size() - 1), 0.0, 1.0)
+
+
+## §21's escape hatch (C-24): with [param flat] the board takes no light, so a
+## tile's colour on screen is its palette colour and a greyscale palette cannot be
+## undone by a highlight. A uniform rather than a second shader, so there is one
+## place the geometry and the colours are described.
+func set_flat(flat: bool) -> void:
+	if material_override is ShaderMaterial:
+		(material_override as ShaderMaterial).set_shader_parameter("flat_board", flat)

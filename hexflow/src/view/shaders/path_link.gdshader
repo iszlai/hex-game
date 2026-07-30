@@ -10,12 +10,20 @@
 // Colour arrives per instance from `palette.gd` (§13.2) — no literal in here, so
 // §21's palettes stay a `.tres` swap.
 //
+// `flat_board` is §21's escape hatch, exactly as the tiles have it (C-24).
+//
 // INSTANCE_CUSTOM:
 //   r  BoardLinks.Kind — 0 a lattice connector, 1 a portal tether
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
 const float LINK_GLOW = 0.35;
+
+// Matches [BoardTiles]' own flat path, so a ribbon lying on a tile top steps down
+// with it rather than floating free of it. See `hex_prism.gdshader` for why.
+const float SIDE_SHADE = 0.45;
+
+uniform bool flat_board = false;
 
 varying vec3 tint;
 varying flat float kind;
@@ -26,10 +34,19 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = tint;
-	// Smoother and shinier than a tile, so the ribbon separates from the prism it
-	// lies on without needing a second colour to do it.
-	ROUGHNESS = 0.32;
-	SPECULAR = 0.35;
-	EMISSION = tint * mix(LINK_GLOW, 0.0, kind);
+	vec3 glow = tint * mix(LINK_GLOW, 0.0, kind);
+	if (flat_board) {
+		float up = clamp((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, 0.0, 1.0);
+		ALBEDO = vec3(0.0);
+		SPECULAR = 0.0;
+		ROUGHNESS = 1.0;
+		EMISSION = tint * mix(SIDE_SHADE, 1.0, up) + glow;
+	} else {
+		ALBEDO = tint;
+		// Smoother and shinier than a tile, so the ribbon separates from the prism
+		// it lies on without needing a second colour to do it.
+		ROUGHNESS = 0.32;
+		SPECULAR = 0.35;
+		EMISSION = glow;
+	}
 }

@@ -62,6 +62,7 @@ func _ready() -> void:
 	# swallows pointer events before `_unhandled_input` ever sees them (B7).
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ensure_nodes()
+	SettingsService.changed.connect(_on_setting_changed)
 
 
 ## Shows [param tiles] — direction indices, soonest first. Called when the stream
@@ -125,6 +126,18 @@ func arrow_tint(i: int) -> Color:
 	return palette.text_primary if i == 0 else palette.text_secondary
 
 
+## The rail follows the board (C-24): a piece here is the tile it becomes over
+## there, so it cannot still be catching a highlight once the board has stopped.
+func set_flat(flat: bool) -> void:
+	if pieces != null and pieces.material_override is ShaderMaterial:
+		(pieces.material_override as ShaderMaterial).set_shader_parameter("flat_board", flat)
+
+
+func _on_setting_changed(key: String, value: Variant) -> void:
+	if key == "flat_board":
+		set_flat(bool(value))
+
+
 func _slot_x(i: int) -> float:
 	# Centred on the control, so a stack of one is not off to the left.
 	return (float(i) - float(maxi(slots, 1) - 1) * 0.5) * SPREAD * 2.0 * 0.5
@@ -167,6 +180,7 @@ func _ensure_nodes() -> void:
 	viewport.add_child(camera)
 
 	pieces = _multimesh("StackPieces", BoardTiles.SHADER, BoardTiles.build_prism_mesh())
+	set_flat(SettingsService.flat_board())
 	arrows = _multimesh("StackArrows", BoardMarks.SHADER, BoardMarks.build_quad_mesh())
 	var mat: ShaderMaterial = arrows.material_override
 	mat.set_shader_parameter("outline", palette.board_mark_outline)
