@@ -489,19 +489,9 @@ func _refresh_hud() -> void:
 	restart_button.text = "⟳ Restart     %s" % InputGlyphs.label_for("board_restart")
 	menu_button.text = "Menu %s" % InputGlyphs.label_for("board_pause")
 
-	var lines: Array[String] = [
-		"move   %s" % InputGlyphs.label_for("board_move_up"),
-		"cycle  %s / %s" % [
-			InputGlyphs.label_for("board_cycle_prev"),
-			InputGlyphs.label_for("board_cycle_next"),
-		],
-		"place  %s" % InputGlyphs.label_for("board_confirm"),
-		"wild   %s + %s" % [
-			InputGlyphs.label_for("board_wild_modifier"),
-			InputGlyphs.label_for("board_confirm"),
-		],
-	]
-	if level.has_budget():
-		lines.insert(0, "budget      %d / %d" % [state.placements, level.budget])
-	rail_label.text = "\n".join(lines)
+	# The rail keeps what is *state* — the budget of §6, which nothing else shows.
+	# The key hints that used to sit here moved into the legend when the tile stack
+	# took the room; §12.3's rail has no block of them either.
+	rail_label.text = "budget      %d / %d" % [state.placements, level.budget] \
+		if level.has_budget() else ""
 	board_view.rebuild()

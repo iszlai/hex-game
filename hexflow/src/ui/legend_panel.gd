@@ -5,6 +5,11 @@
 ## actually draws. If a row here cannot describe a shape, that state is a C5 bug
 ## in [BoardView], not a gap in this panel.
 ##
+## It also carries the bindings that no rail button shows — moving, cycling and
+## placing. Those lived in the rail as a block of hint text until the tile stack
+## needed the room; the legend is where a player already looks to ask "what is
+## this and what do I press", and §12.3's rail has no such block.
+##
 ## Rows are built in code so the scene file carries no player-visible literal —
 ## the §22 gate turns that check on at M10 and this panel should not be what
 ## fails it.
@@ -22,6 +27,16 @@ const ROWS := [
 	["⬢", "Path", "filled, gradient deepening from the start", "path_core"],
 	["⬡", "Target", "heavier stroke — a legal move for this tile", "cell_candidate_stroke"],
 	["⌾", "Cursor", "outline standing outside the cell", "focus"],
+]
+
+## `[name, action]`, or `[name, modifier, action]` for a chord. The glyph column
+## is filled from [InputGlyphs], so a rebind or a different controller family
+## changes what is shown here without touching this table (§11.4).
+const CONTROLS := [
+	["Move", "board_move_up"],
+	["Cycle", "board_cycle_prev", "board_cycle_next"],
+	["Place", "board_confirm"],
+	["Wild", "board_wild_modifier", "board_confirm"],
 ]
 
 @export var palette: Palette = null
@@ -62,6 +77,18 @@ func _build() -> void:
 	for entry: Variant in ROWS:
 		var row: Array = entry
 		_rows.add_child(_row(row))
+
+	_rows.add_child(HSeparator.new())
+	var controls := Label.new()
+	controls.text = "CONTROLS"
+	controls.add_theme_color_override("font_color", palette.text_secondary)
+	_rows.add_child(controls)
+	for entry: Variant in CONTROLS:
+		var row: Array = entry
+		var keys: Array[String] = []
+		for i: int in range(1, row.size()):
+			keys.append(InputGlyphs.label_for(str(row[i])))
+		_rows.add_child(_row(["", str(row[0]), " + ".join(keys), "text_primary"]))
 
 
 func _row(row: Array) -> HBoxContainer:
