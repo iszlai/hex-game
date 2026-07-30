@@ -191,7 +191,20 @@ Exit: every level file validates and reproduces its par; the whole campaign is p
 - [x] `tests/property/test_level_files.gd` re-verifies every shipped file on every push
 - [x] Level schema documented — `src/data/schemas/level.md`
 - [ ] **Main menu** — Campaign %, Endless best, Daily streak + reset timer, Settings, Quit (§12.2)
-- [ ] **Level select** — hex-flower map reusing the board renderer, star pips, chapter progress (§9)
+- [x] **Level select** — hex-flower map reusing the board renderer, star pips, chapter progress (§9) —
+      `src/scenes/level_select/` plus `src/ui/hex_flower.gd`. §9's "same board renderer" could not be
+      taken literally and the reason is **C-25**: both renderers bind a `GameState`, and "level 7, two
+      stars, locked" is not a board state. What is reused is the part that makes it a hex map —
+      `HexLayout`'s §4.3 conversion, its corners, its `from_pixel` rounding for the hit-test (B7) —
+      so there is still exactly one hexagon formula in the codebase. Navigation is `InputRouter`'s
+      *unchanged*: the same ±75° cone over the same lattice, so left means the same thing on the map
+      as on the board. Three map states, three silhouettes (§21): a locked level is hatched like a
+      wall, an open one is an outline, a completed one is filled with the path colour as §9 asks.
+      Chapters page on the bumpers — `menu_cycle_prev`/`next`, new in the binding table, because
+      left and right are already spoken for by the cone. `tests/unit/test_hex_flower.gd` asserts the
+      layout table the way `test_direction.gd` asserts Appendix A (a permutation silently renumbers
+      every level), and `tests/e2e/test_level_select.gd` plays §24.2's "navigate to Campaign, chapter
+      1, level 1" — the leg the M4 gamepad playthrough had to skip for want of a map
 - [x] **Chapter unlocks** — a chapter opens at 8 of 12 completed in the previous one (§7.1) —
       `src/app/campaign.gd`, the one place that answers "is this unlocked", "how far along am I"
       and "what is next". Not in `src/core/` because every one of those is a question about the

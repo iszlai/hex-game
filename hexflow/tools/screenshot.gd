@@ -1,16 +1,21 @@
 extends SceneTree
 ## Dev tool: boots a scene, lets it settle, and writes a PNG.
 ## Run non-headless:
-##   Godot --path . -s res://tools/screenshot.gd -- <out.png> [presses] [chapter.level]
+##   Godot --path . -s res://tools/screenshot.gd -- <out.png> [presses] [chapter.level] [screen]
 ## `presses` is a string of keys sent one per frame — `c` confirm, `z` undo,
 ## `q`/`e` cycle, `d` discard, `h` hint, `r`/`l` turn the board clockwise and
-## anticlockwise. Letters only: Godot drops a whitespace-only command-line
-## argument.
+## anticlockwise, `u`/`n`/`i`/`j` the four menu directions. Letters only: Godot
+## drops a whitespace-only command-line argument.
 ##
 ## The third argument picks the level, because which one is on screen decides what
 ## can be *seen*: the modifiers of §6 are introduced a chapter at a time, so only
 ## chapter 5 carries a goal, a portal, a gate and a wild at once — and a capture of
 ## chapter 1 says nothing at all about whether the other three draw.
+##
+## The fourth picks the *screen*, by the [GameDirector.Screen] name — `level`
+## (default), `level_select`, `main_menu`, `results`, `settings`, `run_summary`.
+## A screen that cannot be looked at is a screen nobody checks, and §21's greyscale
+## and 150%-text audits are both things you have to see.
 ##
 ## Not part of the shipped game.
 
@@ -38,7 +43,8 @@ func _initialize() -> void:
 		var director: Node = root.get_node_or_null("GameDirector")
 		if director != null:
 			director.call("start_level", LevelRepository.load_level(int(at[0]), int(at[1])))
-	var scene: PackedScene = load("res://src/scenes/level/level.tscn")
+	var name: String = args[3] if args.size() > 3 and args[3] != "" else "level"
+	var scene: PackedScene = load("res://src/scenes/%s/%s.tscn" % [name, name])
 	_level = scene.instantiate()
 	root.add_child(_level)
 
@@ -87,5 +93,13 @@ func _key_for(c: String) -> Key:
 			return KEY_BRACKETRIGHT
 		"l":
 			return KEY_BRACKETLEFT
+		"u":
+			return KEY_UP
+		"n":
+			return KEY_DOWN
+		"i":
+			return KEY_LEFT
+		"j":
+			return KEY_RIGHT
 		_:
 			return KEY_SPACE

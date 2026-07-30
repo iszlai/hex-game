@@ -90,9 +90,9 @@ run: check ## Play the game at the 1280x800 Deck reference resolution
 editor: check ## Open the project in the Godot editor
 	@$(RUN_CMD) --editor
 
-shot: check ## Screenshot the board. PRESSES=cceccc OUT=board.png LEVEL=5.1
+shot: check ## Screenshot a screen. PRESSES=cceccc OUT=board.png LEVEL=5.1 SCREEN=level_select
 	@$(RUN_CMD) --resolution 1280x800 -s res://tools/screenshot.gd -- \
-	  "$(abspath $(or $(OUT),board.png))" "$(or $(PRESSES),)" "$(or $(LEVEL),)"
+	  "$(abspath $(or $(OUT),board.png))" "$(or $(PRESSES),)" "$(or $(LEVEL),)" "$(or $(SCREEN),)"
 	@echo "wrote $(or $(OUT),board.png)"
 
 measure: check ## Frame cost per renderer (C-3). METHOD=forward_plus|mobile|gl_compatibility

@@ -202,6 +202,25 @@ const ACTIONS := {
 		"axes": [[JOY_AXIS_LEFT_X, 1]],
 		"glyph": "stick",
 	},
+	# Pages a menu between sibling collections — the level select's five chapters
+	# are the first. The bumpers rather than `menu_left`/`menu_right`, because on
+	# the hex-flower map those four already drive §11.2's cone over the twelve
+	# levels; the board spends L1/R1 the same way, on "step to the next thing at
+	# this level of the hierarchy".
+	"menu_cycle_prev": {
+		"set": SET_MENU,
+		"keys": [KEY_Q],
+		"buttons": [JOY_BUTTON_LEFT_SHOULDER],
+		"axes": [],
+		"glyph": "l1",
+	},
+	"menu_cycle_next": {
+		"set": SET_MENU,
+		"keys": [KEY_E],
+		"buttons": [JOY_BUTTON_RIGHT_SHOULDER],
+		"axes": [],
+		"glyph": "r1",
+	},
 	"menu_accept": {
 		"set": SET_MENU,
 		"keys": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER],
