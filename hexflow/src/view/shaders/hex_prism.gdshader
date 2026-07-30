@@ -10,6 +10,9 @@
 //   g  1.0 on the cursor's cell
 //   b  fraction of the way along the path, 0 at the start
 //
+// A wall carries §6's 45° hatch on its top face, in `hatch_ink` — the one cue it
+// has that is neither its colour nor its height.
+//
 // **`flat_board` is §21's escape hatch** (C-18, C-24). Lit, a tile's colour on
 // screen is its palette colour times whatever the key light and the shadows are
 // doing to it, and a player on a greyscale or high-contrast palette has no
@@ -31,14 +34,32 @@ render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 // the high-contrast palette.
 const float SIDE_SHADE = 0.45;
 
+/// A wall's 45° hatch (§6), which is the only cue it has that is neither colour
+/// nor height. `wall.fill` and `cell.empty.fill` sit within 1% of each other in
+/// luminance, so on a greyscale palette the hatch is what tells a wall from an
+/// empty cell — height alone is a band a few pixels deep on a near-black tile.
+/// Pitch is a fraction of the tile's own width, so it holds at every §4.4 size.
+const int KIND_WALL = 4;
+const float HATCH_PITCH = 0.30;
+const float HATCH_DUTY = 0.42;
+
 uniform bool flat_board = false;
+uniform vec4 hatch_ink : source_color;
 
 varying vec3 tint;
 varying float cursor;
+varying flat float kind;
+varying vec3 world;
+varying flat float tile_width;
 
 void vertex() {
 	tint = COLOR.rgb;
 	cursor = INSTANCE_CUSTOM.g;
+	kind = INSTANCE_CUSTOM.r;
+	// Board space, not view space: the hatch is painted on the tile, so it turns
+	// with the board instead of swimming across it as the camera yaws.
+	world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	tile_width = length(MODEL_MATRIX[0].xyz);
 }
 
 void fragment() {
@@ -46,15 +67,27 @@ void fragment() {
 	// second colour. UV.x is 0 at the centre of the top face and 1 at the rim, so
 	// the glow gathers at the edge where the outline used to be.
 	vec3 glow = tint * cursor * mix(0.15, 0.6, UV.x);
+	// `NORMAL` is in view space; the board's up is a world direction.
+	float up = clamp((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, 0.0, 1.0);
+
+	vec3 base = tint;
+	if (int(kind + 0.5) == KIND_WALL && up > 0.5) {
+		// 45° on the board plane is a stripe in x + z. The triangle wave and
+		// `fwidth` keep the edges resolution-independent, as §13.3 does elsewhere.
+		float s = (world.x + world.z) / (tile_width * HATCH_PITCH);
+		float wave = abs(fract(s) - 0.5) * 2.0;
+		float aa = max(fwidth(wave), 0.001);
+		base = mix(base, hatch_ink.rgb,
+			1.0 - smoothstep(HATCH_DUTY - aa, HATCH_DUTY + aa, wave));
+	}
+
 	if (flat_board) {
-		// `NORMAL` is in view space; the board's up is a world direction.
-		float up = clamp((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, 0.0, 1.0);
 		ALBEDO = vec3(0.0);
 		SPECULAR = 0.0;
 		ROUGHNESS = 1.0;
-		EMISSION = tint * mix(SIDE_SHADE, 1.0, up) + glow;
+		EMISSION = base * mix(SIDE_SHADE, 1.0, up) + glow;
 	} else {
-		ALBEDO = tint;
+		ALBEDO = base;
 		ROUGHNESS = 0.55;
 		SPECULAR = 0.25;
 		EMISSION = glow;

@@ -78,6 +78,9 @@ func bind(state: GameState, layout: HexLayout) -> void:
 		var mat := ShaderMaterial.new()
 		mat.shader = load(SHADER)
 		material_override = mat
+		# §6's wall hatch, in the grey-box's own token: the two views cannot then
+		# disagree about what a wall looks like.
+		mat.set_shader_parameter("hatch_ink", palette.wall_stroke)
 	set_flat(SettingsService.flat_board())
 
 	rebuild()

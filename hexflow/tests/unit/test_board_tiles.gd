@@ -102,6 +102,19 @@ func test_kinds_and_tints_come_from_the_palette() -> void:
 	assert_eq(_colour_of(empty), _palette.cell_empty_fill)
 
 
+## §6 gives a wall a 45° hatch, and it is the only cue a wall has that is neither
+## its colour nor its height: `wall.fill` and `cell.empty.fill` are within 1% of
+## each other in luminance, so on a greyscale palette height alone leaves a wall
+## and an empty cell a few pixels of side face apart. The pattern itself is a
+## screenshot; what CI can hold is that it is drawn in the grey-box's own token,
+## so the two views cannot disagree about what a wall looks like.
+func test_the_wall_hatch_is_inked_from_the_palette() -> void:
+	var mat: ShaderMaterial = _tiles.material_override
+	assert_eq(mat.get_shader_parameter("hatch_ink"), _palette.wall_stroke)
+	assert_ne(_palette.wall_stroke, _palette.wall_fill,
+		"a hatch the colour of its own fill is not a hatch")
+
+
 func test_candidates_are_marked_and_then_unmarked() -> void:
 	var cell := Vector3i(-1, 0, 1)
 	_tiles.set_candidates([cell] as Array[Vector3i])

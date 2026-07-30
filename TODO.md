@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 227 tests / 14,047 asserts green in ~61 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 228 tests / 14,049 asserts green in ~60 s, 60 frozen
 level files re-verified.
 
 ---
@@ -33,10 +33,10 @@ level files re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** the wall hatch (M7). Everything C-18 promised is on screen and §21 now has its
-lighting-independent path (C-24) — but checking that in greyscale turned up a gap it did not cause:
-a wall and an empty cell are within 1% of each other in luminance, so with colour gone they are
-separated only by height. §6 asks for a 45° hatch on walls and the 3D board has never drawn one.
+**Next up:** the palette token audit, then fonts (M7). The board is done and greyscale-clean: every
+cell state and all four modifiers survive a monochrome capture, lit or flat. What is left in M7 is
+everything that is not the board — §13.4's fonts are still unvendored, so every string on screen is
+Godot's fallback face, and §12.3's real HUD proportions are still the M3 rail's.
 
 > **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
 > **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a
@@ -281,12 +281,13 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       C-18 left open: fully flat would have taken C-22's heights with it, so the side faces still
       step down by a fixed fraction of the face's own normal. Live rather than on the next load, and
       the key light stops casting while it is on (§20). `tests/unit/test_flat_board.gd`
-- [ ] **Walls have no non-colour cue but their height (C5).** Found while checking the above in
-      greyscale: `wall.fill` and `cell.empty.fill` are within 1% of each other in luminance, so on a
-      greyscale palette a wall and an empty cell are told apart *only* by how tall they stand — which
-      at 55° is a band a few pixels deep on a near-black tile. §6 specifies a **45° hatch** for walls
-      and the grey-box drew one; the 3D board never got it. Same family as the modifier marks, and
-      the same fix
+- [x] **The wall hatch of §6**, found missing while checking the above in greyscale: `wall.fill` and
+      `cell.empty.fill` are within 1% of each other in luminance, so with colour gone a wall and an
+      empty cell were told apart *only* by how tall they stand — at 55° a band a few pixels deep on a
+      near-black tile. The grey-box drew a hatch and the 3D board never got one. Now on the wall's
+      top face in `hex_prism.gdshader`, 45° in board space so it turns with the board rather than
+      swimming across it, inked from the grey-box's own `wall.stroke` token. Verified in a greyscale
+      capture: hatched walls, flat everything else
 - [x] `board_rotate_cw` / `board_rotate_ccw` given an effect — bound in M4, live now. Turning re-feeds
       `InputRouter` with the new screen positions, so the cone and the cycling turn with the board
 - [ ] Full palette token set audited — never a colour in a script or scene (§13.2)
