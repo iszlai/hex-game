@@ -49,11 +49,27 @@ func _ready() -> void:
 	# Bindings are registered once, here, before any screen can ask about an
 	# action (§11.3). Autoloads are ready before the main scene.
 	InputBindings.install()
+	# §13.4's five roles, installed once on the window so every screen inherits
+	# them — including one run on its own from the editor or a test. §21's text
+	# scale rebuilds it, which is why it is a call and not a `.tres`.
+	apply_typography()
+	SettingsService.changed.connect(_on_setting_changed)
 	EventBus.place_requested.connect(_on_place_requested)
 	EventBus.wild_place_requested.connect(_on_wild_place_requested)
 	EventBus.discard_requested.connect(_on_discard_requested)
 	EventBus.undo_requested.connect(_on_undo_requested)
 	EventBus.restart_requested.connect(_on_restart_requested)
+
+
+## Rebuilds §13.4's theme at the current §21 text scale and puts it on the window,
+## which every screen inherits from.
+func apply_typography() -> void:
+	get_tree().root.theme = Typography.theme(float(SettingsService.get_value("text_scale")))
+
+
+func _on_setting_changed(key: String, _value: Variant) -> void:
+	if key == "text_scale":
+		apply_typography()
 
 
 # --- screens -----------------------------------------------------------------

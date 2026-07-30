@@ -74,6 +74,7 @@ func _ready() -> void:
 	# §13.2: not one colour lives in the scene file, so §21's palette swaps stay a
 	# resource change with no code change.
 	(%Background as ColorRect).color = board_view.palette.bg_deep
+	_apply_type_roles()
 
 	_apply_cursor_mode()
 	SettingsService.changed.connect(_on_setting_changed)
@@ -120,6 +121,20 @@ func _bind_current_state() -> void:
 	_on_board_turned()
 	_on_tile_advanced(state.current_tile(), state.preview(2))
 	_refresh_hud()
+
+
+## §13.4 by role, never by size: a screen says what a label *is* and [Typography]
+## decides the family and the px, so §21's text scale stays a setting rather than
+## an edit in every scene.
+func _apply_type_roles() -> void:
+	title_label.theme_type_variation = Typography.variation_for(Typography.Role.HEADING)
+	# The counters are the numeral role for one reason: tabular figures, so
+	# "placements 9" and "placements 10" do not shuffle the text beside them.
+	score_label.theme_type_variation = Typography.variation_for(Typography.Role.NUMERAL)
+	rail_label.theme_type_variation = Typography.variation_for(Typography.Role.NUMERAL)
+	for caption: Label in [now_label, next_label]:
+		caption.theme_type_variation = Typography.variation_for(Typography.Role.CAPTION)
+	banner_label.theme_type_variation = Typography.variation_for(Typography.Role.HEADING)
 
 
 func _play_area() -> Vector2:

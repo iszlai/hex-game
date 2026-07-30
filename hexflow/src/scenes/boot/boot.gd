@@ -17,7 +17,9 @@ var _left: bool = false
 func _ready() -> void:
 	var palette: Palette = load("res://src/data/palettes/neon_dark.tres")
 	(%Background as ColorRect).color = palette.bg_deep
-	(%Title as Label).add_theme_color_override("font_color", palette.path_core)
+	var title := %Title as Label
+	title.add_theme_color_override("font_color", palette.path_core)
+	title.theme_type_variation = Typography.variation_for(Typography.Role.DISPLAY)
 
 
 func _process(delta: float) -> void:

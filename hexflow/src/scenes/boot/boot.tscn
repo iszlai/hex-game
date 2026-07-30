@@ -30,7 +30,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 unique_name_in_owner = true
-theme_override_font_sizes/font_size = 48
 text = "HEXFLOW"
 horizontal_alignment = 1
 vertical_alignment = 1

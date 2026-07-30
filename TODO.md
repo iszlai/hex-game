@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 235 tests / 14,084 asserts green in ~61 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 243 tests / 14,208 asserts green in ~60 s, 60 frozen
 level files re-verified.
 
 ---
@@ -33,10 +33,10 @@ level files re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** the palette token audit, then fonts (M7). The board is done and greyscale-clean: every
-cell state and all four modifiers survive a monochrome capture, lit or flat. What is left in M7 is
-everything that is not the board — §13.4's fonts are still unvendored, so every string on screen is
-Godot's fallback face, and §12.3's real HUD proportions are still the M3 rail's.
+**Next up:** §12.3's real HUD proportions, then §14's animation timings (M7). The board is done and
+greyscale-clean, the palette is enforced by grep, and the type is on its §13.4 roles. What is still
+M3's is the *layout* the type sits in: the rail is a stack of six full-width buttons rather than
+§12.3's four action rows, and it only fits because the key hints were moved into the legend.
 
 > **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
 > **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a
@@ -302,7 +302,18 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       `tests/unit/test_palette.gd` also holds the resource to the script: a token declared and then
       forgotten in the `.tres` does not fail, it silently falls back to the neon-dark default, which
       is exactly how one of §21's four palettes would ship with a wrong colour in it
-- [ ] Fonts vendored, SIL-OFL only: Space Grotesk, Inter, JetBrains Mono; 18 px absolute floor (§13.4)
+- [x] Fonts vendored, SIL-OFL only: Space Grotesk, Inter, JetBrains Mono; 18 px absolute floor (§13.4)
+      — `assets/fonts/`, three TTFs and three licences. All three are **variable** fonts, so one file
+      per family carries every weight on a `wght` axis and Medium/Bold are a `FontVariation` rather
+      than a second file. `src/view/typography.gd` holds §13.4's table and builds the theme
+      `GameDirector` puts on the window, so a screen asks for a *role* ("this is a caption") and
+      never for a size — which is what makes §21's 1.0–1.5 text scale a setting rather than an edit
+      in every scene, and what makes the 18 px floor enforceable in one place. `test_typography.gd`
+      sweeps every role at every scale in §21's range against the floor, and asserts the numerals are
+      genuinely tabular by measuring `111` against `999`.
+      **Not done:** §13.6's subsetting to Latin-Extended. The three full variable fonts are 1.2 MB
+      together, nowhere near §20's 250 MB build budget, and subsetting needs a tool the repo does not
+      vendor. Worth doing before the store build, not before the next feature
 - [ ] Icon atlas, 9 line icons on a 24×24 grid (§13.5)
 - [ ] Real §12.3 HUD layout: 56 px top bar, 400 px rail, 140 px NOW tile, 72 px NEXT, 56 px banner
 - [ ] Every §14.1 timing, exactly as tabulated
