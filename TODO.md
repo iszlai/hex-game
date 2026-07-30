@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 301 tests / 14,534 asserts green in ~66 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 306 tests / 14,546 asserts green in ~67 s, 60 frozen
 level files re-verified.
 
 ---
@@ -339,9 +339,12 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       delay rides a distance written once into the instance data so a wave over sixty-one cells is
       still one tween and one number. and the illegal shake, whose red flash survives Reduce Motion even
       though its movement does not — §14.5 is a motion reduction, not a feedback removal. and the dead-state desaturation, which §5.8 makes reversible because a
-      dead board is recoverable and a board still grey after an undo would be lying. Still to do:
-      queue advance, auto-discard arc, screen transition and results stars — all of them rail or
-      screen animations that want §12.3's real layout under them first
+      dead board is recoverable and a board still grey after an undo would be lying. and the screen transition, as a fade layer above every
+      screen rather than something each screen does to itself — a screen that does not exist yet
+      still gets a transition instead of a flash of the one behind it, and the swap happens at full
+      black where nothing can be seen to pop. Still to do: queue advance, auto-discard arc and
+      results stars — all of them rail or screen animations that want §12.3's real layout under them
+      first
 - [ ] Goal-reached sequence §14.2; camera limited to §14.3 (2 px shake, once per completion) —
       **four of the six beats run**: the goal cell flourishes 1.0 → 1.25 → 1.0 at t=0, the board
       ripples out of it at t=120, and the whole path pulses at double speed at t=200, all off

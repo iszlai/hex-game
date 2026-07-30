@@ -28,6 +28,8 @@ var level: Level = null
 var hints_used: int = 0
 
 var _endless: EndlessRun = null
+var _transition: Tween = null
+var _fade: ColorRect = null
 
 
 ## Which §11.1 action set each screen runs under. A screen also claims its own set
@@ -74,13 +76,64 @@ func _on_setting_changed(key: String, _value: Variant) -> void:
 
 # --- screens -----------------------------------------------------------------
 
+## §14.1's screen transition: 320 ms, `CUBIC`/`EASE_IN_OUT`, cross-fade — and
+## explicitly "never a hard cut". §14.5 shortens it to a flat 120 ms rather than a
+## scaled 320, which is the number that section names itself.
+##
+## The fade is a `CanvasLayer` over everything, so it does not depend on either
+## screen cooperating: the outgoing one does not have to fade itself out, and a
+## screen that does not exist yet still gets a transition rather than a flash of
+## the one behind it. The scene swap happens at full black, where nothing can be
+## seen to pop.
 func go_to(next: Screen) -> void:
 	screen = next
 	if ACTION_SETS.has(next):
 		InputBindings.activate(ACTION_SETS[next])
 	screen_changed.emit(next)
-	if SCENES.has(next) and ResourceLoader.exists(SCENES[next]):
-		get_tree().change_scene_to_file(SCENES[next])
+	if not (SCENES.has(next) and ResourceLoader.exists(SCENES[next])):
+		return
+	_transition_to(SCENES[next])
+
+
+func _transition_to(scene_path: String) -> void:
+	var half: float = Motion.seconds("screen_transition") * 0.5
+	var fade := _fade_layer()
+	if _transition != null and _transition.is_running():
+		_transition.kill()
+	_transition = create_tween()
+	Motion.shape(_transition, "screen_transition")
+	_transition.tween_property(fade, "color:a", 1.0, half)
+	_transition.tween_callback(func() -> void: get_tree().change_scene_to_file(scene_path))
+	_transition.tween_property(fade, "color:a", 0.0, half)
+
+
+## Whether a transition is in flight, which is the only thing about it worth
+## asking from outside.
+func transitioning() -> bool:
+	return _transition != null and _transition.is_running()
+
+
+## One layer, built once, reused for every transition. It sits above every screen
+## and ignores input, so a press during a fade reaches the screen underneath rather
+## than being swallowed by a rectangle nobody can see (B7's lesson, in a new place).
+func _fade_layer() -> ColorRect:
+	if _fade != null:
+		return _fade
+	var layer := CanvasLayer.new()
+	layer.name = "ScreenFade"
+	layer.layer = 128
+	add_child(layer)
+	_fade = ColorRect.new()
+	_fade.name = "Fade"
+	_fade.color = Color(_palette().bg_deep, 0.0)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(_fade)
+	return _fade
+
+
+func _palette() -> Palette:
+	return load("res://src/data/palettes/neon_dark.tres")
 
 
 # --- level lifecycle ---------------------------------------------------------
