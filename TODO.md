@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 427 tests / 15,167 asserts green in ~78 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 432 tests / 15,180 asserts green in ~79 s, 60 frozen
 level files re-verified.
 
 ---
@@ -423,7 +423,19 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       together, nowhere near §20's 250 MB build budget, and subsetting needs a tool the repo does not
       vendor. Worth doing before the store build, not before the next feature
 - [ ] Icon atlas, 9 line icons on a 24×24 grid (§13.5)
-- [ ] Real §12.3 HUD layout: 56 px top bar, 400 px rail, 140 px NOW tile, 72 px NEXT, 56 px banner
+- [x] Real §12.3 HUD layout: 56 px top bar, 400 px rail, 140 px NOW tile, 72 px NEXT, 56 px banner —
+      the last thing on the level screen that was still M3's. The band sizes are constants in
+      `level.gd` rather than numbers in the scene, because §12.3's diagram is *dimensioned* and a
+      scene file is where a dimension goes to be nudged by accident; `tests/unit/test_hud_layout.gd`
+      asserts them, asserts the board never overlaps the rail, and asserts the rail's column **fits
+      inside the rail**. That last one is the bug this step actually found: six action rows plus a
+      140 px NOW tile overflow a 400 px rail, a `PanelContainer` whose minimum height exceeds its
+      rect grows in *both* directions, and the NOW caption had been pushed off the top of the screen
+      — visible only in a capture. §12.3 lists **four** rows, so Legend moved to the top bar and
+      Restart to the pause menu, where §11.4's touch route already was. Each row is the action on
+      the left and its binding on the right, as §12.3 draws it, and the top bar carries a **live**
+      star band: what the run is worth right now, so a player one placement from dropping a star can
+      see it before they spend it
 - [ ] Every §14.1 timing, exactly as tabulated — **the table is built and pinned**, the animations
       mostly are not. `src/view/motion.gd` holds all fourteen rows as data the way Appendix A's
       directions are, so a tween built anywhere reads its duration *and* its curve from one place;

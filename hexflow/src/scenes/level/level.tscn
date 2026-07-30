@@ -34,43 +34,8 @@ mouse_filter = 2
 script = ExtResource("2_boardview")
 palette = ExtResource("3_palette")
 
-[node name="TopBar" type="PanelContainer" parent="."]
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 56.0
-grow_horizontal = 2
-mouse_filter = 2
-
-[node name="Margin" type="MarginContainer" parent="TopBar"]
-layout_mode = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_right = 24
-
-[node name="Row" type="HBoxContainer" parent="TopBar/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 24
-
-[node name="TitleLabel" type="Label" parent="TopBar/Margin/Row"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-vertical_alignment = 1
-text = "Hexflow"
-
-[node name="ScoreLabel" type="Label" parent="TopBar/Margin/Row"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-horizontal_alignment = 2
-text = "placements 0 / par 0"
-
-[node name="MenuButton" type="Button" parent="TopBar/Margin/Row"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(44, 44)
-layout_mode = 2
-
 [node name="Rail" type="PanelContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 11
 anchor_left = 1.0
@@ -101,7 +66,6 @@ text = "NOW"
 
 [node name="NowStack" type="SubViewportContainer" parent="Rail/Margin/Column"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 104)
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("5_stack")
@@ -115,7 +79,6 @@ text = "NEXT"
 
 [node name="NextStack" type="SubViewportContainer" parent="Rail/Margin/Column"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("5_stack")
@@ -153,23 +116,65 @@ custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 alignment = 0
 
-[node name="LegendButton" type="Button" parent="Rail/Margin/Column/Actions"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(44, 44)
-layout_mode = 2
-alignment = 0
-
-[node name="RestartButton" type="Button" parent="Rail/Margin/Column/Actions"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(44, 44)
-layout_mode = 2
-alignment = 0
-
 [node name="RailLabel" type="Label" parent="Rail/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 text = ""
+
+[node name="TopBar" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 56.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_right = 24
+
+[node name="Row" type="HBoxContainer" parent="TopBar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="TitleLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+vertical_alignment = 1
+text = "Hexflow"
+
+[node name="ScoreLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+vertical_alignment = 1
+horizontal_alignment = 2
+text = "placements 0 / par 0"
+
+[node name="StarsLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+vertical_alignment = 1
+horizontal_alignment = 2
+
+[node name="LegendButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+
+[node name="RestartButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+
+[node name="MenuButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
 
 [node name="Legend" type="PanelContainer" parent="."]
 unique_name_in_owner = true

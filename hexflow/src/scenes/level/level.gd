@@ -11,10 +11,20 @@ extends Control
 ## file's logic: the cursor comes from [InputRouter], which works from whatever
 ## screen-space positions the view hands it.
 
+## §12.3's band sizes at the 1280×800 reference, which is also the Deck's screen.
+## They are constants rather than numbers in the scene file because the layout is a
+## *requirement* — the diagram in §12.3 is dimensioned — and a scene file is where
+## a dimension goes to be nudged by accident.
 const RAIL_WIDTH := 400.0
 const TOP_BAR := 56.0
 ## Reserved even while hidden, so the board never resizes when a banner appears.
 const BANNER := 56.0
+## The NOW tile and the NEXT stack. §12.3 draws NOW at 140 px and NEXT at 72; C-18
+## turned NEXT into a pile of coins, so 72 is the height of the face on top and the
+## pile is allowed the depth underneath it.
+const NOW_TILE := 140.0
+const NEXT_TILE := 72.0
+const NEXT_STACK_DEPTH := 24.0
 
 ## §11.4 — every on-screen button is at least this tall and wide at 1280×800.
 const TOUCH_TARGET := 44.0
@@ -26,6 +36,7 @@ const HOLD_ACTIONS: Array[String] = ["board_restart", "board_hint"]
 @onready var board_view: BoardView3D = %Board
 @onready var title_label: Label = %TitleLabel
 @onready var score_label: Label = %ScoreLabel
+@onready var stars_label: Label = %StarsLabel
 @onready var now_label: Label = %NowLabel
 @onready var next_label: Label = %NextLabel
 @onready var now_stack: TileStack = %NowStack
@@ -59,6 +70,9 @@ var _wild_armed: bool = false
 ## restarts. This says a legend tap is still pending, and the restart completing
 ## clears it.
 var _legend_armed: bool = false
+
+## Rail button -> the right-hand `Label` carrying its binding. Built once (C4).
+var _hints: Dictionary = {}
 
 
 func _ready() -> void:
@@ -135,6 +149,7 @@ func _apply_type_roles() -> void:
 	# The counters are the numeral role for one reason: tabular figures, so
 	# "placements 9" and "placements 10" do not shuffle the text beside them.
 	score_label.theme_type_variation = Typography.variation_for(Typography.Role.NUMERAL)
+	stars_label.theme_type_variation = Typography.variation_for(Typography.Role.NUMERAL)
 	rail_label.theme_type_variation = Typography.variation_for(Typography.Role.NUMERAL)
 	for caption: Label in [now_label, next_label]:
 		caption.theme_type_variation = Typography.variation_for(Typography.Role.CAPTION)
@@ -349,6 +364,7 @@ func _wire_buttons() -> void:
 		hint_button, legend_button, restart_button, menu_button,
 	]:
 		button.custom_minimum_size = Vector2(TOUCH_TARGET, TOUCH_TARGET)
+	_style_hud()
 
 	undo_button.pressed.connect(func() -> void: EventBus.undo_requested.emit())
 	discard_button.pressed.connect(func() -> void: EventBus.discard_requested.emit())
@@ -364,6 +380,105 @@ func _wire_buttons() -> void:
 	# Restart *is* destructive, so the button holds like every other route to it.
 	restart_button.button_down.connect(func() -> void: _begin_hold("board_restart"))
 	restart_button.button_up.connect(func() -> void: _holds.cancel("board_restart"))
+
+
+## §12.3's proportions and §13.2's colours, applied in code because neither may
+## live in the scene file: the band sizes are a dimensioned requirement, and a
+## colour in a `.tscn` survives all four of §21's palette swaps (the gate greps
+## for both).
+func _style_hud() -> void:
+	var palette: Palette = board_view.palette
+	now_stack.custom_minimum_size = Vector2(0.0, NOW_TILE)
+	next_stack.custom_minimum_size = Vector2(0.0, NEXT_TILE + NEXT_STACK_DEPTH)
+	banner.custom_minimum_size = Vector2(0.0, BANNER)
+
+	for panel: PanelContainer in [%TopBar as PanelContainer, %Rail as PanelContainer,
+			banner, hold_panel]:
+		panel.add_theme_stylebox_override("panel", _panel_box(palette))
+	for button: Button in [
+		undo_button, discard_button, wild_button,
+		hint_button, legend_button, restart_button, menu_button,
+	]:
+		for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
+			button.add_theme_stylebox_override(state, _rail_box(palette, state))
+		button.add_theme_color_override("font_color", palette.text_primary)
+		button.add_theme_color_override("font_hover_color", palette.path_core)
+		button.add_theme_color_override("font_disabled_color", palette.cell_empty_stroke)
+	score_label.add_theme_color_override("font_color", palette.text_primary)
+	stars_label.add_theme_color_override("font_color", palette.goal_cell)
+	rail_label.add_theme_color_override("font_color", palette.text_secondary)
+	for caption: Label in [now_label, next_label]:
+		caption.add_theme_color_override("font_color", palette.text_secondary)
+	_build_hints(palette)
+
+
+## §12.3 draws each rail row as a label on the left and its binding on the right,
+## and a `Button` has one string. So the binding is a second `Label`, anchored to
+## the row's right edge — built **once**, here, because a node created in
+## `_refresh_hud` would be a node created on every move (C4). It ignores the
+## pointer, so the row underneath is still one tap target (§11.4).
+func _build_hints(palette: Palette) -> void:
+	if not _hints.is_empty():
+		return
+	for button: Button in [undo_button, discard_button, wild_button, hint_button]:
+		var hint := Label.new()
+		hint.name = "Hint"
+		hint.theme_type_variation = Typography.variation_for(Typography.Role.CAPTION)
+		hint.add_theme_color_override("font_color", palette.text_secondary)
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Parented *before* the anchors are set: `set_anchors_preset` computes its
+		# offsets against the parent's rect, and a node that has no parent yet has
+		# no rect to compute against.
+		button.add_child(hint)
+		# A centred strip on the row's right edge rather than a full rect: a `Label`
+		# filling the button reports the button's height but lays its text out at the
+		# top of it, which puts the binding above the action it belongs to.
+		hint.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+		hint.anchor_left = 0.5
+		hint.offset_left = 0.0
+		hint.offset_right = -16.0
+		hint.offset_top = -12.0
+		hint.offset_bottom = 12.0
+		_hints[button] = hint
+
+
+func _row(button: Button, label: String, action: String) -> void:
+	button.text = label
+	var hint: Label = _hints.get(button)
+	if hint != null:
+		hint.text = InputGlyphs.label_for(action)
+
+
+func _panel_box(palette: Palette) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	# The bands sit *behind* the rows, so they take the deeper surface — otherwise a
+	# row and the panel it stands on are the same colour and §12.3's rail reads as
+	# one slab. This is `bg.vignette` doing the job §13.2 gives it.
+	box.bg_color = palette.bg_vignette
+	box.border_color = palette.cell_empty_stroke
+	box.set_border_width_all(0)
+	box.border_width_bottom = 1
+	return box
+
+
+## A rail row: flat by default, lit when the pointer or the focus is on it. The
+## disabled state is a *dimmer* row rather than a hidden one, because §12.3 shows
+## the discard count and the wild charge whether or not either can be spent right
+## now — "0 left" is information and an absent row is not.
+func _rail_box(palette: Palette, state: String) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = palette.bg_panel if state == "normal" or state == "disabled" \
+		else palette.cell_candidate_stroke
+	box.set_border_width_all(1)
+	box.border_color = palette.focus if state == "focus" else palette.cell_empty_stroke
+	box.set_corner_radius_all(6)
+	box.content_margin_left = 16.0
+	box.content_margin_right = 16.0
+	box.content_margin_top = 8.0
+	box.content_margin_bottom = 8.0
+	return box
 
 
 func _on_wild_button() -> void:
@@ -522,8 +637,18 @@ func _refresh_hud() -> void:
 	if state == null or level == null:
 		return
 
-	title_label.text = level.id if level.id != "" else "Hexflow"
+	# §12.3's top bar reads "← Ch2 · Level 7", not a level id. The id is what the
+	# save and the solver call it; the player never chose it.
+	var at: Vector2i = LevelRepository.locate(level.id)
+	title_label.text = "Chapter %d · Level %d" % [at.x, at.y] if at.x > 0 \
+		else (level.id if level.id != "" else "Hexflow")
 	score_label.text = "placements %d / par %d" % [state.placements, level.par]
+	# The star band is live and has a label of its own: it shows what the run is
+	# worth *now*, so a player one placement from dropping a star can see it before
+	# they spend it (§5.10). Its own label because it and the counter grow at
+	# different moments, and sharing one string makes the longer of them clip.
+	var earned: int = Scoring.stars(maxi(1, state.placements), level.par)
+	stars_label.text = "★".repeat(earned) + "☆".repeat(Scoring.MAX_STARS - earned)
 
 	# The pieces say which directions are coming; the captions say how many are
 	# left. A count only means anything for a level whose tile array is fixed —
@@ -534,19 +659,23 @@ func _refresh_hud() -> void:
 	now_stack.show_tiles([state.current_tile()] as Array[int])
 	next_stack.show_tiles(state.preview(next_stack.slots))
 
-	undo_button.text = "↺ Undo        %s" % InputGlyphs.label_for("board_undo")
+	# §12.3's rail rows: the action on the left, its binding on the right. Both
+	# halves are set here rather than in the scene, so the scene holds no literal
+	# for §22's check to catch at M10 and a rebind shows up without the rail
+	# knowing rebinding exists.
+	_row(undo_button, "↺ Undo", "board_undo")
 	undo_button.disabled = not GameDirector.undo_available()
-	discard_button.text = "✕ Discard %d   %s" % [
-		state.discards_left, InputGlyphs.label_for("board_discard")
-	]
-	wild_button.text = "%s Wild %d      %s" % [
-		"▣" if _wild_active() else "★",
-		state.wild_charges,
-		InputGlyphs.label_for("board_wild_modifier"),
-	]
-	hint_button.text = "? Hint        %s" % InputGlyphs.label_for("board_hint")
-	legend_button.text = "≡ Legend      %s" % InputGlyphs.label_for("board_legend")
-	restart_button.text = "⟳ Restart     %s" % InputGlyphs.label_for("board_restart")
+	_row(discard_button, "✕ Discard %d" % state.discards_left, "board_discard")
+	_row(wild_button, "%s Wild %d" % ["▣" if _wild_active() else "★", state.wild_charges],
+		"board_wild_modifier")
+	_row(hint_button, "? Hint", "board_hint")
+	# §12.3's rail is four action rows. Legend and Restart are not among them and
+	# do not fit — six rows plus a 140 px NOW tile overflow the 400 px rail, which
+	# is how they came to be there in M3 with the key hints displaced into the
+	# legend to make room. Legend moves to the top bar; Restart keeps its hold on
+	# every device *and* its row in the pause menu, so touch still reaches it
+	# without a rail row (§11.4).
+	legend_button.text = "≡ %s" % InputGlyphs.label_for("board_legend")
 	menu_button.text = "Menu %s" % InputGlyphs.label_for("board_pause")
 
 	# The rail keeps what is *state* — the budget of §6, which nothing else shows.
