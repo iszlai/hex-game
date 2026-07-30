@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 292 tests / 14,497 asserts green in ~65 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 294 tests / 14,510 asserts green in ~65 s, 60 frozen
 level files re-verified.
 
 ---
@@ -167,7 +167,13 @@ Exit: persistence `@e2e` scenarios pass, including corrupted-save recovery and s
       at all each end with no resume and a playable level rather than a black screen.
       `tests/unit/test_resume.gd` covers every one of those, plus the stream resuming with the state
       — without it the next tile handed to the player is not the one they stopped looking at
-- [ ] Suspend/resume on focus loss (§18.3); undo history deliberately not persisted (C-16)
+- [x] Suspend/resume on focus loss (§18.3); undo history deliberately not persisted (C-16) —
+      `GameDirector._notification` writes the run down on focus out, app suspend and window close.
+      §18.1 already covers every *move*; this is the gap between the last move and a Deck going to
+      sleep, which may simply never wake. `suspend()` is public so §18.3 is a scenario a test can
+      trigger rather than one that needs a window to lose focus. Identity is asserted field by field
+      — path, edges, placements, discards, charges, stream index, tile — because the fields that go
+      missing quietly are the ones nobody looks at
 - [ ] Settings screen with all five tabs: Gameplay, Controls, Video, Audio, Accessibility (§12.2).
       Three controls are already wired and only need surfacing: cursor mode (snap/free), the haptics
       slider, and `custom_bindings` rebinding against `InputBindings.ACTIONS`

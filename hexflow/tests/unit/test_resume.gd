@@ -114,6 +114,52 @@ func test_only_a_real_campaign_id_locates_a_level() -> void:
 		assert_null(LevelRepository.load_by_id(bad), "%s must not load anything" % bad)
 
 
+## §18.3: a level suspended mid-move comes back *identically*. The Deck sleeps
+## between moves far more often than a desktop does, and the process may never wake
+## — so the run has to be on disk before the suspend, not after it.
+##
+## Identity is asserted field by field rather than as "it looks about right",
+## because the fields that go missing quietly are the ones nobody looks at: the
+## stream index, the turn start, the charges.
+func test_a_suspended_run_comes_back_identical() -> void:
+	_run_in_progress(4)
+	var before: GameState = GameDirector.state
+	var path: Dictionary = before.path.duplicate()
+	var edges: Array = before.edges.duplicate(true)
+	var placements: int = before.placements
+	var discards: int = before.discards_left
+	var charges: int = before.wild_charges
+	var stream_index: int = before.stream.index
+	var tile: int = before.current_tile()
+
+	GameDirector.suspend()
+	GameDirector.state = null
+	GameDirector.level = null
+
+	assert_true(GameDirector.resume_in_progress(), "§18.3: it comes back")
+	var after: GameState = GameDirector.state
+	assert_eq(after.path, path, "path")
+	assert_eq(after.edges, edges, "edges")
+	assert_eq(after.placements, placements, "placements")
+	assert_eq(after.discards_left, discards, "discards left")
+	assert_eq(after.wild_charges, charges, "wild charges")
+	assert_eq(after.stream.index, stream_index, "stream index")
+	assert_eq(after.current_tile(), tile, "and the tile that was up is still up")
+	assert_eq(after.status, GameState.Status.PLAYING)
+
+
+## The suspend has to catch the gap between the last move and the sleep. §18.1
+## covers the moves themselves, so what is being checked is that suspending is
+## *also* a write rather than only a hope that a move happened recently.
+func test_suspending_writes_the_run_down_there_and_then() -> void:
+	_run_in_progress(2)
+	SaveService.data["in_progress"] = null
+	GameDirector.suspend()
+	var payload: Variant = SaveService.data.get("in_progress")
+	assert_true(payload is Dictionary, "a suspend is a write")
+	assert_eq(int((payload as Dictionary)["placements"]), GameDirector.state.placements)
+
+
 ## A run that had already finished has no business being resumed — §18.1 clears it
 ## on the winning move, and this is what happens if that write never landed.
 func test_a_finished_run_is_cleared_rather_than_reopened() -> void:

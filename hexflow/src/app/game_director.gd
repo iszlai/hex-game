@@ -244,6 +244,28 @@ func _on_won(placements: int) -> void:
 			pass
 
 
+## §18.3: the moments the operating system tells us the player may not be coming
+## back — focus lost, the app suspended, the window closing. A Deck goes to sleep
+## mid-level far more often than a desktop does, and the process may simply never
+## wake: the run has to be on disk before that, not after.
+##
+## §18.1's autosave already covers every *move*, so this is only the gap between
+## the last move and the suspend. It costs one ~2 KB write at a moment when nothing
+## is being rendered.
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED, \
+		NOTIFICATION_WM_CLOSE_REQUEST:
+			suspend()
+
+
+## Writes the run down now. Public because §18.3 is a scenario worth being able to
+## trigger in a test rather than only by taking focus away from a window.
+func suspend() -> void:
+	_autosave()
+	SaveService.save_to_disk()
+
+
 ## §18.1 — autosave on every commit, discard and undo. The payload is ~2 KB, so
 ## the frequency costs nothing and Deck suspend is always covered.
 func _autosave() -> void:
