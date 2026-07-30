@@ -1,10 +1,18 @@
 extends SceneTree
 ## Dev tool: boots a scene, lets it settle, and writes a PNG.
-## Run non-headless: Godot --path . -s res://tools/screenshot.gd -- <out.png> [presses]
+## Run non-headless:
+##   Godot --path . -s res://tools/screenshot.gd -- <out.png> [presses] [chapter.level]
 ## `presses` is a string of keys sent one per frame — `c` confirm, `z` undo,
 ## `q`/`e` cycle, `d` discard, `h` hint, `r`/`l` turn the board clockwise and
 ## anticlockwise. Letters only: Godot drops a whitespace-only command-line
-## argument. Not part of the shipped game.
+## argument.
+##
+## The third argument picks the level, because which one is on screen decides what
+## can be *seen*: the modifiers of §6 are introduced a chapter at a time, so only
+## chapter 5 carries a goal, a portal, a gate and a wild at once — and a capture of
+## chapter 1 says nothing at all about whether the other three draw.
+##
+## Not part of the shipped game.
 
 ## Frames to let the last press finish animating before the capture. Must outlast
 ## the longest animation a press can start — currently the 260 ms board yaw (C-21),
@@ -23,6 +31,13 @@ func _initialize() -> void:
 		_out = args[0]
 	if args.size() > 1:
 		_presses = args[1]
+	if args.size() > 2 and args[2].contains("."):
+		# Before the scene exists, so `level.gd` finds a level already started and
+		# leaves its own standalone default alone.
+		var at: PackedStringArray = args[2].split(".")
+		var director: Node = root.get_node_or_null("GameDirector")
+		if director != null:
+			director.call("start_level", LevelRepository.load_level(int(at[0]), int(at[1])))
 	var scene: PackedScene = load("res://src/scenes/level/level.tscn")
 	_level = scene.instantiate()
 	root.add_child(_level)

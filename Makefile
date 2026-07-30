@@ -90,9 +90,9 @@ run: check ## Play the game at the 1280x800 Deck reference resolution
 editor: check ## Open the project in the Godot editor
 	@$(RUN_CMD) --editor
 
-shot: check ## Screenshot the board. PRESSES=cceccc OUT=board.png
+shot: check ## Screenshot the board. PRESSES=cceccc OUT=board.png LEVEL=5.1
 	@$(RUN_CMD) --resolution 1280x800 -s res://tools/screenshot.gd -- \
-	  "$(abspath $(or $(OUT),board.png))" "$(or $(PRESSES),)"
+	  "$(abspath $(or $(OUT),board.png))" "$(or $(PRESSES),)" "$(or $(LEVEL),)"
 	@echo "wrote $(or $(OUT),board.png)"
 
 ## ---------------------------------------------------------------- test
