@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 173 tests / 13,055 asserts green in ~60 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 184 tests / 13,365 asserts green in ~60 s, 60 frozen
 level files re-verified.
 
 ---
@@ -219,16 +219,29 @@ the headless/test view — if a 3D change breaks the grey-box tests, the 3D chan
       behaves like the board about to be seen; a pointer still resolves against the live camera.
       `mouse_filter = IGNORE` on the container, pinned by a test — the default `STOP` is exactly
       what hid B7 through all of M3
-- [ ] One `MultiMeshInstance3D` of hex prisms for the whole board, per-instance custom data, single
-      draw call (§13.3's requirement, new geometry). **Carries the scene switch**: `BoardView3D` goes
-      into `level.tscn` here, because until it has meshes it would only black out the grey-box. Set
-      `BoardView3D.TILE_TOP_RATIO` to the prism height at the same time — the projected fit already
-      reserves room for it, and a wrong value there is a board that overflows the play area
-- [ ] Tile thickness, drop shadows and one `DirectionalLight3D` + `WorldEnvironment`
+- [x] One `MultiMeshInstance3D` of hex prisms for the whole board, per-instance custom data, single
+      draw call (§13.3's requirement, new geometry) — `src/view/board_tiles.gd` plus
+      `src/view/shaders/hex_prism.gdshader`. Colour travels as the instance colour and *what the tile
+      is* as custom data (kind, cursor, depth), so the shader holds no colour literal and §21's
+      palette swaps stay a `.tres` change. **§21 in 3D is height, not stroke — new decision C-22**:
+      empty 0.16, joined 0.28, wall 0.52 of the circumradius, which is what
+      `BoardView3D.TILE_TOP_RATIO` reserves in the fit. Instance data cannot be read back under the
+      headless renderer, so the arithmetic is separated from the push and CI asserts the arithmetic
+      (`tests/unit/test_board_tiles.gd`); the winding is derived by `generate_normals` so a board
+      built inside out fails a test instead of a screenshot
+- [ ] Tile thickness, drop shadows and one `DirectionalLight3D` + `WorldEnvironment` — thickness
+      landed with the prisms above (C-22's heights); what is left is the light, the environment and
+      the shadows, which is also the point the board first renders. **The scene switch waits for
+      glyphs**: putting `BoardView3D` into `level.tscn` before the modifier glyphs exist would ship a
+      board where goals, portals, gates and wilds are invisible — a C5 regression against the working
+      grey-box. It goes in with the glyph item below
 - [ ] Connectors with the depth gradient, as 3D geometry rather than §13.3's capsule SDF
 - [ ] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
       array only, never for the unbounded endless/daily bag (C-18)
-- [ ] Glyph legibility through rotation — billboarded, and still readable at every one of the six stops
+- [ ] Glyph legibility through rotation — billboarded, and still readable at every one of the six
+      stops. **Carries the scene switch**: with modifiers readable, `BoardView3D` replaces the
+      grey-box in `level.tscn` without losing C5, and `_pointer` / `_refresh_candidates` in
+      `level.gd` move to it — the API is already the same four calls
 - [ ] Unshaded material path so §21's greyscale requirement survives lighting (C-18)
 - [ ] `board_rotate_cw` / `board_rotate_ccw` given an effect — bound in M4, inert until the camera exists
 - [ ] Full palette token set audited — never a colour in a script or scene (§13.2)
@@ -318,7 +331,7 @@ parameter and the campaign ships radius 2, 3 and 4 — but `solver.gd`'s 64-bit 
 62 cells, and radius 5 is 91. Late-game difficulty escalates walls, goals, gates and budget instead.
 
 Unresolved items live in **Appendix C** of the spec (C-1 … C-8, C-19). Decisions already taken during
-M0–M7 are recorded there too (C-9 … C-18, C-20, C-21) — add to that table rather than inventing an
+M0–M7 are recorded there too (C-9 … C-18, C-20 … C-22) — add to that table rather than inventing an
 answer, per constraint C7.
 
 ---

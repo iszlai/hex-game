@@ -23,10 +23,10 @@
 class_name BoardView3D
 extends SubViewportContainer
 
-## Height of a tile above the plane as a fraction of the cell circumradius, which
-## the fit has to reserve room for (§4.4 against the projected bounds). Zero until
-## the prisms exist.
-const TILE_TOP_RATIO := 0.0
+## Height of the tallest tile above the plane as a fraction of the cell
+## circumradius, which the fit has to reserve room for (§4.4 against the projected
+## bounds). Owned by [BoardTiles], because that is what stands things up.
+const TILE_TOP_RATIO := BoardTiles.MAX_TOP
 
 ## Emitted when the cached screen positions have changed and anything holding them
 ## — §11.2's candidate set, the cursor ring — needs re-feeding.
@@ -36,6 +36,7 @@ signal screen_positions_changed
 
 var camera: BoardCamera = null
 var viewport: SubViewport = null
+var tiles: BoardTiles = null
 var layout: HexLayout = null
 
 var _board: Board = null
@@ -68,7 +69,22 @@ func bind(state: GameState, play_area: Vector2) -> void:
 	layout = HexLayout.new(float(BoardCamera.fit_projected(_board.radius, play_area,
 		TILE_TOP_RATIO)))
 	camera.frame_play_area(play_area)
+	tiles.bind(state, layout)
 	_recompute_positions(camera.yaw_radians())
+
+
+## The rest of [BoardView]'s surface, so the two views are interchangeable to the
+## level screen: the same four calls, in the same order, meaning the same things.
+func rebuild() -> void:
+	tiles.rebuild()
+
+
+func set_candidates(targets: Array[Vector3i]) -> void:
+	tiles.set_candidates(targets)
+
+
+func set_cursor(cell: Vector3i, visible_cursor: bool = true) -> void:
+	tiles.set_cursor(cell, visible_cursor)
 
 
 ## Turns the board a whole number of 60° stops, clockwise for positive (§14.3 as
@@ -121,6 +137,12 @@ func _ensure_nodes() -> void:
 	camera = BoardCamera.new()
 	camera.name = "BoardCamera"
 	viewport.add_child(camera)
+	# One node for the whole board, so one draw call covers it (§13.3). The camera
+	# orbits the world origin, so board space and world space are the same space.
+	tiles = BoardTiles.new()
+	tiles.name = "BoardTiles"
+	tiles.palette = palette
+	viewport.add_child(tiles)
 
 
 func _recompute_positions(yaw: float) -> void:

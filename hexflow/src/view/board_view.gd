@@ -219,29 +219,7 @@ func _translated(centre: Vector2, scale: float) -> PackedVector2Array:
 	return out
 
 
-## Breadth-first depth from the start through the path tree, which drives the
-## colour gradient along a long path.
+## Shared with the C-18 board, so the two views can never disagree about how far
+## along the path a cell is.
 func _recompute_depth() -> void:
-	_depth.clear()
-	if _state == null:
-		return
-	var queue: Array[Vector3i] = [_board.start]
-	_depth[_board.start] = 0
-	var head: int = 0
-	while head < queue.size():
-		var c: Vector3i = queue[head]
-		head += 1
-		for dir: int in Direction.ALL:
-			var n: Vector3i = c + Direction.delta(dir)
-			if _state.path.has(n) and not _depth.has(n):
-				_depth[n] = int(_depth[c]) + 1
-				queue.append(n)
-	# Portal twins are not lattice neighbours; give them their partner's depth.
-	for pair: Variant in _board.portal_pairs():
-		var p: Array = pair
-		var a: Vector3i = p[0]
-		var b: Vector3i = p[1]
-		if _depth.has(a) and not _depth.has(b) and _state.path.has(b):
-			_depth[b] = int(_depth[a]) + 1
-		elif _depth.has(b) and not _depth.has(a) and _state.path.has(a):
-			_depth[a] = int(_depth[b]) + 1
+	_depth = PathDepth.of(_state)
