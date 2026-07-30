@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 267 tests / 14,390 asserts green in ~63 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 275 tests / 14,422 asserts green in ~64 s, 60 frozen
 level files re-verified.
 
 ---
@@ -334,8 +334,15 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       `Motion.GOAL_SEQUENCE` so the sequence is diffable against §14.2 rather than typed into a
       script. Missing: the 24-spark burst at t=60 (§14.4's particle work) and the Results card at
       t=700 (a screen M6 has not built). §14.3's 2 px shake is not wired either — it belongs to the
-      burst beat
-- [ ] Four GPU emitters, hard cap 120 live particles (§14.4)
+      burst beat. **The burst now runs**: §14.4's emitter fires at t=60 where §14.2 puts it
+- [x] Four GPU emitters, hard cap 120 live particles (§14.4) — `src/view/board_particles.gd`. All
+      four built once at bind and reused, never one system per event: a particle system created the
+      moment something happens is an allocation in that frame (C4). 8 + 24 + 12 + 10 = 54 against the
+      cap of 120, which leaves room for two bursts to overlap. §14.5 turns all four off outright
+      rather than shortening them — a burst asked for while it is on does nothing at all. Every
+      emitter takes its colour from a palette token, so §21's swaps reach the particles too.
+      **Simplified:** §14.4 calls the motes "path flow motes" and they currently drift over the whole
+      board rather than following the path, which needs an emission shape rebuilt per move
 - [ ] Reduce Motion path: durations ×0.4, no shake/parallax/particles/breathing, still fully legible
       (§14.5) — **the rule is implemented, and it is not just a multiplier**: §14.5 also names 120 ms
       for screen transitions outright (not a scaled 320), and says the loops *stop* rather than

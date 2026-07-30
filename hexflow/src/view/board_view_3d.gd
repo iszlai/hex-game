@@ -43,6 +43,7 @@ var viewport: SubViewport = null
 var tiles: BoardTiles = null
 var links: BoardLinks = null
 var marks: BoardMarks = null
+var particles: BoardParticles = null
 var layout: HexLayout = null
 
 var _board: Board = null
@@ -81,6 +82,7 @@ func bind(state: GameState, play_area: Vector2) -> void:
 	tiles.bind(state, layout)
 	links.bind(state, layout, tiles)
 	marks.bind(state, layout, tiles)
+	particles.bind(layout)
 	_recompute_positions(camera.yaw_radians())
 
 
@@ -101,6 +103,11 @@ func play_placement(cell: Vector3i) -> void:
 	tiles.pop(cell)
 	links.draw_newest()
 	play_flow_pulse()
+	particles.burst("placement_sparks", _above(cell))
+	# §6 grants a charge for entering a wild, and §14.4 gives that its own emitter —
+	# the one moment on the board that hands the player something.
+	if _board != null and _board.is_wild(cell):
+		particles.burst("wild_pickup", _above(cell))
 
 
 ## §14.1's flow pulse: one band, travelling the whole path from the start to the
@@ -146,7 +153,9 @@ func _set_flow_head(value: float) -> void:
 func play_goal_reached(cell: Vector3i) -> void:
 	tiles.flourish(cell)
 	var sequence := create_tween()
-	sequence.tween_interval(Motion.beat_seconds("ripple"))
+	sequence.tween_interval(Motion.beat_seconds("burst"))
+	sequence.tween_callback(func() -> void: particles.burst("goal_burst", _above(cell)))
+	sequence.tween_interval(Motion.beat_seconds("ripple") - Motion.beat_seconds("burst"))
 	sequence.tween_callback(func() -> void: tiles.ripple_from(cell))
 	sequence.tween_interval(Motion.beat_seconds("flow") - Motion.beat_seconds("ripple"))
 	sequence.tween_callback(func() -> void: play_flow_pulse(Motion.GOAL_FLOW_SPEEDUP))
@@ -210,6 +219,12 @@ func screen_position_of(cell: Vector3i) -> Vector2:
 	return global_position + centre_of(cell)
 
 
+## A little above [param cell]'s tile top, which is where a spark should leave from
+## rather than from inside the prism.
+func _above(cell: Vector3i) -> Vector3:
+	return layout.to_plane(cell) + Vector3.UP * (tiles.top_of(cell) + layout.size * 0.1)
+
+
 func _ensure_nodes() -> void:
 	if viewport != null:
 		return
@@ -241,6 +256,11 @@ func _ensure_nodes() -> void:
 	marks.name = "BoardMarks"
 	marks.palette = palette
 	viewport.add_child(marks)
+	# §14.4's four emitters, built once and reused — never one per event.
+	particles = BoardParticles.new()
+	particles.name = "BoardParticles"
+	particles.palette = palette
+	viewport.add_child(particles)
 	_add_lighting()
 
 
@@ -295,9 +315,10 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 		set_flat(bool(value))
 	elif key == "reduce_motion":
 		# §14.5 reaches a board already on screen: the loops stop where they are
-		# rather than at the next level.
+		# rather than at the next level, and the emitters go quiet with them.
 		tiles.set_motion()
 		marks.set_motion()
+		particles.set_motion()
 
 
 func _recompute_positions(yaw: float) -> void:
