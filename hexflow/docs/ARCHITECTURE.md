@@ -13,7 +13,7 @@ Section references like §5.4 point into the specification.
 ```sh
 make godot     # fetches the pinned engine into .tools/ — no system install
 make run       # play it
-make test      # 76 tests, ~50 s
+make test      # 134 tests, ~58 s
 make gate      # everything CI runs; do this before you push
 make           # list every target
 ```
@@ -51,8 +51,9 @@ Try it: add `var n: Node = null` to any core file and run `make gate`.
 | No floats in `src/core/` | Integer logic is reproducible across platforms and engine versions. Pixel math lives in `src/view/hex_layout.gd` instead (decision C-13) | `ci_gate.sh` grep |
 | Exactly six autoloads | `EventBus`, `SettingsService`, `SaveService`, `AudioDirector`, `SteamService`, `GameDirector`. Nothing else becomes a singleton (§16.5) | `ci_gate.sh` count |
 
-`InputRouter` and `LevelRepository` look like services but are deliberately **not** autoloads —
-the level scene owns a router, and the repository is a static API with a cache.
+`InputRouter`, `InputBindings`, `LevelRepository` and `Haptics` look like services but are
+deliberately **not** autoloads — the level scene owns a router and a `Haptics` child node, and the
+other two are static APIs with a cache.
 
 ---
 
@@ -61,9 +62,10 @@ the level scene owns a router, and the repository is a static API with a cache.
 ```
 hexflow/
 ├── src/core/       pure logic. No engine, no floats, no RNG. 100% testable headlessly
-├── src/app/        services, the six autoloads, and the input router
+├── src/app/        services, the six autoloads, input bindings, router, holds, haptics
 ├── src/view/       drawing: board renderer, palette resource, hex↔pixel layout
-├── src/scenes/     screens (boot, level; the rest are M4+)
+├── src/scenes/     screens (boot, level; the rest are M5+)
+├── src/ui/         reusable widgets used by more than one screen (the legend panel)
 ├── src/data/       frozen level JSON, palette .tres, schema docs
 ├── tests/unit/     @core — pure logic, fast, no scene tree
 ├── tests/property/ @property — generator, solver and shipped-level invariants
@@ -186,7 +188,7 @@ The undo record.
 Worth tracing once; every other interaction follows the same shape.
 
 ```
-level.gd  _unhandled_input(KEY_SPACE)
+level.gd  _unhandled_input(event.is_action_pressed("board_confirm"))
    └─ EventBus.place_requested.emit(cursor)              intent, upward
         └─ GameDirector._on_place_requested(target)
              └─ GameState.place(target)                  the only rules call
@@ -264,7 +266,7 @@ replayable and cannot be proven to still win. `solution_script` carries `[kind, 
 |---|---|---|---|
 | `@core` | `tests/unit/` | Pure algebra and rules. One test per Gherkin scenario in §24.2 | ~2 s |
 | `@property` | `tests/property/` | Generation invariants over a seed sweep, and every shipped level file | ~45 s |
-| `@e2e` | `tests/e2e/` | Full flows through the real scene tree with injected `InputEvent`s | ~3 s |
+| `@e2e` | `tests/e2e/` | Full flows through the real scene tree with injected `InputEvent`s, one file per input device | ~11 s |
 
 §24 states the preference explicitly: **end-to-end scenarios over unit tests.** Unit tests exist
 for the pure core, where they are cheap and catch real algebra bugs. Everything player-facing is
@@ -312,6 +314,24 @@ the pure core and the static `LevelRepository` API.
 **Godot drops a whitespace-only command-line argument.** `-- "   "` arrives as nothing. This is why
 `tools/screenshot.gd` takes `c` for confirm rather than a space.
 
+**A full-rect `Control` eats every pointer event.** `Control.mouse_filter` defaults to
+`MOUSE_FILTER_STOP`, so a screen-sized `Control` consumes mouse *and* touch input in the GUI pass and
+`_unhandled_input` never sees it. The symptom is maddeningly specific: the keyboard works perfectly
+and clicking does nothing. `level.tscn` sets `mouse_filter = 2` on its root for exactly this reason.
+Child `Button`s are still hit-tested normally, so passing the event down costs nothing.
+
+**`Viewport.push_input()` takes *window* coordinates by default.** The second argument is
+`in_local_coords`, and it is `false`. With the project's `canvas_items` stretch mode, a position
+computed in viewport space gets multiplied by the stretch transform on the way in — under the test
+window that scaled a tap 20× off the board. Tests that inject a positional event pass
+`push_input(ev, true)`. Key and joypad events are unaffected, which is why this hides until the first
+mouse or touch test.
+
+**GDScript lambdas capture locals by value.** `var n := 0` followed by
+`sig.connect(func(): n += 1)` increments the *closure's own copy*; the outer `n` stays 0 forever. It
+fails silently — no warning, no error, just a counter that never moves. Use a member variable, or a
+container (`Array`/`Dictionary`), which is captured by reference.
+
 **`assert()` only fires in debug builds.** Loader validation uses `assert` *and* `push_error`, so
 debug fails loudly and release skips the level and logs — one bad file can never brick a player's
 campaign.
@@ -329,8 +349,14 @@ multiplies tutorial, art, solver and test cost. If one is genuinely needed: add 
 `Board`, the predicate to `Rules`, the mask lane to `Solver.Topology`, the placement to
 `Generator`, and the glyph to `BoardView`. Missing any one of those five is a silent bug.
 
-**A new screen.** Add it to `GameDirector.Screen` and `SCENES`. No screen may push another screen
-directly — the state machine lives in one place (§12.1).
+**A new screen.** Add it to `GameDirector.Screen` and `SCENES`, and give it a row in
+`GameDirector.ACTION_SETS` so it runs under the right §11.1 action set. No screen may push another
+screen directly — the state machine lives in one place (§12.1).
+
+**A new binding.** One row in `InputBindings.ACTIONS`, with a keyboard *and* a gamepad column — §11
+forbids any interaction being exclusive to one device, and `test_input_bindings.gd` enforces it. Give
+it a `glyph` slot that every family in `src/data/input_glyphs.json` answers. Never test a keycode in a
+screen; ask `event.is_action_pressed("…")`. Anything destructive gets a `hold`.
 
 **A colour.** Add it to `src/view/palette.gd` and `src/data/palettes/neon_dark.tres`. Never hardcode
 a colour in a script or a scene: the four accessibility palettes of §21 are a `.tres` swap with no

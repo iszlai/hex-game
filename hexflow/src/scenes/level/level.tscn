@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/scenes/level/level.gd" id="1_level"]
 [ext_resource type="Script" path="res://src/view/board_view.gd" id="2_boardview"]
 [ext_resource type="Resource" path="res://src/data/palettes/neon_dark.tres" id="3_palette"]
+[ext_resource type="Script" path="res://src/ui/legend_panel.gd" id="4_legend"]
 
 [node name="Level" type="Control"]
 layout_mode = 3
@@ -11,6 +12,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1_level")
 
 [node name="Background" type="ColorRect" parent="."]
@@ -59,6 +61,11 @@ vertical_alignment = 1
 horizontal_alignment = 2
 text = "placements 0 / par 0"
 
+[node name="MenuButton" type="Button" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+
 [node name="Rail" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 11
@@ -96,11 +103,106 @@ text = "NEXT"
 [node name="Divider" type="HSeparator" parent="Rail/Margin/Column"]
 layout_mode = 2
 
+[node name="Actions" type="VBoxContainer" parent="Rail/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UndoButton" type="Button" parent="Rail/Margin/Column/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+alignment = 0
+
+[node name="DiscardButton" type="Button" parent="Rail/Margin/Column/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+alignment = 0
+
+[node name="WildButton" type="Button" parent="Rail/Margin/Column/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+alignment = 0
+
+[node name="HintButton" type="Button" parent="Rail/Margin/Column/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+alignment = 0
+
+[node name="LegendButton" type="Button" parent="Rail/Margin/Column/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+alignment = 0
+
+[node name="RestartButton" type="Button" parent="Rail/Margin/Column/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+alignment = 0
+
 [node name="RailLabel" type="Label" parent="Rail/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 text = ""
+
+[node name="Legend" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_legend")
+palette = ExtResource("3_palette")
+
+[node name="HoldPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -112.0
+offset_bottom = -56.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="HoldPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="Row" type="HBoxContainer" parent="HoldPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="HoldLabel" type="Label" parent="HoldPanel/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+vertical_alignment = 1
+text = ""
+
+[node name="HoldBar" type="ProgressBar" parent="HoldPanel/Margin/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.01
+value = 0.0
+show_percentage = false
 
 [node name="Banner" type="PanelContainer" parent="."]
 unique_name_in_owner = true

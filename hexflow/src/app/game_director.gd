@@ -30,7 +30,25 @@ var hints_used: int = 0
 var _endless: EndlessRun = null
 
 
+## Which §11.1 action set each screen runs under. A screen also claims its own set
+## in `_ready`, so a directly-run scene is playable, but this is the map for
+## screens that have no scene yet.
+const ACTION_SETS := {
+	Screen.BOOT: InputBindings.SET_MENU,
+	Screen.MAIN_MENU: InputBindings.SET_MENU,
+	Screen.LEVEL_SELECT: InputBindings.SET_MENU,
+	Screen.LEVEL: InputBindings.SET_BOARD,
+	Screen.PAUSED: InputBindings.SET_MODAL,
+	Screen.RESULTS: InputBindings.SET_MENU,
+	Screen.RUN_SUMMARY: InputBindings.SET_MENU,
+	Screen.SETTINGS: InputBindings.SET_MENU,
+}
+
+
 func _ready() -> void:
+	# Bindings are registered once, here, before any screen can ask about an
+	# action (§11.3). Autoloads are ready before the main scene.
+	InputBindings.install()
 	EventBus.place_requested.connect(_on_place_requested)
 	EventBus.wild_place_requested.connect(_on_wild_place_requested)
 	EventBus.discard_requested.connect(_on_discard_requested)
@@ -42,6 +60,8 @@ func _ready() -> void:
 
 func go_to(next: Screen) -> void:
 	screen = next
+	if ACTION_SETS.has(next):
+		InputBindings.activate(ACTION_SETS[next])
 	screen_changed.emit(next)
 	if SCENES.has(next) and ResourceLoader.exists(SCENES[next]):
 		get_tree().change_scene_to_file(SCENES[next])

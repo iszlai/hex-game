@@ -1,0 +1,82 @@
+{
+  "_comment": "§11.4 controller glyph atlas. Families are matched against Input.get_joy_name() lowercased, first match wins, so put the specific families before the general ones. Slot names come from the `glyph` field of InputBindings.ACTIONS. M7 swaps these labels for icon textures on the same slots; the Deck's own View/Menu naming is the reason this is data and not hardcoded Xbox glyphs.",
+  "default_family": "xbox",
+  "families": [
+    {
+      "name": "deck",
+      "match": ["steam deck", "steam controller", "steam virtual gamepad"],
+      "labels": {
+        "a": "A",
+        "b": "B",
+        "x": "X",
+        "y": "Y",
+        "l1": "L1",
+        "r1": "R1",
+        "l2": "L2",
+        "r2": "R2",
+        "select": "View",
+        "start": "Menu",
+        "stick": "L-Stick",
+        "rstick": "R-Stick",
+        "dpad": "D-Pad"
+      }
+    },
+    {
+      "name": "playstation",
+      "match": ["dualsense", "dualshock", "playstation", "ps5", "ps4", "ps3", "sony"],
+      "labels": {
+        "a": "✕",
+        "b": "○",
+        "x": "□",
+        "y": "△",
+        "l1": "L1",
+        "r1": "R1",
+        "l2": "L2",
+        "r2": "R2",
+        "select": "Create",
+        "start": "Options",
+        "stick": "L-Stick",
+        "rstick": "R-Stick",
+        "dpad": "D-Pad"
+      }
+    },
+    {
+      "name": "nintendo",
+      "match": ["nintendo", "switch", "joy-con", "joycon", "pro controller"],
+      "labels": {
+        "a": "A",
+        "b": "B",
+        "x": "X",
+        "y": "Y",
+        "l1": "L",
+        "r1": "R",
+        "l2": "ZL",
+        "r2": "ZR",
+        "select": "−",
+        "start": "+",
+        "stick": "L-Stick",
+        "rstick": "R-Stick",
+        "dpad": "D-Pad"
+      }
+    },
+    {
+      "name": "xbox",
+      "match": ["xbox", "x-box", "xinput"],
+      "labels": {
+        "a": "A",
+        "b": "B",
+        "x": "X",
+        "y": "Y",
+        "l1": "LB",
+        "r1": "RB",
+        "l2": "LT",
+        "r2": "RT",
+        "select": "View",
+        "start": "Menu",
+        "stick": "L-Stick",
+        "rstick": "R-Stick",
+        "dpad": "D-Pad"
+      }
+    }
+  ]
+}

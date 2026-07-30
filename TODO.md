@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 76 tests / 11,092 asserts green in ~48 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 134 tests / 11,631 asserts green in ~58 s, 60 frozen
 level files re-verified.
 
 ---
@@ -21,8 +21,8 @@ level files re-verified.
 | M0 | Skeleton | ✅ done | — |
 | M1 | Logic core | ✅ done | — |
 | M2 | Generator & solver | ✅ done | — |
-| M3 | Grey-box playable | ✅ done | — (two §11.3 bindings missing, listed below) |
-| M4 | Input & Deck | ⬜ not started | gamepad-only and touch-only `@e2e` playthroughs |
+| M3 | Grey-box playable | ✅ done | — |
+| M4 | Input & Deck | ✅ done | — |
 | M5 | Persistence & settings | 🟨 services only | resume-on-boot; settings and pause screens |
 | M6 | Campaign data | 🟨 data only | level select, chapter unlocks, results screen |
 | M7 | Art & feel | ⬜ not started | the 3D board (C-18), fonts, all §14 animation, all §15 audio |
@@ -33,9 +33,9 @@ level files re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** M4, then the orthographic-3D board. The game is already playable, so controller support
-is what turns the grey-box into something handable to a person, and `InputRouter` already solves the
-hard part (directional input over a hex lattice).
+**Next up:** the orthographic-3D board (C-18). M4 landed the whole input layer, so the
+grey-box is now handable to a person on a pad, a touchscreen, a mouse or a keyboard — which makes the
+perspective the next thing a player would notice.
 
 > **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
 > **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a
@@ -89,36 +89,67 @@ hard part (directional input over a hex lattice).
 - [x] Every modifier readable by glyph **and** shape **and** colour, never colour alone (C5, §21)
 - [x] `palette.gd` + `neon_dark.tres` indirection — no hardcoded colours
 - [x] `input_router.gd` — snap-to-candidate and free cursor, ±75° cone, clockwise cycling (§11.2)
-- [x] Keyboard bindings, mouse click-to-place through `HexLayout.from_pixel` (closes B7)
+- [x] Keyboard bindings; mouse click-to-place through `HexLayout.from_pixel` (closes B7) — the
+      conversion was right, but **no pointer event ever reached it** until M4 fixed the level root's
+      `mouse_filter`; ticked here on the strength of the code existing, which is exactly what the
+      "never tick a box because the code exists" rule is about
 - [x] Text HUD rail: now/next, undo, discard, wild, hint, restart, budget
 - [x] Win, dead and auto-skip surfaced in the banner
 - [x] Hint replays the solver from the live state, bounded (§12.6)
 - [x] A radius-3 level is completable on the keyboard; win and dead states both reachable
-- [ ] **Toggle legend** — §11.3 binds it to Tab / Select; no legend exists yet
-- [ ] **Full WASD** — `D` is Discard, so "move right" is arrow-key only (§11.3 wants both)
+- [x] **Toggle legend** — Tab / Select / a rail button, `src/ui/legend_panel.gd` (done in M4)
+- [x] **Full WASD** — `D` collided with Discard; C-20 moved discard to `X` (done in M4)
 
 > `BoardView._draw` is the seam M7 replaces. The grey-box must keep working through M7 — if an art
 > change breaks the grey-box tests, the art change is wrong (§26 sequencing note).
 
-## M4 — Input & Deck ⬜
+## M4 — Input & Deck ✅
 
 Exit: gamepad-only and touch-only playthroughs pass as `@e2e`; snap never selects an illegal cell
-over 200 random inputs.
+over 200 random inputs. **Met** — `tests/e2e/test_gamepad_playthrough.gd`,
+`test_touch_playthrough.gd`, `test_snap_navigation.gd`.
 
-- [ ] Full §11.3 gamepad column: A confirm, Y undo, X discard, L2+A wild, R2 hint, Start pause,
+Every binding is one table, `src/app/input_bindings.gd`, registered into `InputMap` at runtime. No
+screen tests a keycode: it asks `event.is_action_pressed("board_confirm")`, so keyboard, gamepad,
+touch and a future rebind all arrive on one path. That is what made the gamepad playthrough testable
+at all.
+
+- [x] Full §11.3 gamepad column: A confirm, Y undo, X discard, L2+A wild, R2 hint, Start pause,
       B back, Select legend, hold-Select restart
-- [ ] Hold gestures for every destructive action — nothing destructive on a single press (§11.3)
-- [ ] L1/R1 bumper cycling bound to the existing `InputRouter.cycle()`
-- [ ] `board_rotate_cw` / `board_rotate_ccw` in the binding table, so the M7 camera (C-18) does not
-      rewrite it — inert until the 3D board exists
-- [ ] Steam Input action sets: `Menu`, `Board`, `Modal` (§11.1)
-- [ ] Touch-only path; every on-screen button ≥44 px at 1280×800 (§11.4)
-- [ ] Controller glyph atlas, data-driven by `Input.get_joy_name`, Deck names for View/Menu (§11.4)
-- [ ] Haptics table and the 0–100% slider, default 70% (§11.5)
-- [ ] Surface `cycling_hint_wanted` as the toast after 3 cone rejections (§11.2)
-- [ ] Free-cursor toggle exposed in Settings (the router mode already exists)
-- [ ] `@e2e`: gamepad-only playthrough, touch-only playthrough, 200-input snap fuzz, bumper
-      cycling visits all targets in clockwise order
+- [x] Hold gestures for every destructive action — nothing destructive on a single press (§11.3).
+      Restart holds on *every* device, keyboard included
+- [x] L1/R1 bumper cycling bound to the existing `InputRouter.cycle()`, asserted in clockwise order
+- [x] `board_rotate_cw` / `board_rotate_ccw` in the binding table — inert until the C-18 camera (M7)
+- [x] Action sets `Menu`, `Board`, `Modal` (§11.1), claimed by the screen that owns them; a set that
+      is not live is not acted on. **Steam Input's own** action-set configuration lands with
+      GodotSteam in M9 — there is no Steam API in the build yet
+- [x] Touch-only path; every on-screen button ≥44 px at 1280×800, asserted on the rendered rect (§11.4)
+- [x] Controller glyph atlas, data-driven by `Input.get_joy_name`, Deck names for View/Menu (§11.4) —
+      **labels**, not icons; the 24×24 icon textures are M7's §13.5 atlas, on these same slots
+- [x] Haptics table and the 0–100% slider, default 70% (§11.5) — pattern table and slider scaling
+      verified headlessly. **Rumble on real hardware is unverified**: CI has no controller
+- [x] Surface `cycling_hint_wanted` as the toast after 3 cone rejections (§11.2)
+- [x] Free-cursor toggle wired live to `SettingsService.changed` — the Settings *screen* is M5 (§12.2)
+- [x] `@e2e`: gamepad-only playthrough, touch-only playthrough, 200-input snap fuzz across all three
+      input devices, bumper cycling visits all targets in clockwise order
+
+Found and fixed while building, both defects the checklist would not have caught:
+
+- **Pointer input never reached the level screen.** The root `Control` kept Godot's default
+  `mouse_filter = STOP`, so it swallowed every mouse and touch event in the GUI pass before
+  `_unhandled_input` saw one. Keyboard worked, which is why nobody noticed. Now `mouse_filter = 2`,
+  with a mouse test and a touch test standing over it.
+- **A wild charge was unspendable.** §11.2 snaps the cursor to `legal_targets` only, and §6 lets a
+  charge enter any cell adjacent to the path — so every cell a charge exists to reach was unreachable
+  in the default cursor mode. Arming the wild now widens the candidate set to `wild_targets()`.
+
+Deferred, deliberately:
+
+- The §24.2 gamepad scenario opens with "navigate to Campaign, chapter 1, level 1", which needs the
+  main menu and level select of **M6**. The navigation leg is asserted there; the playthrough leg is
+  asserted here.
+- Rebinding writes to `settings.custom_bindings`, which the table is shaped for but nothing reads yet
+  (M5, with the Controls tab).
 
 ## M5 — Persistence & settings 🟨
 
@@ -130,7 +161,9 @@ Exit: persistence `@e2e` scenarios pass, including corrupted-save recovery and s
 - [ ] **Read it back** — boot always restarts chapter 1 level 1; `in_progress` is written and never
       resumed (§18.2)
 - [ ] Suspend/resume on focus loss (§18.3); undo history deliberately not persisted (C-16)
-- [ ] Settings screen with all five tabs: Gameplay, Controls, Video, Audio, Accessibility (§12.2)
+- [ ] Settings screen with all five tabs: Gameplay, Controls, Video, Audio, Accessibility (§12.2).
+      Three controls are already wired and only need surfacing: cursor mode (snap/free), the haptics
+      slider, and `custom_bindings` rebinding against `InputBindings.ACTIONS`
 - [ ] Pause screen: Resume, Restart (hold), Settings, Quit to map (§12.2)
 - [ ] Steam overlay opening auto-pauses gameplay (§12.5)
 - [ ] `@e2e`: corrupted save reaches the menu with defaults and notifies once; suspend/resume

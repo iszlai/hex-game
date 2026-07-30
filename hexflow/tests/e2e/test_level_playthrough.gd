@@ -36,6 +36,23 @@ func _press(keycode: Key, shift: bool = false) -> void:
 	await wait_process_frames(1)
 
 
+func _release(keycode: Key) -> void:
+	var ev := InputEventKey.new()
+	ev.keycode = keycode
+	ev.pressed = false
+	_scene.get_viewport().push_input(ev)
+	await wait_process_frames(1)
+
+
+## A destructive action is never a single press (§11.3), so its test has to wait
+## out the real hold. Seconds, not frames: headless frames are far shorter than a
+## player's, and the gesture is measured in wall time.
+func _hold(keycode: Key, seconds: float) -> void:
+	await _press(keycode)
+	await wait_seconds(seconds)
+	await _release(keycode)
+
+
 func _straight_level() -> Level:
 	var lv := Fixtures.fixed_level(Fixtures.shortest_route_tiles())
 	lv.id = "e2e_straight"
@@ -74,7 +91,13 @@ func test_restart_returns_to_the_opening_position() -> void:
 	await _open(_straight_level())
 	await _press(KEY_SPACE)
 	await _press(KEY_SPACE)
+
+	# A tap is not enough: restart is destructive (§11.3).
 	await _press(KEY_R)
+	await _release(KEY_R)
+	assert_eq(GameDirector.state.placements, 2, "a tap on restart must do nothing")
+
+	await _hold(KEY_R, InputBindings.HOLD_RESTART + 0.2)
 	assert_eq(GameDirector.state.placements, 0)
 	assert_eq(GameDirector.state.path.size(), 1)
 
@@ -108,25 +131,36 @@ func test_cycling_visits_every_legal_target_and_wraps() -> void:
 	assert_true(seen.has(_cursor()), "one more press wraps back to a visited target")
 
 
-## Scenario: Snap navigation never lands on an illegal cell.
-func test_snap_navigation_never_selects_an_illegal_cell() -> void:
-	var lv := Fixtures.fixed_level(["NE", "E", "NW", "E", "SE", "NE", "W", "NE", "E", "NE"])
-	await _open(lv)
-	var keys: Array[Key] = [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_Q, KEY_E]
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
+## Mouse and trackpad. M3 ticked "mouse click-to-place" on the strength of the
+## code existing; it never worked, because the root Control's default
+## `mouse_filter` swallowed every pointer event before `_unhandled_input` saw one.
+## Hence this test.
+func test_a_mouse_click_places_on_the_clicked_cell() -> void:
+	await _open(_straight_level())
+	var board: BoardView = _scene.get_node("%BoardView")
+	var target := Fixtures.START + Direction.delta(Direction.NE)
+	assert_true(GameDirector.state.legal_targets().has(target))
 
-	for _i: int in range(60):
-		await _press(keys[rng.randi_range(0, keys.size() - 1)])
-		if GameDirector.state.status != GameState.Status.PLAYING:
-			break
-		assert_true(GameDirector.state.legal_targets().has(_cursor()),
-			"the cursor left the legal set at %v" % _cursor())
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = board.to_global(board.centre_of(target))
+	_scene.get_viewport().push_input(click, true)
+	await wait_process_frames(1)
+
+	assert_eq(GameDirector.state.placements, 1)
+	assert_true(GameDirector.state.path.has(target), "the clicked cell joined the path")
+
+
+## Scenario: Snap navigation never lands on an illegal cell.
+##
+## Lives in `test_snap_navigation.gd`, at the full 200 inputs §24.2 asks for and
+## across every input device rather than the keyboard alone.
 
 
 func test_the_hint_points_at_an_optimal_next_move() -> void:
 	await _open(_straight_level())
-	await _press(KEY_H)
+	await _hold(KEY_H, InputBindings.HOLD_HINT + 0.2)
 	assert_eq(_cursor(), Vector3i(-2, 0, 2))
 	assert_eq(GameDirector.hints_used, 1, "hints are unlimited but counted (§12.6)")
 

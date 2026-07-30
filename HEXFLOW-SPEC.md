@@ -662,7 +662,7 @@ tutorial teaches if the player struggles (3 failed cone rejections in a row → 
 | Cycle targets | L1 / R1 | Q / E | — |
 | Confirm placement | A | Space / Enter | Click / tap the cell |
 | Undo | Y | Z / Backspace | Undo button |
-| Discard tile | X | D | Discard button |
+| Discard tile | X | X | Discard button |
 | Spend wild charge | L2 (hold) + A | Shift + Space | Wild button, then cell |
 | Hint | R2 (hold 0.5 s) | H | Hint button |
 | Pause / menu | Start | Esc | Pause button |
@@ -671,6 +671,8 @@ tutorial teaches if the player struggles (3 failed cone rejections in a row → 
 | Restart level | Hold Select 1 s | R | Menu → Restart |
 
 `Hold` gestures for destructive actions (restart) are mandatory. Nothing destructive on a single press.
+
+Keyboard discard is `X`, not `D`, so that WASD is whole — see **C-20**.
 
 ### 11.4 Deck hardware specifics
 
@@ -1731,6 +1733,7 @@ option was taken and recorded here rather than invented silently.
 | C-16 | §18.3 requires a suspended level to resume identically, but §17.2's `in_progress` has no field for the undo history | Undo history is not persisted. §5.9 does not require undo to survive a suspend, and persisting it would grow the ~2 KB save without bound |
 | C-17 | §5.7's auto-discard loop never terminates if every direction is blocked but the goal still looks reachable — reachable to a flood fill that ignores gates, unreachable in fact through an unsatisfiable gate | Before the loop, a path with no enterable neighbour at all is declared `DEAD`. The path can never change again, so no gate can ever become satisfiable. The solver uses an equivalent bound: 12 consecutive unplaceable draws, which always spans a full bag |
 | C-18 | §4.3, §4.4, §12.3, §13.3 and §14.3 all assume a flat board drawn head-on: a canvas-shader SDF, a static camera, and a rail whose NEXT tiles are flat panels. The intended presentation is an oblique, **rotatable** board with the upcoming tiles as a physical stack | The board renders in **orthographic 3D**. `Camera3D` with `projection = ORTHOGONAL` and a fixed pitch; yaw snaps to the six 60° positions of the hex lattice, tweened, so the lattice reads identically at every stop and the six direction glyphs stay legible at fixed angles. §4.3's formula is unchanged and now maps cube → the ground plane's `(x, z)`. Pointer input intersects the camera ray with `y = 0` and feeds the result to the existing `HexLayout.from_pixel`, so B7's fix survives. `InputRouter` keeps receiving screen-space positions, obtained via `Camera3D.unproject_position`, so §11.2's ±75° cone and clockwise cycling need no change — they simply follow the camera. §13.3's SDF pass becomes a `MultiMeshInstance3D` of hex prisms; §12.3's NEXT pair becomes a stack; §14.3 gains the player-requested yaw. Those sections are rewritten when the M7 view lands; until then **this row is the authority**. Two consequences: C-3 (Forward+ vs Mobile) stops being deferrable, and §21's greyscale requirement now has to survive lighting, so the accessibility palettes need an unshaded material path. Open: whether the stack shows a remaining count — default **yes** for a campaign level's fixed tile array, **no number** for the endless/daily bag, which is unbounded by construction (§5.3) |
+| C-20 | §11.3 binds "Move cursor" to Arrows/**WASD** and "Discard tile" to **`D`** in the same table. `D` cannot be both move-right and discard, so one of the two rows was always going to be wrong — M3 shipped arrows-only movement because of it | Discard moves to **`X`** on the keyboard and WASD is whole. Chosen over dropping `D` from WASD because §11.3's own gamepad column already calls discard `X`: the two columns now agree, and there is one less binding to learn. `tests/unit/test_input_bindings.gd` pins both halves, including that `D` is *not* discard |
 
 ---
 
