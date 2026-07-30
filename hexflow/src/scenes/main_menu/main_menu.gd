@@ -109,6 +109,17 @@ static func seconds_to_reset() -> int:
 	return 86400 - elapsed
 
 
+## §7.3's "7-day streak indicator", drawn as seven marks with today on the right.
+## A filled mark is a day played and a hollow one is a day missed, so the shape of
+## the last week is readable at a glance — which a bare "streak 4" is not: it
+## cannot tell you whether today is already done.
+func _streak_pips() -> String:
+	var out := ""
+	for played: bool in SaveService.daily_streak_days(utc_date()):
+		out += "▪" if played else "▫"
+	return out
+
+
 static func _hms(total: int) -> String:
 	return "%02d:%02d:%02d" % [total / 3600, (total / 60) % 60, total % 60]
 
@@ -131,8 +142,9 @@ func _refresh() -> void:
 		},
 		{
 			"id": "daily", "label": "Daily", "enabled": true,
-			"value": "%s · %s" % [
-				"streak %d" % streak if streak > 0 else ("done" if played_today else "new"),
+			"value": "%s %s · %s" % [
+				_streak_pips(), "streak %d" % streak if streak > 0 else
+					("done" if played_today else "new"),
 				_hms(seconds_to_reset()),
 			],
 		},

@@ -480,8 +480,25 @@ Exit: mode `@e2e` scenarios pass, including the Steam-unavailable path.
 - [x] `endless_run.gd` — §7.2 escalation, stage seeds as `fnv1a_32("endless:<seed>:<goals>")` (C-12)
 - [x] `Generator.daily(utc_date)` — one puzzle per UTC day, verified solvable at generation
 - [x] Both tested; `GameDirector.start_endless` / `start_daily` exist
-- [ ] Endless screen and Run summary: goals, PB, leaderboard slice, Retry / Menu (§12.2)
-- [ ] Daily screen: 7-day streak indicator, timer to reset, restart-only (§7.3)
+- [x] Endless screen and Run summary: goals, PB, leaderboard slice, Retry / Menu (§12.2) —
+      `src/scenes/run_summary/`, and §12.1's `Endless → RunSummary : DEAD` arrow, which nothing
+      implemented: a dead board was a recoverable banner in all three modes, right for the campaign
+      (§5.8) and wrong for a run with no undo. It waits out §14.1's dead-state desaturation first,
+      so the player sees the board they died on. `SaveService.record_endless_run` is new — `runs`
+      and `best_goals` were in the schema from M0 and nothing ever set them, so the menu's "best"
+      was structurally zero. **Not done:** §12.2's leaderboard slice (top 3 + friends + self) needs
+      a leaderboard *read* and `SteamService` has only `submit_leaderboard` until GodotSteam links.
+      The card says it is waiting for Steam rather than showing three invented names, which is the
+      version that would survive into a store build unnoticed
+- [x] Daily screen: 7-day streak indicator, timer to reset, restart-only (§7.3) — all three live on
+      the main menu's Daily row, which is where §12.2 puts the daily's entry (there is no separate
+      Daily screen row in its table; §12.1 sends the daily straight to the board and then to
+      Results). The indicator is seven marks with today on the right, filled for played — a bare
+      "streak 4" cannot tell you whether today is already done. `SaveService.record_daily` counts
+      consecutive *dates*, so a retry does not extend a streak (§7.3 allows unlimited retries and a
+      streak you can grind in an afternoon measures nothing), and the day before is computed through
+      the epoch so month ends and leap years are the calendar's problem. Restart-only was already
+      true — `GameDirector.undo_available` has been campaign-only since M1
 - [ ] GodotSteam GDExtension linked, matched to the pinned engine (§16.1, C-2)
 - [ ] Achievements; `endless_best_goals` and rolling daily leaderboards
 - [ ] Steam Auto-Cloud for saves (no code)

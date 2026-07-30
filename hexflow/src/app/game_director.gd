@@ -371,6 +371,7 @@ func _publish(events: Array) -> void:
 				_on_won(int(ev["placements"]))
 			GameState.EV_DEAD:
 				EventBus.level_dead.emit()
+				_on_dead()
 
 	if state != null:
 		EventBus.tile_advanced.emit(state.current_tile(), state.preview(2))
@@ -405,9 +406,35 @@ func _on_won(placements: int) -> void:
 				_endless.advance()
 				_begin(_endless.current_level())
 		Mode.DAILY:
-			# §12.1: Daily → Results : WON. The completion is not recorded against
-			# the campaign — §7.3's puzzle is not a campaign level and has no slot.
+			# §12.1: Daily → Results : WON. Not recorded against the campaign —
+			# §7.3's puzzle is not a campaign level and has no slot there — but it is
+			# what feeds the seven-day streak the main menu shows.
+			SaveService.record_daily(_daily_date, placements, stars)
+			SteamService.submit_leaderboard("daily_" + _daily_date, placements)
 			_show_results()
+
+
+## §12.1: `Endless → RunSummary : DEAD`. A dead board only ends anything in
+## endless — §5.8 makes it a recoverable banner everywhere else, and the campaign
+## and the daily both have a way back out of it. §7.2's run has no undo, so this
+## is where it stops.
+func _on_dead() -> void:
+	if mode != Mode.ENDLESS or _endless == null:
+		return
+	var goals: int = _endless.goals_reached
+	var placements: int = _endless.total_placements + state.placements
+	last_result = {
+		"mode": mode,
+		"goals": goals,
+		"placements": placements,
+		"best": SaveService.record_endless_run(goals, placements),
+	}
+	# §7.2 posts the run whether or not anyone is listening; §23's Steam-absent
+	# path makes a submission with no client a no-op rather than an error.
+	SteamService.submit_leaderboard("endless_best_goals", goals, [placements])
+	await get_tree().create_timer(Motion.seconds("dead_desaturate")).timeout
+	if state != null and state.status == GameState.Status.DEAD:
+		go_to(Screen.RUN_SUMMARY)
 
 
 ## §14.2 puts the Results card at t=700, after the goal flourish, the burst, the
