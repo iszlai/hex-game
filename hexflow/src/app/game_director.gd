@@ -103,6 +103,42 @@ func go_to(next: Screen) -> void:
 	_transition_to(SCENES[next])
 
 
+## §12.5's pause — the one screen change that deliberately does *not* swap scenes.
+##
+## [constant SCENES] has no `PAUSED` entry on purpose: §12.2 puts the pause menu
+## over a board that is still there, and reloading `level.tscn` to come back would
+## rebuild the whole board, drop every animation in flight and cost a 320 ms fade
+## in each direction for a menu the player expects to be instant. So pausing is a
+## claim on the `Modal` action set (§11.1) and nothing more — the level screen
+## stops acting on input the moment the set is not its own, which is the mechanism
+## §11.1 was built around.
+## Pausing needs a run to pause and needs not to be paused already. It is
+## deliberately *not* conditioned on `screen == LEVEL`: a level scene run on its
+## own — editor F6, the capture tool, an `@e2e` test — has never navigated
+## anywhere, and a pause menu that only works if you arrived through the main menu
+## is a pause menu nobody can test.
+func pause() -> void:
+	if state == null or screen == Screen.PAUSED:
+		return
+	go_to(Screen.PAUSED)
+
+
+## Leaving the pause menu is a *return*, not a navigation, for the same reason.
+func resume() -> void:
+	if screen != Screen.PAUSED:
+		return
+	screen = Screen.LEVEL
+	InputBindings.activate(ACTION_SETS[Screen.LEVEL])
+	screen_changed.emit(Screen.LEVEL)
+
+
+## Where "Quit to map" goes (§12.2). A campaign level came from the map; an
+## endless run and a daily did not — §12.1 draws both straight off the main menu,
+## so that is where leaving one returns to.
+func level_exit_screen() -> Screen:
+	return Screen.LEVEL_SELECT if mode == Mode.CAMPAIGN else Screen.MAIN_MENU
+
+
 func _transition_to(scene_path: String) -> void:
 	var half: float = Motion.seconds("screen_transition") * 0.5
 	var fade := _fade_layer()

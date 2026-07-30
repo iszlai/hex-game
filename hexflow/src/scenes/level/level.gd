@@ -37,6 +37,7 @@ const HOLD_ACTIONS: Array[String] = ["board_restart", "board_hint"]
 @onready var hold_label: Label = %HoldLabel
 @onready var hold_bar: ProgressBar = %HoldBar
 @onready var legend: LegendPanel = %Legend
+@onready var pause_panel: PausePanel = %Pause
 @onready var undo_button: Button = %UndoButton
 @onready var discard_button: Button = %DiscardButton
 @onready var wild_button: Button = %WildButton
@@ -155,6 +156,12 @@ func _layout_board() -> void:
 # --- input (§11.3, every column) ----------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The pause menu is a modal *inside* this screen (§12.2 pauses over a board
+	# that is still there), so it gets first refusal — and it only answers while
+	# the `Modal` set is live, which is the same §11.1 rule stated once more.
+	if pause_panel.handle_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	# §11.1: input belonging to another action set is not ours to act on.
 	if InputBindings.active_set != InputBindings.SET_BOARD:
 		return

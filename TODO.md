@@ -177,7 +177,19 @@ Exit: persistence `@e2e` scenarios pass, including corrupted-save recovery and s
 - [ ] Settings screen with all five tabs: Gameplay, Controls, Video, Audio, Accessibility (§12.2).
       Three controls are already wired and only need surfacing: cursor mode (snap/free), the haptics
       slider, and `custom_bindings` rebinding against `InputBindings.ACTIONS`
-- [ ] Pause screen: Resume, Restart (hold), Settings, Quit to map (§12.2)
+- [x] Pause screen: Resume, Restart (hold), Settings, Quit to map (§12.2) — `src/ui/pause_panel.gd`,
+      a modal *inside* `level.tscn` rather than a screen of its own. `Screen.PAUSED` has no entry in
+      `GameDirector.SCENES` on purpose: §12.2 pauses over a board that is still there, and swapping
+      scenes would rebuild it, drop every animation in flight and charge two 320 ms fades for a menu
+      that should feel instant. What actually stops the board being played is §11.1's action set,
+      which until now had no counter-example behind it — nothing had ever claimed `Modal`. The
+      sharpest test is the shared key: §11.3 gives `board_confirm` and `modal_accept` the same Space
+      and the same A, and the same press places a tile on one side of a pause and works the menu on
+      the other. Restart is never a single press (§11.3), and **§21's hold-to-confirm toggle is
+      honoured rather than ignored** — with it off the gesture becomes press-then-confirm, which is
+      the same guarantee by a different route, and moving focus off the row disarms it.
+      `modal_up`/`modal_down` are new in the binding table: §12.5's "exactly one focused element in
+      `Menu`/`Modal`" is unreachable in a set with no way to change which one
 - [ ] Steam overlay opening auto-pauses gameplay (§12.5)
 - [ ] `@e2e`: corrupted save reaches the menu with defaults and notifies once; suspend/resume
       identity; progress survives a quit from three different screens

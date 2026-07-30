@@ -276,13 +276,22 @@ func test_the_right_trigger_must_be_held_to_hint() -> void:
 	assert_eq(_cursor(), Vector3i(-2, 0, 2), "and points at the optimal move")
 
 
+## Rewritten when the pause menu arrived. Both buttons still only ask to go up one
+## level and neither leaves the game — but Start now opens something, so B's job on
+## the second press is to close it rather than to ask again. Asserting two pause
+## requests in a row was only ever possible because nothing was listening.
 func test_start_and_b_both_ask_to_leave_without_quitting() -> void:
 	await _open(_straight_level())
 	await _tap(JOY_BUTTON_START)
 	assert_eq(_pause_requests, 1, "Start pauses (§11.3)")
+	assert_eq(GameDirector.screen, GameDirector.Screen.PAUSED)
 
 	await _tap(JOY_BUTTON_B)
-	assert_eq(_pause_requests, 2, "B goes up one level, never out of the game (§12.5)")
+	assert_eq(GameDirector.screen, GameDirector.Screen.LEVEL,
+		"B goes up exactly one level — out of the modal (§12.5)")
+
+	await _tap(JOY_BUTTON_B)
+	assert_eq(_pause_requests, 2, "and from the board it asks to leave, never quitting")
 	assert_eq(GameDirector.state.status, GameState.Status.PLAYING)
 
 

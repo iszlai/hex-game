@@ -144,5 +144,7 @@ func _key_for(c: String) -> Key:
 			return KEY_LEFT
 		"j":
 			return KEY_RIGHT
+		"p":
+			return KEY_ESCAPE
 		_:
 			return KEY_SPACE

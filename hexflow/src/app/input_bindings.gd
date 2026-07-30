@@ -237,6 +237,24 @@ const ACTIONS := {
 	},
 
 	# --- Modal (§11.1): pause, confirmations, tutorial gate -------------------
+	# A modal that holds a list needs to be able to move through it. §11.3 does not
+	# tabulate these because it tabulates the *board*, but §12.5's "exactly one
+	# focused element at all times in `Menu`/`Modal` sets" is unreachable in a set
+	# with no way to change which one.
+	"modal_up": {
+		"set": SET_MODAL,
+		"keys": [KEY_UP, KEY_W],
+		"buttons": [JOY_BUTTON_DPAD_UP],
+		"axes": [[JOY_AXIS_LEFT_Y, -1]],
+		"glyph": "stick",
+	},
+	"modal_down": {
+		"set": SET_MODAL,
+		"keys": [KEY_DOWN, KEY_S],
+		"buttons": [JOY_BUTTON_DPAD_DOWN],
+		"axes": [[JOY_AXIS_LEFT_Y, 1]],
+		"glyph": "stick",
+	},
 	"modal_accept": {
 		"set": SET_MODAL,
 		"keys": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER],
