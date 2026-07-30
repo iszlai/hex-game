@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 200 tests / 13,668 asserts green in ~61 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 211 tests / 13,906 asserts green in ~61 s, 60 frozen
 level files re-verified.
 
 ---
@@ -25,7 +25,7 @@ level files re-verified.
 | M4 | Input & Deck | ✅ done | — |
 | M5 | Persistence & settings | 🟨 services only | resume-on-boot; settings and pause screens |
 | M6 | Campaign data | 🟨 data only | level select, chapter unlocks, results screen |
-| M7 | Art & feel | 🟨 board + marks | connectors, NEXT stack, fonts, all §14 animation, all §15 audio |
+| M7 | Art & feel | 🟨 board done | NEXT stack, HUD layout, fonts, all §14 animation, all §15 audio |
 | M8 | Tutorial | ⬜ not started | T1–T12 data-driven, naive playtest |
 | M9 | Modes & Steam | 🟨 logic only | mode screens, GodotSteam, leaderboards |
 | M10 | Accessibility & i18n | ⬜ not started | palettes, text scale, Reduce Motion, extraction |
@@ -33,11 +33,10 @@ level files re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** the path connectors (M7). The C-18 board is on screen, playable and now legible — `make
-run` shows prisms, `[` / `]` turn it, and the four §6 modifiers carry their marks again, so the C5
-gap the board opened is shut. What the board still cannot draw is the *path* as one continuous
-stroke: §13.3's capsule SDF has no 3D equivalent yet, so a route currently reads as a row of raised
-tiles rather than as a line of light.
+**Next up:** the NEXT stack (M7). The board itself is now complete enough to play by: prisms, the
+four §6 marks, and the path as one continuous stroke, all turning together on `[` / `]`. What is
+still flat is everything *around* it — C-18 promised the upcoming tiles as a physical stack, and the
+rail still shows them as the M3 text HUD's two words.
 
 > **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
 > **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a
@@ -241,7 +240,18 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
 - [x] **C5 gap closed.** It was knowingly open for one step: the 3D board drew no modifier glyphs, so
       goals, portals, gates and wilds were invisible on it where the grey-box distinguished all four.
       The glyph item below closed it
-- [ ] Connectors with the depth gradient, as 3D geometry rather than §13.3's capsule SDF
+- [x] Connectors with the depth gradient, as 3D geometry rather than §13.3's capsule SDF —
+      `src/view/board_links.gd` plus `shaders/path_link.gdshader`, the second of the two board
+      multimeshes §20's draw-call budget already reserved. A ribbon standing on the tile tops,
+      lightened off its own path colour because C-22 had already tinted the tiles underneath it that
+      exact colour, and emissive so §13.1's "single continuous line of light" survives the shadowed
+      side of a turn. Portal jumps draw as the grey-box's dashed tether, thinner and unlit (§6 calls
+      it faint) — two channels that are not colour. The buffer is sized once for the longest path the
+      board can hold and drawn with `visible_instance_count`, so a placement rewrites instances and
+      an undo shortens the stroke rather than leaving the undone step lit.
+      **Not built:** §6 also gives a portal a standing "faint tether line to twin", visible before it
+      is used. Only *traversed* jumps are drawn, as in the grey-box. Harmless while every campaign
+      level ships exactly one pair, ambiguous the moment one ships two
 - [ ] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
       array only, never for the unbounded endless/daily bag (C-18)
 - [x] Glyph legibility through rotation — billboarded, and still readable at every one of the six

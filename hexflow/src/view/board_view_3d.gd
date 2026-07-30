@@ -17,9 +17,9 @@
 ## Both are the best available answer, and both are computed once per event — never
 ## per frame (C4).
 ##
-## What it holds: the camera, the layout, the screen-space mapping, and two
-## multimeshes — [BoardTiles] for the cells and [BoardMarks] for the §6 modifiers
-## standing on them.
+## What it holds: the camera, the layout, the screen-space mapping, and three
+## multimeshes — [BoardTiles] for the cells, [BoardLinks] for the path laid over
+## them and [BoardMarks] for the §6 modifiers standing on them.
 class_name BoardView3D
 extends SubViewportContainer
 
@@ -37,6 +37,7 @@ signal screen_positions_changed
 var camera: BoardCamera = null
 var viewport: SubViewport = null
 var tiles: BoardTiles = null
+var links: BoardLinks = null
 var marks: BoardMarks = null
 var layout: HexLayout = null
 
@@ -71,6 +72,7 @@ func bind(state: GameState, play_area: Vector2) -> void:
 		TILE_TOP_RATIO)))
 	camera.frame_play_area(play_area)
 	tiles.bind(state, layout)
+	links.bind(state, layout, tiles)
 	marks.bind(state, layout, tiles)
 	_recompute_positions(camera.yaw_radians())
 
@@ -79,8 +81,9 @@ func bind(state: GameState, play_area: Vector2) -> void:
 ## level screen: the same four calls, in the same order, meaning the same things.
 func rebuild() -> void:
 	tiles.rebuild()
-	# After the tiles, always: a mark sits on top of the tile it labels, so it has
-	# to be told where that top is *after* a placement has raised it.
+	# After the tiles, always: both of these sit on top of the tiles, so they have
+	# to be told where the tops are *after* a placement has raised them.
+	links.rebuild()
 	marks.rebuild()
 
 
@@ -160,9 +163,15 @@ func _ensure_nodes() -> void:
 	tiles.name = "BoardTiles"
 	tiles.palette = palette
 	viewport.add_child(tiles)
-	# The §6 modifiers, in a second multimesh: they are marks on tiles rather than
-	# kinds of tile, so they cannot ride C-22's height channel and cannot share the
-	# tiles' mesh either (C-23).
+	# The path itself, as the ribbon of §13.3 — the second of the two multimeshes
+	# §20's draw-call budget reserves for the board.
+	links = BoardLinks.new()
+	links.name = "BoardLinks"
+	links.palette = palette
+	viewport.add_child(links)
+	# The §6 modifiers, in a third: they are marks on tiles rather than kinds of
+	# tile, so they cannot ride C-22's height channel and cannot share either mesh
+	# (C-23).
 	marks = BoardMarks.new()
 	marks.name = "BoardMarks"
 	marks.palette = palette
