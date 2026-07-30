@@ -390,10 +390,14 @@ code change, and that only works if every colour is read from the resource.
 
 ## 11. The grey-box seam
 
-The board renders as untextured hexes drawn in `_draw`. That is the **grey-box**, and it is
-deliberate: M7 replaces the body of `BoardView._draw` with a single `MultiMeshInstance2D` and the
-SDF shader of §13.3, and everything above that line stays put. The grey-box must keep working
-through M7 — if an art change breaks the grey-box tests, the art change is wrong.
+`level.tscn` renders through `BoardView3D` — C-18's orthographic-3D board, two multimeshes and a
+camera. `BoardView` is the **grey-box** it replaced: untextured hexes drawn in `_draw`, still alive,
+still tested, and still the answer if a 2D fallback is ever wanted.
+
+The seam is what matters here. The two expose the same four calls — `bind`, `rebuild`,
+`set_candidates`, `set_cursor` — and both answer in screen-space positions, so swapping one for the
+other taught `level.gd` and `InputRouter` nothing. That is why the perspective change of C-18 cost a
+view and not a milestone. If an art change breaks the grey-box's tests, the art change is wrong.
 
 The same shape holds for the screens that do not exist yet. `GameDirector.SCENES` already names all
 seven, and `go_to()` no-ops on the ones that do not resolve, so adding a screen is a scene file plus
