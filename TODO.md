@@ -256,7 +256,11 @@ chapter 1 without incident.
 
 ## Open spec questions
 
-Unresolved items live in **Appendix C** of the spec (C-1 … C-8). Decisions already taken during
+**Board radius is capped at 4 (C-19).** Growth up to there is free — radius is already a `Board`
+parameter and the campaign ships radius 2, 3 and 4 — but `solver.gd`'s 64-bit path mask holds at most
+62 cells, and radius 5 is 91. Late-game difficulty escalates walls, goals, gates and budget instead.
+
+Unresolved items live in **Appendix C** of the spec (C-1 … C-8, C-19). Decisions already taken during
 M0–M3 are recorded there too (C-9 … C-17) — add to that table rather than inventing an answer, per
 constraint C7.
 
