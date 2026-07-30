@@ -18,6 +18,21 @@ Guidance for Claude Code working in this repository.
   built" list or a test count anywhere else, or the next reader gets two answers and no way to tell
   which one rotted.
 
+## Git workflow
+
+Single developer, so there is no review to wait for and no branch protection to route around.
+
+- **Commit and push directly to `master` after every step.** No feature branches, no pull requests.
+  Do not ask first — landing work is the expected end of a step.
+- **One concern per commit.** A commit is a step someone could revert on its own: the rule change and
+  its test together, the doc that describes it in the same commit, an unrelated cleanup in its own.
+  Never bundle two ideas because they happened in the same session.
+- **Descriptive messages.** Subject line in the imperative under ~70 characters, then a body that
+  says *why* — what was wrong, what the alternative was, what a reader would otherwise have to
+  reconstruct from the diff. The diff already shows what changed.
+- **`make gate` before every push.** `master` is releasable (§25); a red `master` is worse than an
+  unpushed commit.
+
 ## Read these before writing code
 
 | Document | For |
