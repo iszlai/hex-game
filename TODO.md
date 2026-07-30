@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 228 tests / 14,049 asserts green in ~60 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 230 tests / 14,047 asserts green in ~61 s, 60 frozen
 level files re-verified.
 
 ---
@@ -262,7 +262,10 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       `hex_mark.gdshader` and deliberately not a [BoardMarks.Mark] — §6 ships five modifiers and a
       direction is not a sixth. `tests/unit/test_tile_stack.gd` measures every arrow against the real
       board's screen positions rather than a written-down table, at all six stops; the count rule is
-      `@e2e`, on the real screen
+      `@e2e`, on the real screen. The stack is a literal **pile of coins**, soonest on top: you read
+      the next direction off the one face there is, and the pile's height says roughly how many are
+      left. §12.3's two-tile lookahead is deliberately given up for it — a coin under a coin has no
+      face to read — so NEXT previews one tile, not two
 - [x] Glyph legibility through rotation — billboarded, and still readable at every one of the six
       stops. **Closed the C5 gap above**: goal, portal, gate and wild all have their mark back —
       `src/view/board_marks.gd` plus `shaders/hex_mark.gdshader`, a second multimesh of one instance

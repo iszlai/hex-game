@@ -59,7 +59,8 @@ func test_it_shows_the_soonest_tiles_and_no_more_than_its_slots() -> void:
 	_stack.show_tiles([0, 1, 2, 3, 4] as Array[int])
 	assert_eq(_stack.count(), 3, "three slots hold three tiles")
 	assert_eq(_stack.pieces.multimesh.visible_instance_count, 3)
-	assert_eq(_stack.arrows.multimesh.visible_instance_count, 3, "one arrow per piece")
+	assert_eq(_stack.arrows.multimesh.visible_instance_count, 1,
+		"one arrow: the faces underneath are buried")
 
 	# A stream running out shows what is left, not a gap.
 	_stack.show_tiles([0] as Array[int])
@@ -85,29 +86,53 @@ func test_nothing_runs_per_frame() -> void:
 	assert_false(_stack.has_method("_draw"), "no _draw")
 
 
-## A deck, not a row: the soonest tile is the biggest and the one in front, and
-## each further piece steps back and shrinks.
-func test_the_soonest_tile_is_the_front_of_the_deck() -> void:
+## A pile of coins: the soonest tile is the one on top — the one you would pick up
+## — and the rest are directly underneath it, same size, same place.
+func test_the_soonest_tile_is_the_top_of_the_pile() -> void:
 	_stack.show_tiles([0, 1, 2] as Array[int])
 	for i: int in range(1, 3):
-		var front: Transform3D = _stack.piece_transform(i - 1)
-		var behind: Transform3D = _stack.piece_transform(i)
-		assert_gt(front.basis.get_scale().x, behind.basis.get_scale().x,
-			"piece %d must be smaller than the one in front of it" % i)
-		assert_lt(behind.origin.z, front.origin.z, "and stand further back")
-		assert_gt(behind.origin.x, front.origin.x, "and along the spread")
+		var above: Transform3D = _stack.piece_transform(i - 1)
+		var below: Transform3D = _stack.piece_transform(i)
+		assert_lt(below.origin.y, above.origin.y, "coin %d sits under the one before it" % i)
+		assert_almost_eq(below.origin.x, above.origin.x, 0.001, "in the same column")
+		assert_almost_eq(below.origin.z, above.origin.z, 0.001)
+		assert_almost_eq(below.basis.get_scale().x, above.basis.get_scale().x, 0.001,
+			"coins are all one size")
+		assert_lt(below.basis.get_scale().y, below.basis.get_scale().x * 0.5,
+			"and are coins rather than blocks")
 
 
-func test_an_arrow_sits_on_the_piece_it_belongs_to() -> void:
+## The pile is centred on itself, so spending it does not slide it down the rail.
+func test_the_pile_stays_put_as_it_is_spent() -> void:
 	_stack.show_tiles([0, 1, 2] as Array[int])
-	for i: int in range(3):
-		var piece: Transform3D = _stack.piece_transform(i)
-		var arrow: Transform3D = _stack.arrow_transform(i)
-		assert_almost_eq(arrow.origin.x, piece.origin.x, 0.001, "arrow %d is centred" % i)
-		assert_almost_eq(arrow.origin.z, piece.origin.z, 0.001)
-		assert_gt(arrow.origin.y, piece.basis.get_scale().y, "and clears the piece's top")
-		assert_lt(arrow.basis.get_scale().x, piece.basis.get_scale().x,
-			"and fits on it")
+	var full: float = _stack.piece_transform(0).origin.y + _stack.piece_transform(2).origin.y
+	_stack.show_tiles([0] as Array[int])
+	var last: float = _stack.piece_transform(0).origin.y * 2.0
+	assert_almost_eq(full, last, 0.001, "the middle of the pile does not move")
+
+
+## A single coin has to be drawn larger than a pile of five, or §12.3's 140-px NOW
+## and 72-px NEXT collapse into two tiles of the same size.
+func test_a_lone_coin_is_framed_larger_than_a_pile() -> void:
+	var one := TileStack.new()
+	one.slots = 1
+	add_child_autofree(one)
+	assert_lt(one.frame_height(), _stack.frame_height(),
+		"a tighter frame is a bigger coin on screen")
+
+
+## The arrow sits on the only face there is to read, and clears it — the arrows do
+## not depth-test, so one buried in the pile would draw straight through the coin
+## on top of it.
+func test_the_arrow_sits_on_the_face_you_can_see() -> void:
+	_stack.show_tiles([0, 1, 2] as Array[int])
+	var top: Transform3D = _stack.piece_transform(0)
+	var arrow: Transform3D = _stack.arrow_transform(0)
+	assert_almost_eq(arrow.origin.x, top.origin.x, 0.001, "centred on the top coin")
+	assert_almost_eq(arrow.origin.z, top.origin.z, 0.001)
+	assert_gt(arrow.origin.y, top.origin.y + top.basis.get_scale().y,
+		"and clears its face")
+	assert_lt(arrow.basis.get_scale().x, top.basis.get_scale().x, "and fits on it")
 
 
 ## The claim: an arrow points where its tile will go. Checked against the board's

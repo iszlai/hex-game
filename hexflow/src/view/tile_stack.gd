@@ -1,4 +1,4 @@
-## The tiles waiting to be played, as physical pieces rather than as words —
+## The tiles waiting to be played, as a pile of coins rather than as words —
 ## §12.3's NOW tile and NEXT pair, which C-18 turns into a stack.
 ##
 ## The same prism the board is built from, seen at the same elevation, in a
@@ -12,25 +12,31 @@
 ## round ([method BoardCamera.screen_angle]). An arrow that always pointed the same
 ## way would be a lie at five of the six stops.
 ##
-## Two multimeshes, both prebuilt: the pieces and their arrows. Nothing allocates
+## The pile is literal: coins flat on top of each other, the soonest on top. You
+## read the next direction off the face you can see, and the pile's own height says
+## roughly how many are left — the exact number is the caption's job, and only for
+## a fixed tile array (C-18). The cost, chosen deliberately, is that §12.3's
+## two-tile lookahead is gone: a coin under another coin has no face to read.
+##
+## Two multimeshes, both prebuilt: the coins and the one arrow. Nothing allocates
 ## after [method bind] and there is no `_process` (C4).
 class_name TileStack
 extends SubViewportContainer
 
-## Circumradius of the front piece, in this viewport's own world units. The camera
-## is sized in the same units, so these numbers are the layout.
+## Circumradius of a coin, in this viewport's own world units. The camera is sized
+## in the same units, so these numbers are the layout.
 const PIECE := 1.0
-const PIECE_HEIGHT := 0.30
 
-## How far along the deck each further piece sits, and how much smaller it is.
-## Overlapping is what makes it read as a stack rather than as a row.
-const SPREAD := 1.04
-const RECEDE := 0.22
-const SHRINK := 0.12
+## Coin thickness, and the hairline between one coin and the next. Thin enough to
+## read as a coin rather than as a block, thick enough that the rims of the ones
+## underneath are still countable.
+const COIN_THICKNESS := 0.20
+const COIN_GAP := 0.03
 
-## World height the camera frames. One piece is 2 units across and the projection
-## foreshortens its depth to sin 55°, so this leaves a margin at every slot count.
-const FRAME := 2.35
+## World height one coin's face needs. It is 2 units across and the projection
+## foreshortens its depth to sin 55°, so 1.64 of that is the face; the rest is
+## margin.
+const FACE_FRAME := 1.92
 
 ## Arrow radius as a fraction of the piece it sits on.
 const ARROW_RATIO := 0.62
@@ -79,22 +85,41 @@ func set_board_yaw(yaw: float) -> void:
 	_rebuild()
 
 
+## What the camera has to fit: one coin's face plus the rims of the coins under
+## it. Framing per control rather than with one constant is what keeps §12.3's
+## hierarchy — a NOW slot holding a single coin draws it larger than a NEXT slot
+## holding a pile of five, which is the 140-vs-72 relationship in the layout.
+func frame_height() -> float:
+	var rims: float = float(maxi(slots, 1) - 1) * (COIN_THICKNESS + COIN_GAP)
+	return FACE_FRAME + rims * cos(deg_to_rad(BoardCamera.ELEVATION_DEGREES))
+
+
 func count() -> int:
 	return mini(_tiles.size(), slots)
 
 
-## Where piece [param i] stands. The soonest tile is the front of the deck, so it
-## is the biggest and the one nothing overlaps.
+## Where coin [param i] sits in the pile. The soonest tile is the **top** coin —
+## the one you would pick up — and the rest are underneath it, so what the pile
+## shows is the next direction and, in its own height, roughly how many are left.
+##
+## The pile is centred on its own middle rather than growing from a base, so it
+## does not slide down the rail as it is spent.
 func piece_transform(i: int) -> Transform3D:
-	var scale: float = PIECE * (1.0 - SHRINK * float(i))
+	var step: float = COIN_THICKNESS + COIN_GAP
+	var from_top: float = float(maxi(count(), 1) - 1 - i)
+	var centre: float = float(maxi(count(), 1) - 1) * step * 0.5
 	return Transform3D(
-		Basis().scaled(Vector3(scale, PIECE_HEIGHT * PIECE, scale)),
-		Vector3(_slot_x(i), 0.0, -RECEDE * float(i))
+		Basis().scaled(Vector3(PIECE, COIN_THICKNESS * PIECE, PIECE)),
+		Vector3(0.0, from_top * step - centre, 0.0)
 	)
 
 
-## Where the arrow on piece [param i] floats, and how big. Sat on the piece's top
-## face, like a cell modifier sits on its tile.
+## Where the arrow floats, and how big. Sat on the top coin's face, like a cell
+## modifier sits on its tile.
+##
+## Only the top coin carries one. The faces underneath are buried, and the arrows
+## do not depth-test — a buried arrow would draw straight through the coin on top
+## of it, which is the one thing that would make a pile unreadable.
 func arrow_transform(i: int) -> Transform3D:
 	var t: Transform3D = piece_transform(i)
 	var radius: float = t.basis.get_scale().x * ARROW_RATIO
@@ -115,8 +140,9 @@ func arrow_custom(i: int) -> Color:
 	return Color(float(ARROW_GLYPH), 0.0, -BoardCamera.screen_angle(delta, _yaw), 0.0)
 
 
-## The soonest tile reads as live and the rest as waiting — the same distinction
-## the text HUD made with its NOW and NEXT captions, in ink rather than in words.
+## The top coin reads as live and the rims below it as waiting — the same
+## distinction the text HUD made with its NOW and NEXT captions, in ink rather than
+## in words.
 func piece_tint(i: int) -> Color:
 	return palette.path_core if i == 0 else palette.cell_empty_fill.lerp(
 		palette.cell_candidate_stroke, 0.55)
@@ -138,11 +164,6 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 		set_flat(bool(value))
 
 
-func _slot_x(i: int) -> float:
-	# Centred on the control, so a stack of one is not off to the left.
-	return (float(i) - float(maxi(slots, 1) - 1) * 0.5) * SPREAD * 2.0 * 0.5
-
-
 func _rebuild() -> void:
 	if pieces == null:
 		return
@@ -151,11 +172,13 @@ func _rebuild() -> void:
 		pieces.multimesh.set_instance_transform(i, piece_transform(i))
 		pieces.multimesh.set_instance_color(i, piece_tint(i))
 		pieces.multimesh.set_instance_custom_data(i, Color(0.0, 0.0, 0.0, 0.0))
-		arrows.multimesh.set_instance_transform(i, arrow_transform(i))
-		arrows.multimesh.set_instance_color(i, arrow_tint(i))
-		arrows.multimesh.set_instance_custom_data(i, arrow_custom(i))
+	if live > 0:
+		arrows.multimesh.set_instance_transform(0, arrow_transform(0))
+		arrows.multimesh.set_instance_color(0, arrow_tint(0))
+		arrows.multimesh.set_instance_custom_data(0, arrow_custom(0))
 	pieces.multimesh.visible_instance_count = live
-	arrows.multimesh.visible_instance_count = live
+	# One arrow, on the coin you can actually see the face of.
+	arrows.multimesh.visible_instance_count = mini(live, 1)
 
 
 func _ensure_nodes() -> void:
@@ -171,7 +194,7 @@ func _ensure_nodes() -> void:
 	camera.name = "StackCamera"
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.keep_aspect = Camera3D.KEEP_HEIGHT
-	camera.size = FRAME
+	camera.size = frame_height()
 	camera.near = 1.0
 	camera.far = BoardCamera.DISTANCE * 2.0
 	# The board's own elevation, at the board's own opening yaw: a piece here and
