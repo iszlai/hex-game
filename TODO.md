@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 316 tests / 14,618 asserts green in ~67 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 427 tests / 15,167 asserts green in ~78 s, 60 frozen
 level files re-verified.
 
 ---
@@ -23,20 +23,27 @@ level files re-verified.
 | M2 | Generator & solver | ✅ done | — |
 | M3 | Grey-box playable | ✅ done | — |
 | M4 | Input & Deck | ✅ done | — |
-| M5 | Persistence & settings | 🟨 services + resume | suspend/resume; settings and pause screens |
-| M6 | Campaign data | 🟨 data only | level select, chapter unlocks, results screen |
+| M5 | Persistence & settings | ✅ done | — |
+| M6 | Campaign data | ✅ done | — |
 | M7 | Art & feel | 🟨 board + rail | greyscale under lighting, fonts, all §14 animation, all §15 audio |
 | M8 | Tutorial | ⬜ not started | T1–T12 data-driven, naive playtest |
-| M9 | Modes & Steam | 🟨 logic only | mode screens, GodotSteam, leaderboards |
+| M9 | Modes & Steam | 🟨 screens done | GodotSteam, achievements, leaderboards |
 | M10 | Accessibility & i18n | ⬜ not started | palettes, text scale, Reduce Motion, extraction |
 | M11 | Release | ⬜ not started | Deck self-audit, three platform builds, depots |
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** §12.3's real HUD proportions, then §14's animation timings (M7). The board is done and
-greyscale-clean, the palette is enforced by grep, and the type is on its §13.4 roles. What is still
-M3's is the *layout* the type sits in: the rail is a stack of six full-width buttons rather than
-§12.3's four action rows, and it only fits because the key hints were moved into the legend.
+**Next up:** M7's remaining art — §12.3's real HUD proportions, §13.5's icon atlas, and the §14.1
+rows that were waiting for a layout to sit in (queue advance, auto-discard arc, results stars). Then
+M8's tutorial, which is the last thing standing between the game and a first-time player.
+
+**Every screen §12.1 draws now exists**, and the map is walkable end to end: boot → main menu →
+level select → level → results → next level, with pause over the board and settings reachable from
+either side of it. `tests/e2e/test_campaign_chain.gd` follows the *director* rather than a script —
+whatever `GameDirector.screen` becomes is what gets instantiated — so a screen that navigates
+somewhere §12.1 does not go fails there rather than in front of a player. What is still M3's is the
+level screen's *layout*: the rail is a stack of six full-width buttons rather than §12.3's four
+action rows, and it only fits because the key hints were moved into the legend.
 
 > **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
 > **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a
@@ -152,9 +159,10 @@ Deferred, deliberately:
 - Rebinding writes to `settings.custom_bindings`, which the table is shaped for but nothing reads yet
   (M5, with the Controls tab).
 
-## M5 — Persistence & settings 🟨
+## M5 — Persistence & settings ✅
 
-Exit: persistence `@e2e` scenarios pass, including corrupted-save recovery and suspend/resume identity.
+Exit: persistence `@e2e` scenarios pass, including corrupted-save recovery and suspend/resume
+identity. **Met** — `tests/e2e/test_persistence.gd`, `tests/unit/test_resume.gd`.
 
 - [x] `save_service.gd` — atomic write, migration, corruption recovery with backup
 - [x] `settings_service.gd` — defaults and typed access
@@ -201,13 +209,25 @@ Exit: persistence `@e2e` scenarios pass, including corrupted-save recovery and s
       the same guarantee by a different route, and moving focus off the row disarms it.
       `modal_up`/`modal_down` are new in the binding table: §12.5's "exactly one focused element in
       `Menu`/`Modal`" is unreachable in a set with no way to change which one
-- [ ] Steam overlay opening auto-pauses gameplay (§12.5)
-- [ ] `@e2e`: corrupted save reaches the menu with defaults and notifies once; suspend/resume
-      identity; progress survives a quit from three different screens
+- [x] Steam overlay opening auto-pauses gameplay (§12.5) — `SteamService.overlay_toggled`, which
+      [GameDirector] turns into a pause. Emitting it is a public call rather than only a relay of
+      GodotSteam's own signal, because the requirement is testable *now* and the GDExtension is M9:
+      what breaks is the wiring, and it breaks identically whether the overlay was real. Closing the
+      overlay deliberately does **not** unpause — the player was taken out of the game by something
+      that was not the game, and dropping them back onto a live board is how a move gets made by
+      somebody reading a chat message
+- [x] `@e2e`: corrupted save reaches the menu with defaults and notifies once; suspend/resume
+      identity; progress survives a quit from three different screens — `test_persistence.gd`, and
+      the three exits are three different chances to lose a run: `suspend()`, Quit to map from the
+      pause modal, and the window close notification. §18.4's newer-schema quarantine is asserted in
+      the same file. `load_from_disk` stopped using `JSON.parse_string` while writing it: that call
+      pushes an engine error on bad input, and an error the code deliberately recovers from is an
+      error nobody looks at twice
 
-## M6 — Campaign data 🟨
+## M6 — Campaign data ✅
 
-Exit: every level file validates and reproduces its par; the whole campaign is playable start to finish.
+Exit: every level file validates and reproduces its par; the whole campaign is playable start to
+finish. **Met** — `tests/property/test_level_files.gd`, `tests/e2e/test_campaign_chain.gd`.
 
 - [x] 60 generated, verified, frozen level files under `src/data/levels/chapter_N/`
 - [x] `tools/author_levels.gd` sweeps seeds per slot against the chapter's par band
@@ -263,7 +283,15 @@ Exit: every level file validates and reproduces its par; the whole campaign is p
 - [x] Hint-used dot on the star display (§12.6) — beside the pips rather than among them, so it can
       never be miscounted as a star, and on the level-select cell too. It marks the *level*, not the
       attempt: `SaveService.record_completion` ORs it in, so a later clean run does not erase it
-- [ ] `@e2e`: campaign playable boot → credits; completion recorded and progression advances (closes B6)
+- [x] `@e2e`: campaign playable boot → credits; completion recorded and progression advances
+      (closes B6) — `tests/e2e/test_campaign_chain.gd`. It exists for the *seams*, since every
+      screen already has its own test: it follows the **director** rather than a script, so whatever
+      `GameDirector.screen` becomes is what gets instantiated, and a screen that navigates somewhere
+      §12.1 does not go fails there rather than in front of a player. B6 was "progress never
+      persisted, so the campaign could not advance"; that is the last two assertions, stated as a
+      requirement. There is no credits screen to reach — §12.1 does not draw one and §12.2 does not
+      list one, so "boot → credits" is read as its actual content: a cold boot reaches a playable
+      campaign, and finishing a level moves it on
 
 ## M7 — Art & feel 🟨
 

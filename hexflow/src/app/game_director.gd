@@ -65,6 +65,13 @@ func _ready() -> void:
 	# scale rebuilds it, which is why it is a call and not a `.tres`.
 	apply_typography()
 	SettingsService.changed.connect(_on_setting_changed)
+	# §12.5: opening the Steam overlay pauses gameplay. Closing it deliberately
+	# does *not* unpause — the player was taken out of the game by something that
+	# was not the game, and putting them straight back on a live board is how a
+	# move gets made by somebody who was reading a chat message.
+	SteamService.overlay_toggled.connect(func(active: bool) -> void:
+		if active:
+			pause())
 	EventBus.place_requested.connect(_on_place_requested)
 	EventBus.wild_place_requested.connect(_on_wild_place_requested)
 	EventBus.discard_requested.connect(_on_discard_requested)

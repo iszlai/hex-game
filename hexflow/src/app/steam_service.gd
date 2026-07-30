@@ -6,11 +6,26 @@ extends Node
 ## every call mirrors locally, which is exactly the code path §23.1 requires when
 ## a real player launches outside Steam.
 
+## §12.5: "Opening the Steam overlay must pause gameplay automatically." The
+## overlay is a Steam *fact*, so it arrives here and [GameDirector] decides what
+## it means — the same direction every other fact travels (§16.2).
+##
+## Emitting it is a public call rather than only a poll of GodotSteam's own
+## signal, because the requirement is testable now and the GDExtension is M9: the
+## wiring is what breaks, and it breaks the same way whether the overlay was real.
+signal overlay_toggled(active: bool)
+
 var available: bool = false
 
 
 func _ready() -> void:
 	available = Engine.has_singleton("Steam")
+	# M9, once GodotSteam links: Steam.overlay_toggled.connect(notify_overlay)
+
+
+## Reports that the Steam overlay opened or closed.
+func notify_overlay(active: bool) -> void:
+	overlay_toggled.emit(active)
 
 
 ## Achievements are mirrored into the save so they unlock correctly offline and

@@ -130,11 +130,14 @@ func load_from_disk() -> void:
 	if not FileAccess.file_exists(PATH):
 		return
 	var text := FileAccess.get_file_as_string(PATH)
-	var parsed: Variant = JSON.parse_string(text)
-	if not (parsed is Dictionary):
+	# `JSON.parse_string` pushes an engine error on bad input. A corrupt save is a
+	# case §18.5 *handles*, so it should not also shout — an error in the log that
+	# the code deliberately recovers from is an error nobody looks at twice.
+	var json := JSON.new()
+	if json.parse(text) != OK or not (json.data is Dictionary):
 		_quarantine("corrupt")
 		return
-	var loaded: Dictionary = parsed
+	var loaded: Dictionary = json.data
 	var schema: int = int(loaded.get("schema", 0))
 	if schema > SCHEMA:
 		# Never silently overwrite a newer save (§18.4).
