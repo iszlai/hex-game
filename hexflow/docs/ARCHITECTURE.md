@@ -355,6 +355,14 @@ yourself is refused with a warning; set the container's `size` and the child fol
 That is what keeps container coordinates and viewport coordinates the same numbers — and note that
 this node type is a `Control`, so the full-rect pointer-eating gotcha above applies to it too.
 
+**A `Tween`'s first step lands on the *next* idle frame.** `create_tween()` followed by
+`tween_method(f, a, b, t)` does not call `f(a)` — nothing happens until the frame after. Every
+animation on the board hit this: a connector drew at full length for one frame before snapping back
+to grow, a goal spent a frame at its ordinary size before flourishing, and the flow pulse spent one
+frame parked wherever the *previous* pulse had left it. Set the starting value yourself, immediately,
+then tween from it. It also makes the animation testable without waiting on the frame clock, which is
+how all four were found.
+
 **`assert()` only fires in debug builds.** Loader validation uses `assert` *and* `push_error`, so
 debug fails loudly and release skips the level and logs — one bad file can never brick a player's
 campaign.

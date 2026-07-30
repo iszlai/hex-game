@@ -56,6 +56,8 @@ var yaw_step: int = 0
 
 var _yaw: float = 0.0
 var _tween: Tween = null
+var _shake: float = 0.0
+var _shaken: bool = false
 
 
 func _ready() -> void:
@@ -192,6 +194,46 @@ static func screen_angle(plane_delta: Vector3, yaw: float) -> float:
 	return Vector2(plane_delta.dot(b.x), -plane_delta.dot(b.y)).angle()
 
 
+## §14.3's entire allowance for camera motion the player did not ask for: 2 px,
+## 120 ms, **once per level completion, nowhere else**. The budget is a maximum
+## rather than a target, and the "nowhere else" is enforced here rather than trusted
+## to callers — a second request inside the same level is ignored.
+##
+## One world unit is one pixel under this camera (§4.4 via C-21), so the offset is
+## literally the spec's 2 px.
+func shake_once() -> bool:
+	if _shaken or SettingsService.reduce_motion():
+		return false
+	_shaken = true
+	# At full amplitude now: a tween's first step lands on the next idle frame, and
+	# a shake that began a frame after the burst it belongs to is a second event.
+	_set_shake(Motion.SHAKE_PIXELS)
+	var seconds: float = float(Motion.SHAKE_MS) / 1000.0
+	if SettingsService.reduce_motion():
+		seconds *= Motion.REDUCE_MOTION_SCALE
+	var tween := create_tween()
+	tween.tween_method(_set_shake, Motion.SHAKE_PIXELS, 0.0, seconds) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func() -> void: _set_shake(0.0))
+	return true
+
+
+## Clears the once-per-level budget. Called when a level is bound, which is the
+## only thing that makes a completion a *new* completion.
+func reset_shake() -> void:
+	_shaken = false
+	_set_shake(0.0)
+
+
+func shake_amount() -> float:
+	return _shake
+
+
+func _set_shake(pixels: float) -> void:
+	_shake = clampf(pixels, 0.0, Motion.SHAKE_PIXELS)
+	_apply_yaw()
+
+
 func is_rotating() -> bool:
 	return _tween != null and _tween.is_running()
 
@@ -235,3 +277,9 @@ func _on_rotation_finished() -> void:
 
 func _apply_yaw() -> void:
 	transform = transform_at(_yaw)
+	if _shake > 0.0:
+		# Along the camera's own axes, so the board slides on screen rather than
+		# swinging through the world. Two oscillations inside the 120 ms.
+		var phase: float = _shake / maxf(Motion.SHAKE_PIXELS, 0.001) * TAU * 2.0
+		transform.origin += transform.basis.x * sin(phase) * _shake \
+			+ transform.basis.y * cos(phase) * _shake * 0.5

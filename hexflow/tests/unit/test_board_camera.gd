@@ -250,6 +250,52 @@ func _assert_board_fits(radius: int, layout: HexLayout, label: String,
 		"%s: tallest reach is %s" % [label, worst_at])
 
 
+## §14.3 gives the camera one piece of motion the player did not ask for, and
+## states its budget three ways: 2 px maximum, 120 ms, once per level completion —
+## "nowhere else". The last of those is the one worth enforcing in code, because it
+## is the one a future caller would breach without noticing.
+func test_the_shake_is_two_pixels_and_only_ever_once() -> void:
+	var camera := BoardCamera.new()
+	add_child_autofree(camera)
+	camera.frame_play_area(Vector2(880.0, 688.0))
+
+	assert_eq(camera.shake_amount(), 0.0, "still until a level is completed")
+	assert_true(camera.shake_once(), "the one completion shakes")
+	assert_lte(camera.shake_amount(), Motion.SHAKE_PIXELS, "§14.3's 2 px is a maximum")
+	assert_gt(camera.shake_amount(), 0.0, "and it did move")
+
+	assert_false(camera.shake_once(), "a second completion in the same level must not")
+	camera.reset_shake()
+	assert_true(camera.shake_once(), "but the next level may")
+
+
+## It moves the board on screen rather than swinging the camera through the world:
+## the offset is along the camera's own axes, so the view slides and the board does
+## not rotate under it.
+func test_the_shake_slides_the_view_without_turning_it() -> void:
+	var camera := BoardCamera.new()
+	add_child_autofree(camera)
+	var steady := camera.transform
+	camera.shake_once()
+	assert_ne(camera.transform.origin, steady.origin, "the view moved")
+	assert_almost_eq(camera.transform.basis.x.dot(steady.basis.x), 1.0, 0.0001,
+		"but not by turning")
+	# Two pixels of a two-thousand-unit camera distance, so the offset stays tiny.
+	assert_lt(camera.transform.origin.distance_to(steady.origin),
+		Motion.SHAKE_PIXELS * 2.0, "and only by the budget")
+
+
+## §14.5: no shake at all. Not a smaller one.
+func test_reduce_motion_removes_the_shake_entirely() -> void:
+	SettingsService.set_value("reduce_motion", true)
+	var camera := BoardCamera.new()
+	add_child_autofree(camera)
+	assert_false(camera.shake_once(), "§14.5 names shake first among what it removes")
+	assert_eq(camera.shake_amount(), 0.0)
+	SettingsService.set_value("reduce_motion", false)
+
+
+
 func _extent_at(layout: HexLayout, radius: int, yaw: float) -> Vector2:
 	var b: Basis = BoardCamera.basis_at(yaw)
 	var half := Vector2.ZERO

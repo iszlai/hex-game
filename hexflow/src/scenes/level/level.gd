@@ -463,6 +463,8 @@ func _on_illegal(_cell: Vector3i) -> void:
 
 
 func _on_level_won(placements: int, par: int, stars: int) -> void:
+	# §14.3's whole allowance for camera motion nobody asked for, spent here.
+	board_view.play_completion()
 	_flash_banner("Complete — %d placements, par %d, %s" % [
 		placements, par, "★".repeat(stars) + "☆".repeat(Scoring.MAX_STARS - stars)
 	])

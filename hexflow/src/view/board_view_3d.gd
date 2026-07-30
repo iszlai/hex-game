@@ -83,6 +83,8 @@ func bind(state: GameState, play_area: Vector2) -> void:
 	links.bind(state, layout, tiles)
 	marks.bind(state, layout, tiles)
 	particles.bind(layout)
+	# A new level is a new completion, so §14.3's once-per-level budget resets here.
+	camera.reset_shake()
 	_recompute_positions(camera.yaw_radians())
 
 
@@ -159,6 +161,13 @@ func play_goal_reached(cell: Vector3i) -> void:
 	sequence.tween_callback(func() -> void: tiles.ripple_from(cell))
 	sequence.tween_interval(Motion.beat_seconds("flow") - Motion.beat_seconds("ripple"))
 	sequence.tween_callback(func() -> void: play_flow_pulse(Motion.GOAL_FLOW_SPEEDUP))
+
+
+## §14.3, on the one event it is budgeted for. Returns whether it actually shook,
+## because "once per level completion, nowhere else" is a claim worth being able to
+## check rather than assume.
+func play_completion() -> bool:
+	return camera.shake_once()
 
 
 func set_candidates(targets: Array[Vector3i]) -> void:
