@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 294 tests / 14,510 asserts green in ~65 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 301 tests / 14,534 asserts green in ~66 s, 60 frozen
 level files re-verified.
 
 ---
@@ -369,8 +369,17 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
 - [ ] All 16 SFX (§15.2); `place.note` pentatonic ascent, resets per level, steps **down** on undo
       — `AudioDirector` already keeps the index, playback is what is missing
 - [ ] Buses and sliders, −16 LUFS / −1 dBTP, `place.*` voice cap 4 (§15.3)
-- [ ] Renderer measured Forward+ vs Mobile for the Deck export, result documented (C-3) — now with 3D
-      shadows in the measurement, and no longer deferrable (C-18)
+- [ ] Renderer measured Forward+ vs Mobile for the Deck export, result documented (C-3) — **harness
+      built, partly measured, not decided**. `make measure METHOD=…` and `tools/measure_renderer.gd`.
+      Three findings, recorded on C-3 in Appendix C. The project has been running **`gl_compatibility`**
+      since M0 — neither of the two renderers C-3 asks about — so the whole C-18 board was authored
+      under a third one. All three compile every shader in `src/view/shaders/` and draw the board
+      correctly, which was the export-time failure worth finding early. And §20's budgets already
+      bite: Mobile draws **42** calls against a limit of 40, Forward+ sits at 100 MB video memory
+      against a ceiling of 100, on a board that has no HUD art on it yet.
+      **Blocked on hardware:** macOS/Metal ignores the vsync disable, so both RenderingDevice
+      backends come back pinned to the panel's 8.33 ms and their frame *cost* is unmeasured. Needs a
+      Deck, or a Linux box where vsync can actually be turned off
 
 ## M8 — Tutorial ⬜
 
@@ -395,8 +404,13 @@ Exit: mode `@e2e` scenarios pass, including the Steam-unavailable path.
 - [ ] GodotSteam GDExtension linked, matched to the pinned engine (§16.1, C-2)
 - [ ] Achievements; `endless_best_goals` and rolling daily leaderboards
 - [ ] Steam Auto-Cloud for saves (no code)
-- [ ] `@e2e`: Endless escalates and ends on a dead board; two clients generate an identical daily;
-      **Steam unavailable never blocks play** and achievements queue locally
+- [x] `@e2e`: Endless escalates and ends on a dead board; two clients generate an identical daily;
+      **Steam unavailable never blocks play** and achievements queue locally — `tests/e2e/test_modes.gd`.
+      All three were logic that had existed since M9's first commit and had never been played end to
+      end. The Steam one is easiest to pin *now*, while there is no Steam API in the build at all:
+      every mode plays with `available` false, achievements queue as a set rather than a log so a
+      later handover cannot replay them, and a leaderboard submission with nobody listening is a
+      no-op rather than an error
 
 ## M10 — Accessibility & i18n ⬜
 
