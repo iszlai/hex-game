@@ -184,7 +184,7 @@ Exit: every level file validates and reproduces its par; the whole campaign is p
 - [ ] Hint-used dot on the star display (§12.6)
 - [ ] `@e2e`: campaign playable boot → credits; completion recorded and progression advances (closes B6)
 
-## M7 — Art & feel ⬜
+## M7 — Art & feel 🟨
 
 Exit: every §12.4 feedback requirement met against the grey-box; §20 frame budget met at 1280×800.
 
@@ -203,10 +203,8 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       numbers C-18 left open are now **C-21**: 55° elevation, a 260 ms `CUBIC EASE_IN_OUT` yaw that
       Reduce Motion scales, and a fit swept *across* the rotation rather than evaluated at the six
       stops, because the yaws in between bulge and would clip the board mid-turn. `s` = 82 / 59 / 46
-      for radius 2 / 3 / 4 against the head-on 74 / 53 / 42. **Not in `level.tscn` yet**: a camera
-      with no meshes to render would black out the grey-box, so the scene wiring lands with the
-      `MultiMeshInstance3D` below. What is demonstrated is the camera itself —
-      `tests/unit/test_board_camera.gd`, including that "clockwise" is clockwise *on screen*
+      for radius 2 / 3 / 4 against the head-on 74 / 53 / 42. `tests/unit/test_board_camera.gd`
+      pins all of it, including that "clockwise" is clockwise *on screen*
 - [x] Pointer hit-test as camera ray ∩ `y = 0`, then the existing `HexLayout.from_pixel` — B7's fix
       must survive the move to 3D — `BoardCamera.plane_point` into `HexLayout.from_plane`, which
       shares `from_pixel`'s rounding rather than forking it. Every cell round-trips from its own
