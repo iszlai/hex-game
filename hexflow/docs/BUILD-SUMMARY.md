@@ -1,58 +1,38 @@
 # Hexflow build summary
 
-What exists, what does not, and what was learned building it. Written 2026-07-30.
+What was learned building this: the specification defects the build exposed, how the 2016
+prototype's defects were closed, and the guardrails that keep them closed. Written 2026-07-30.
+
+**This document does not track progress.** [`../../TODO.md`](../../TODO.md) is the single source of
+truth for what is done and what is not — milestone by milestone, ticked against the spec's exit
+criteria. Nothing here should restate it.
 
 Companion documents: [`ARCHITECTURE.md`](ARCHITECTURE.md) for the codebase tour,
 [`../../HEXFLOW-SPEC.md`](../../HEXFLOW-SPEC.md) for the authoritative design.
 
 ---
 
-## 1. Scope delivered
+## 1. What is playable right now
 
-The specification defines twelve milestones for a commercial release. This build covers the first
-four plus the data half of the sixth, following the spec's **non-negotiable build order**: the pure
-logic core and its tests exist before any rendering, because the 2016 prototype died from the
-opposite approach.
+`make run` boots into a campaign level from the frozen data and gives a complete core loop on the
+keyboard: cursor navigation with snap-to-candidate, bumper-style cycling, placement, undo, discard,
+restart, wild spend, and a working hint that replays the solver from the live position.
 
-| Milestone | State | Exit criterion |
-|---|---|---|
-| **M0** Skeleton | done | Godot 4.7.1 pinned, §16.4 layout, six autoload stubs, GUT wired, CI running headless |
-| **M1** Logic core | done | Every `@core` scenario of §24.2 passes headlessly; banned-API grep clean; zero engine imports in `src/core/` |
-| **M2** Generator & solver | done | `@property` sweep green; solver returns par on all fixture levels |
-| **M3** Grey-box playable | done | A radius-3 level is completable with a keyboard; win and dead states reachable |
-| **M6** Campaign data | half | 60 levels generated, verified and frozen. Level-select map and chapter unlocks not built |
-| M4, M5, M7–M11 | not started | — |
-
-### Numbers
-
-| | |
-|---|---|
-| Tests | 76, all green |
-| Assertions | 11,092 |
-| Suite runtime | ~50 s (`@core` ~2 s, `@property` ~45 s, `@e2e` ~3 s) |
-| Campaign levels | 60, each solver-verified and re-verified on every push |
-| Core modules | 11, all headless-testable, zero engine dependencies |
-
----
-
-## 2. What is playable right now
-
-`make run` boots to chapter 1 level 1 from the frozen campaign data and gives a complete core
-loop on the keyboard: cursor navigation with snap-to-candidate, bumper-style cycling, placement,
-undo, discard, restart, wild spend, and a working hint that replays the solver from the live
-position.
-
-The board renders as untextured hexes: pointy-top layout with start bottom-left and goal top-right
-exactly as the 2016 prototype laid them out, the path growing as one continuous shape with a
-depth gradient, walls hatched at 45°, goals ringed, portals double-ringed, gates and wilds
-glyphed. Every modifier is identified by glyph *and* shape *and* colour, never colour alone.
+The board renders as untextured hexes — the **grey-box**. Pointy-top layout with start bottom-left
+and goal top-right exactly as the 2016 prototype laid them out, the path growing as one continuous
+shape with a depth gradient, walls hatched at 45°, goals ringed, portals double-ringed, gates and
+wilds glyphed. Every modifier is identified by glyph *and* shape *and* colour, never colour alone.
 
 Win, dead-state and auto-discard all surface in the banner. A dead board offers undo and restart —
 campaign has no failure state.
 
+This exists in this order on purpose. The spec's build order is **non-negotiable**: the pure logic
+core and its tests come before any rendering, because the 2016 prototype died from the opposite
+approach.
+
 ---
 
-## 3. Two defects in the specification
+## 2. Two defects in the specification
 
 Both were found by the property sweep rather than by reading the spec, which is the argument for
 that sweep existing. Both are logged in Appendix C and fixed in the implementation.
@@ -96,7 +76,7 @@ silently.
 
 ---
 
-## 4. How the prototype's defects were closed
+## 3. How the prototype's defects were closed
 
 Appendix B catalogues twelve real bugs in the 2016 code. They are the traps a re-implementation
 falls into, so each one is worth checking against.
@@ -118,7 +98,7 @@ falls into, so each one is worth checking against.
 
 ---
 
-## 5. Guardrails
+## 4. Guardrails
 
 `make gate` is what CI runs. It fails a push on any of:
 
@@ -134,41 +114,11 @@ The gate was verified to actually bite by introducing a `randi()` call into `sco
 watching it go red.
 
 Not yet enforced: the §22 string-literal check is scaffolded but skips until `assets/i18n/en.csv`
-exists, since UI strings are still literals pending M10.
+exists, since UI strings are still literals pending the M10 string extraction.
 
 ---
 
-## 6. What is deliberately not built
-
-| Area | Milestone | Note |
-|---|---|---|
-| Gamepad and touch input, haptics, glyph atlas, Steam Input action sets | M4 | `InputRouter` already implements snap and free cursor modes and clockwise cycling; only the device bindings are missing |
-| Settings screens, suspend/resume wiring | M5 | `SaveService` and `SettingsService` exist with atomic writes, migration and corruption recovery; no UI |
-| Level-select hex-flower map, chapter unlocks | M6 | The 60 level files exist and load |
-| Shaders, palette swaps, typography, all §14 animation, all §15 audio | M7 | `BoardView._draw` is the grey-box that M7 replaces; the seam is the `_draw` body only |
-| Tutorial beats T1–T12 | M8 | Must be data-driven from `src/data/tutorial.json`, not hardcoded |
-| Endless and Daily screens, achievements, leaderboards, cloud | M9 | The *logic* for both modes exists and is tested; neither has a screen |
-| Alternate palettes, text scaling, Reduce Motion, i18n extraction | M10 | The palette resource indirection is already in place for the swap |
-| Deck self-audit, store page, depots | M11 | — |
-
-`assets/` is an empty directory tree. No fonts, SFX or music are vendored. §13.4 requires SIL-OFL
-fonts embedded in the project before M7.
-
----
-
-## 7. Suggested next step
-
-**M4, input and Deck.** It is the highest-value increment: the game is already fully playable, so
-making it playable on a controller turns a grey-box into something that can be handed to a person
-to try. `InputRouter` is written and tested for the hard part — directional input over a hex
-lattice — so M4 is mostly bindings, an action-set switch, a glyph atlas and haptics.
-
-M7 should stay where the spec puts it, after content. Polishing a game whose levels do not exist
-wastes the polish.
-
----
-
-## 8. Repository layout note
+## 5. Repository layout note
 
 The 2016 libGDX prototype still occupies the repository root and is preserved on the
 `legacy/libgdx-2016` branch. Once `hexflow/` no longer needs the old sources as reference — chiefly

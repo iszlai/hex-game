@@ -338,18 +338,16 @@ code change, and that only works if every colour is read from the resource.
 
 ---
 
-## 11. Where the project actually is
-
-`M0`–`M3` done, plus the data half of `M6` — 60 verified campaign levels exist as frozen files.
+## 11. The grey-box seam
 
 The board renders as untextured hexes drawn in `_draw`. That is the **grey-box**, and it is
 deliberate: M7 replaces the body of `BoardView._draw` with a single `MultiMeshInstance2D` and the
 SDF shader of §13.3, and everything above that line stays put. The grey-box must keep working
 through M7 — if an art change breaks the grey-box tests, the art change is wrong.
 
-Not built: gamepad and touch input (M4), settings and suspend/resume (M5), the level-select map and
-chapter unlocks (rest of M6), art, animation and audio (M7), tutorial (M8), mode screens and
-Steamworks (M9), accessibility and i18n (M10), release (M11). `assets/` is an empty tree — no
-fonts, SFX or music are vendored, and UI strings are still literals pending the M10 extraction.
+The same shape holds for the screens that do not exist yet. `GameDirector.SCENES` already names all
+seven, and `go_to()` no-ops on the ones that do not resolve, so adding a screen is a scene file plus
+a row — never a change to how screens are switched.
 
-Current status and history: [`BUILD-SUMMARY.md`](BUILD-SUMMARY.md).
+**What is built and what is not:** [`../../TODO.md`](../../TODO.md), which is the single source of
+truth for project status. Why things are the way they are: [`BUILD-SUMMARY.md`](BUILD-SUMMARY.md).

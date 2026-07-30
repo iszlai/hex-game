@@ -16,8 +16,10 @@ make           # list every target
 | Document | What it is for |
 |---|---|
 | [`hexflow/docs/ARCHITECTURE.md`](hexflow/docs/ARCHITECTURE.md) | **Start here if you are new.** Codebase tour, layering rules, data flow, gotchas |
+| [`TODO.md`](TODO.md) | Progress tracker — every milestone, ticked against its exit criteria |
 | [`hexflow/docs/BUILD-SUMMARY.md`](hexflow/docs/BUILD-SUMMARY.md) | What is built, what is not, what was learned |
 | [`HEXFLOW-SPEC.md`](HEXFLOW-SPEC.md) | The authoritative design and build specification |
+| [`CLAUDE.md`](CLAUDE.md) | Working rules for agents, including the `TODO.md` sync obligation |
 | [`hexflow/README.md`](hexflow/README.md) | Pinned versions and the raw commands behind the Makefile |
 
 ## The 2016 prototype — being retired
