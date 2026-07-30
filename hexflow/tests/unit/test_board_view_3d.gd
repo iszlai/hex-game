@@ -197,6 +197,32 @@ func test_a_second_placement_restarts_the_pulse() -> void:
 	assert_eq(_view.flow_head(), 0.0, "back to the start")
 
 
+## §14.2's sequence, in the order the spec lays it out. The beats are checked by
+## what they *do* rather than by watching a clock: the flourish is immediate, the
+## ripple has not left yet at t=0, and both have happened by the time the flow beat
+## is due.
+func test_the_goal_sequence_runs_its_beats_in_order() -> void:
+	var goal: Vector3i = _state.board.start
+	assert_eq(_view.tiles.ripple_time(), -1.0, "no wave before the goal")
+
+	_view.play_goal_reached(goal)
+	assert_ne(_view.tiles.pop_scale(goal), 1.0, "the goal cell flourishes at once (t=0)")
+	assert_eq(_view.tiles.ripple_time(), -1.0, "and the wave waits its turn (t=120)")
+
+	# The wave outlives its own beat by half a second, so this is the one assertion
+	# in the sequence that does not race the frame clock.
+	await wait_seconds(Motion.beat_seconds("flow") + 0.05)
+	assert_gte(_view.tiles.ripple_time(), 0.0, "the wave has left by the flow beat")
+
+
+## §14.2 runs that pulse at 2x, which is the difference between the sequence
+## reading as one event and as three that happen to overlap.
+func test_the_goal_pulse_runs_at_double_speed() -> void:
+	_view.play_flow_pulse(Motion.GOAL_FLOW_SPEEDUP)
+	await wait_seconds(Motion.seconds("flow_pulse") / 2.0 + 0.15)
+	assert_eq(_view.flow_head(), -1.0, "a 2x pulse is over in half the time")
+
+
 ## A `Control` that swallows pointer events in the GUI pass is precisely how B7 hid
 ## for all of M3. This node sits over the whole play area, so it must never do it.
 func test_the_container_does_not_swallow_pointer_input() -> void:

@@ -74,11 +74,22 @@ const float FLOW_GAIN = 0.5;
 
 uniform float flow_head = -1.0;
 
+// §14.1's board ripple: a radial brightness wave leaving a goal, each cell lit
+// `RIPPLE_PER_CELL` seconds later than the one inside it. `ripple_time` is seconds
+// since the wave left, negative when none is running; the per-instance distance
+// travels in the custom data's last free channel.
+const float RIPPLE_WINDOW = 0.20;
+const float RIPPLE_GAIN = 0.55;
+
+uniform float ripple_time = -1.0;
+uniform float ripple_step = 0.028;
+
 
 varying vec3 tint;
 varying float cursor;
 varying flat float kind;
 varying flat float depth_along;
+varying flat float ripple_distance;
 varying vec3 world;
 varying flat float tile_width;
 
@@ -87,6 +98,7 @@ void vertex() {
 	cursor = INSTANCE_CUSTOM.g;
 	kind = INSTANCE_CUSTOM.r;
 	depth_along = INSTANCE_CUSTOM.b;
+	ripple_distance = INSTANCE_CUSTOM.a;
 	// Board space, not view space: the hatch is painted on the tile, so it turns
 	// with the board instead of swimming across it as the camera yaws.
 	world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -127,6 +139,16 @@ void fragment() {
 	if (flow_head >= 0.0 && (k == KIND_PATH || k == KIND_START)) {
 		float band = 1.0 - smoothstep(0.0, FLOW_WIDTH, abs(depth_along - flow_head));
 		base += tint * band * FLOW_GAIN;
+	}
+
+	// The wave, on every cell rather than only the path: §14.1 calls it a board
+	// ripple, and a board that did not answer would leave the goal shouting alone.
+	if (ripple_time >= 0.0) {
+		float local = ripple_time - ripple_distance * ripple_step;
+		if (local > 0.0 && local < RIPPLE_WINDOW) {
+			float wave = sin(local / RIPPLE_WINDOW * PI);
+			base += tint * wave * RIPPLE_GAIN;
+		}
 	}
 
 	// A side is its tile's own colour, darkened and then pulled toward the board's

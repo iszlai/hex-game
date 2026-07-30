@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 259 tests / 14,329 asserts green in ~62 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 267 tests / 14,390 asserts green in ~63 s, 60 frozen
 level files re-verified.
 
 ---
@@ -323,11 +323,18 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       **Wired so far:** candidate breathing and the goal pulse, both in the shader off `TIME` so
       every candidate breathes in phase for free; the placement pop and the connector draw, both as
       one tween writing one instance for a fifth of a second; the flow pulse, one band crossing the
-      tiles *and* the stroke lying on them off a single uniform. Still to do: queue advance,
-      auto-discard arc, illegal shake, board ripple, screen transition, results stars and dead-state
-      desaturate — several of which are rail or screen animations and want §12.3's real layout under
-      them first
-- [ ] Goal-reached sequence §14.2; camera limited to §14.3 (2 px shake, once per completion)
+      tiles *and* the stroke lying on them off a single uniform; and the board ripple, whose per-cell
+      delay rides a distance written once into the instance data so a wave over sixty-one cells is
+      still one tween and one number. Still to do: queue advance, auto-discard arc, illegal shake,
+      screen transition, results stars and dead-state desaturate — all of them rail or screen
+      animations that want §12.3's real layout under them first
+- [ ] Goal-reached sequence §14.2; camera limited to §14.3 (2 px shake, once per completion) —
+      **four of the six beats run**: the goal cell flourishes 1.0 → 1.25 → 1.0 at t=0, the board
+      ripples out of it at t=120, and the whole path pulses at double speed at t=200, all off
+      `Motion.GOAL_SEQUENCE` so the sequence is diffable against §14.2 rather than typed into a
+      script. Missing: the 24-spark burst at t=60 (§14.4's particle work) and the Results card at
+      t=700 (a screen M6 has not built). §14.3's 2 px shake is not wired either — it belongs to the
+      burst beat
 - [ ] Four GPU emitters, hard cap 120 live particles (§14.4)
 - [ ] Reduce Motion path: durations ×0.4, no shake/parallax/particles/breathing, still fully legible
       (§14.5) — **the rule is implemented, and it is not just a multiplier**: §14.5 also names 120 ms

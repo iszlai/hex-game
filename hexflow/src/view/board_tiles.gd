@@ -53,6 +53,10 @@ var _depth: Dictionary = {}
 ## Cells mid-pop, and how far through §14.1's 0.82 → 1.0 they are. Empty almost
 ## always; one entry for the 220 ms after a placement.
 var _pop: Dictionary = {}       # Vector3i -> scale factor
+## Where the last §14.1 ripple left from. Every cell's distance to it rides in the
+## instance data, so the wave needs no per-cell bookkeeping while it travels.
+var _ripple_origin: Vector3i = Vector3i.ZERO
+var _ripple: Tween = null
 
 
 func _ready() -> void:
@@ -90,6 +94,8 @@ func bind(state: GameState, layout: HexLayout) -> void:
 		mat.set_shader_parameter("side_ink", palette.board_tile_side)
 	set_flat(SettingsService.flat_board())
 	set_motion()
+	# Or an unset uniform reads back as 0.0, which is a wave sitting on the origin.
+	_set_ripple_time(-1.0)
 
 	rebuild()
 
@@ -225,6 +231,27 @@ func pop(cell: Vector3i) -> void:
 	tween.finished.connect(func() -> void: _clear_pop(cell))
 
 
+## §14.2's opening beat: the goal cell swells to 1.25 and settles back over 340 ms.
+## The same channel the placement pop rides, because a cell can only be one size —
+## and a goal that popped *and* flourished at once would fight itself.
+func flourish(cell: Vector3i) -> void:
+	if multimesh == null or not _index.has(cell):
+		return
+	# Eagerly, like the pop: a tween's first step lands next frame, and a goal that
+	# spent that frame at its ordinary size reads as a stutter before the flourish.
+	_set_pop(cell, 1.0 + (Motion.GOAL_FLOURISH_SCALE - 1.0) * 0.01)
+	var tween := create_tween()
+	Motion.shape(tween, "placement_pop")
+	var half: float = float(Motion.GOAL_FLOURISH_MS) / 2000.0
+	if SettingsService.reduce_motion():
+		half *= Motion.REDUCE_MOTION_SCALE
+	tween.tween_method(func(v: float) -> void: _set_pop(cell, v),
+		1.0, Motion.GOAL_FLOURISH_SCALE, half)
+	tween.tween_method(func(v: float) -> void: _set_pop(cell, v),
+		Motion.GOAL_FLOURISH_SCALE, 1.0, half)
+	tween.finished.connect(func() -> void: _clear_pop(cell))
+
+
 ## How far through its pop [param cell] is: 1.0 when it is not popping, which is
 ## what makes [method transform_of] the same function either way.
 func pop_scale(cell: Vector3i) -> float:
@@ -263,7 +290,7 @@ func custom_of(cell: Vector3i) -> Color:
 		float(kind_of(cell)),
 		1.0 if (_has_cursor and cell == _cursor) else 0.0,
 		_depth_ratio(cell),
-		0.0
+		float(Hex.distance(cell, _ripple_origin))
 	)
 
 
@@ -299,6 +326,49 @@ func _depth_ratio(cell: Vector3i) -> float:
 	if not _depth.has(cell) or _depth.size() <= 1:
 		return 0.0
 	return clampf(float(_depth[cell]) / float(_depth.size() - 1), 0.0, 1.0)
+
+
+## §14.1's board ripple, leaving [param origin] — normally the goal just reached.
+##
+## Each cell's distance to the origin is written into the instance data once, up
+## front, and the wave itself is a single uniform counting seconds. That is what
+## keeps a wave crossing sixty-one cells to one tween and one number, rather than
+## sixty-one staggered tweens.
+func ripple_from(origin: Vector3i) -> void:
+	if multimesh == null:
+		return
+	_ripple_origin = origin
+	for cell: Variant in _index:
+		_write(cell as Vector3i)
+	if _ripple != null and _ripple.is_running():
+		_ripple.kill()
+	_set_ripple_time(0.0)
+	var mat := material_override as ShaderMaterial
+	mat.set_shader_parameter("ripple_step", Motion.ripple_step_seconds())
+	# Long enough for the wave to reach the far rim: the tween runs §14.1's own
+	# duration *plus* the delay the outermost cell is owed.
+	var span: float = Motion.seconds("board_ripple") \
+		+ float(_furthest_from(origin)) * Motion.ripple_step_seconds()
+	_ripple = create_tween()
+	Motion.shape(_ripple, "board_ripple")
+	_ripple.tween_method(_set_ripple_time, 0.0, span, span)
+	_ripple.finished.connect(func() -> void: _set_ripple_time(-1.0))
+
+
+func ripple_time() -> float:
+	return float((material_override as ShaderMaterial).get_shader_parameter("ripple_time"))
+
+
+func _furthest_from(origin: Vector3i) -> int:
+	var furthest: int = 0
+	for cell: Variant in _index:
+		furthest = maxi(furthest, Hex.distance(cell as Vector3i, origin))
+	return furthest
+
+
+func _set_ripple_time(value: float) -> void:
+	if material_override is ShaderMaterial:
+		(material_override as ShaderMaterial).set_shader_parameter("ripple_time", value)
 
 
 ## §21's escape hatch (C-24): with [param flat] the board takes no light, so a

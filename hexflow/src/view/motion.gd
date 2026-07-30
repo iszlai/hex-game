@@ -53,6 +53,26 @@ const REDUCED_TRANSITION_MS := 120
 const RESULTS_STAR_STAGGER_MS := 140
 const RIPPLE_PER_CELL_MS := 28
 
+
+## §14.2's goal-reached sequence, as offsets in milliseconds from the moment the
+## goal is entered. The beats are a table for the same reason §14.1's rows are:
+## a sequence typed into a script is a sequence nobody can diff against the spec.
+const GOAL_SEQUENCE := {
+	"cell_flourish": 0,
+	"burst": 60,
+	"ripple": 120,
+	"flow": 200,
+	"settle": 340,
+	"results": 700,
+}
+
+## §14.2's own numbers for the goal cell itself: 1.0 → 1.25 → 1.0 over 340 ms.
+const GOAL_FLOURISH_SCALE := 1.25
+const GOAL_FLOURISH_MS := 340
+
+## §14.2 runs the flow pulse "at 2x speed" over the whole path.
+const GOAL_FLOW_SPEEDUP := 2.0
+
 ## §14.3's entire allowance for camera motion the player did not ask for.
 const SHAKE_PIXELS := 2.0
 const SHAKE_MS := 120
@@ -65,6 +85,15 @@ const PARTICLE_BUDGET := {
 	"wild_pickup": 10,
 }
 const PARTICLE_CAP := 120
+
+
+## The ripple's per-cell delay, in seconds, under §14.5. It scales with everything
+## else: a wave whose front slowed while its body sped up would tear.
+static func ripple_step_seconds() -> float:
+	var ms: float = float(RIPPLE_PER_CELL_MS)
+	if SettingsService.reduce_motion():
+		ms *= REDUCE_MOTION_SCALE
+	return ms / 1000.0
 
 
 ## How long [param name] runs, in seconds, under the live §14.5 setting.
@@ -99,6 +128,14 @@ static func loops(name: String) -> bool:
 ## more than the cap when they are on.
 static func particles_allowed() -> bool:
 	return not SettingsService.reduce_motion()
+
+
+## A §14.2 beat's offset in seconds, under §14.5 like every other duration.
+static func beat_seconds(beat: String) -> float:
+	var ms: float = float(GOAL_SEQUENCE[beat])
+	if SettingsService.reduce_motion():
+		ms *= REDUCE_MOTION_SCALE
+	return ms / 1000.0
 
 
 ## Applies [param name]'s curve to [param tween], so a caller cannot take the

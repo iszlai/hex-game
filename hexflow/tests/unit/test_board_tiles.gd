@@ -216,6 +216,42 @@ func test_a_pop_touches_only_the_tile_that_popped() -> void:
 	assert_eq(_tiles.pop_scale(neighbour), 1.0)
 
 
+## §14.1's board ripple. The wave is one uniform counting seconds and a per-cell
+## distance living in the instance data, so what CI can hold is that the distances
+## are right and that the wave starts and finishes — the brightness itself is the
+## shader's, and a screenshot's.
+func test_the_ripple_knows_how_far_every_cell_is_from_its_origin() -> void:
+	var origin: Vector3i = _state.board.start
+	_tiles.ripple_from(origin)
+	for c: Vector3i in _state.board.cells():
+		assert_eq(int(_custom_of(c).a), Hex.distance(c, origin),
+			"%v is the wrong distance from the wave's origin" % c)
+	assert_almost_eq(_tiles.ripple_time(), 0.0, 0.001, "and it leaves at once")
+
+
+## A second goal starts a second wave from where *it* is, not from the first one.
+func test_a_new_ripple_remeasures_from_its_own_origin() -> void:
+	var far: Vector3i = Fixtures.GOAL
+	_tiles.ripple_from(_state.board.start)
+	_tiles.ripple_from(far)
+	assert_eq(int(_custom_of(far).a), 0, "the new origin is zero from itself")
+	assert_eq(int(_custom_of(_state.board.start).a), Hex.distance(_state.board.start, far))
+
+
+## The wave has to outlive its own duration: the outermost cell does not start
+## until it has been waited for, so a tween that stopped at 500 ms would cut the
+## rim off the wave entirely.
+func test_the_wave_runs_long_enough_to_reach_the_far_rim() -> void:
+	_tiles.ripple_from(_state.board.start)
+	var rim: int = 0
+	for c: Vector3i in _state.board.cells():
+		rim = maxi(rim, Hex.distance(c, _state.board.start))
+	assert_gt(rim, 3, "the fixture board has a rim to reach")
+	await wait_seconds(Motion.seconds("board_ripple")
+		+ float(rim) * Motion.ripple_step_seconds() + 0.2)
+	assert_eq(_tiles.ripple_time(), -1.0, "and parks when it is over")
+
+
 ## The winding is the engine's, not my reading of it: `generate_normals` derives the
 ## normals from the triangle order, so normals pointing the wrong way is a board
 ## rendered inside out — caught here rather than at the first screenshot.

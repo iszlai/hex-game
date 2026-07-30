@@ -88,6 +88,36 @@ func test_the_loops_are_the_ones_the_spec_marks_as_loops() -> void:
 		"§14.1 marks exactly these two as loops")
 
 
+## §14.2's beats, as offsets from the moment the goal is entered.
+func test_the_goal_sequence_matches_the_spec_beats() -> void:
+	var spec := {"cell_flourish": 0, "burst": 60, "ripple": 120, "flow": 200,
+		"settle": 340, "results": 700}
+	assert_eq(Motion.GOAL_SEQUENCE, spec, "§14.2 beat for beat")
+	assert_eq(Motion.GOAL_FLOURISH_SCALE, 1.25, "§14.2: 1.0 -> 1.25 -> 1.0")
+	assert_eq(Motion.GOAL_FLOURISH_MS, 340)
+	assert_eq(Motion.GOAL_FLOW_SPEEDUP, 2.0, "§14.2 runs the flow pulse at 2x")
+	# In order, and none of them at the same moment as another.
+	var last := -1
+	for beat: String in ["cell_flourish", "burst", "ripple", "flow", "settle", "results"]:
+		assert_gt(int(Motion.GOAL_SEQUENCE[beat]), last, "%s must come after the one before" % beat)
+		last = int(Motion.GOAL_SEQUENCE[beat])
+
+
+func test_the_goal_beats_scale_with_reduce_motion() -> void:
+	assert_almost_eq(Motion.beat_seconds("ripple"), 0.12, 0.0001)
+	_reduced()
+	assert_almost_eq(Motion.beat_seconds("ripple"), 0.048, 0.0001,
+		"a sequence whose beats did not scale would run past its own animations")
+
+
+## The ripple's per-cell delay scales too. A wave whose front slowed while its body
+## sped up would tear.
+func test_the_ripple_step_scales_with_everything_else() -> void:
+	assert_almost_eq(Motion.ripple_step_seconds(), 0.028, 0.0001)
+	_reduced()
+	assert_almost_eq(Motion.ripple_step_seconds(), 0.0112, 0.0001)
+
+
 ## §14.3's shake budget is the whole allowance for camera motion the player did not
 ## ask for: 2 px, 120 ms, once per completion, nowhere else.
 func test_the_shake_budget_is_the_one_in_the_spec() -> void:

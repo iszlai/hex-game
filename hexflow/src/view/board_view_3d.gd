@@ -110,7 +110,7 @@ func play_placement(cell: Vector3i) -> void:
 ## and the stroke lying on top of it have to brighten at the same instant, and two
 ## tweens would be two clocks. The band's position is a single uniform; where each
 ## instance sits along the path is a number it already carries.
-func play_flow_pulse() -> void:
+func play_flow_pulse(speed: float = 1.0) -> void:
 	if _flow != null and _flow.is_running():
 		_flow.kill()
 	# At the start *now*, not on the tween's first step: a tween does not run until
@@ -119,7 +119,8 @@ func play_flow_pulse() -> void:
 	_set_flow_head(0.0)
 	_flow = create_tween()
 	Motion.shape(_flow, "flow_pulse")
-	_flow.tween_method(_set_flow_head, 0.0, 1.0 + FLOW_TAIL, Motion.seconds("flow_pulse"))
+	_flow.tween_method(_set_flow_head, 0.0, 1.0 + FLOW_TAIL,
+		Motion.seconds("flow_pulse") / maxf(speed, 0.01))
 	# Parked well outside 0…1 so no band is drawn until the next placement.
 	_flow.finished.connect(func() -> void: _set_flow_head(-1.0))
 
@@ -133,6 +134,22 @@ func _set_flow_head(value: float) -> void:
 	for mesh: GeometryInstance3D in [tiles, links]:
 		if mesh != null and mesh.material_override is ShaderMaterial:
 			(mesh.material_override as ShaderMaterial).set_shader_parameter("flow_head", value)
+
+
+## §14.2's goal-reached sequence, beat for beat off [constant
+## Motion.GOAL_SEQUENCE]: the goal cell flourishes at once, the board ripples out
+## of it at 120 ms, and the whole path pulses at double speed at 200 ms.
+##
+## Two of §14.2's six beats are not here and are not silently dropped: the 24-spark
+## burst at t=60 is §14.4's particle work, and the Results card at t=700 is a screen
+## M6 has not built. Everything the board itself can say, it says.
+func play_goal_reached(cell: Vector3i) -> void:
+	tiles.flourish(cell)
+	var sequence := create_tween()
+	sequence.tween_interval(Motion.beat_seconds("ripple"))
+	sequence.tween_callback(func() -> void: tiles.ripple_from(cell))
+	sequence.tween_interval(Motion.beat_seconds("flow") - Motion.beat_seconds("ripple"))
+	sequence.tween_callback(func() -> void: play_flow_pulse(Motion.GOAL_FLOW_SPEEDUP))
 
 
 func set_candidates(targets: Array[Vector3i]) -> void:

@@ -434,8 +434,9 @@ func _on_cell_joined(target: Vector3i, _anchor: Vector3i, _dir: int) -> void:
 	board_view.play_placement(target)
 
 
-func _on_goal_reached(_cell: Vector3i) -> void:
+func _on_goal_reached(cell: Vector3i) -> void:
 	_haptics.play("goal")
+	board_view.play_goal_reached(cell)
 
 
 func _on_board_turned() -> void:
