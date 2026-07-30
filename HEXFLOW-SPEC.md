@@ -1696,6 +1696,23 @@ Log anything discovered during implementation here rather than inventing an answ
 | C-7 | Whether the daily should be one-attempt-scored instead of best-of-retries | Best-of-retries, per §7.3 — friendlier, and no anti-cheat burden |
 | C-8 | Current Valve Deck Verified criteria and Steamworks asset specs | Re-read Valve's live documentation at M11; §23 is a starting checklist, not the authority |
 
+### Resolved during implementation (M0–M3)
+
+Each of these was an underspecification found while building. Per §1.1 C7 the simplest workable
+option was taken and recorded here rather than invented silently.
+
+| # | Question | Decision taken |
+|---|---|---|
+| C-9 | §16.3 gives topology to `board.gd` and run state to `game_state.gd`, which leaves `tiles`, `discards`, `budget` and `par` without an owner | Added `src/core/level.gd`, a plain value object holding the level-scoped constraints of §6 |
+| C-10 | §8.3's solver heuristic — "sum over unreached goals of the minimum distance" — is **not admissible** when one placement shortens the route to two goals at once, so it can return a par that is not the true optimum, which §5.10's star bands depend on | Use `max` over goals instead. Admissible (a placement reduces any one goal's distance by at most 1), still strong, and the `@property` sweep verifies par against a replay of the solver's own solution |
+| C-11 | §8.2 step 5 allows a gate on the reserved route "if the route approaches them with a fork", which needs a second verified approach carved before the gate is entered | Gates are placed off the reserved route only. Solvability stays provable; making gates load-bearing on the critical path is deferred to M6 content authoring |
+| C-12 | §7.2 resets the path between Endless stages but does not say what happens to the tile stream | Each stage derives its seed as `fnv1a_32("endless:<run seed>:<goals reached>")` — the same locally-implemented hash as the daily, so a run stays reproducible from its seed alone |
+| C-13 | §16.3 puts pixel conversion in `hex.gd`, but §19 forbids floats anywhere in `src/core/`, and the conversion is irreducibly floating point | Layout lives in `src/view/hex_layout.gd`. The core stays integer-only, so the CI float check over `src/core/` is trivially enforceable |
+| C-14 | §17.1's `solution` is a target list, but an optimal line may require voluntary discards, which a bare target list cannot express — such a solution cannot be replayed, and §24.2 requires replaying it to prove it wins | Added `solution_script`: `[kind, cube]` pairs where kind is place / wild / discard. `solution` is kept and derived from it, so the §17.1 field is unchanged. This was caught by the property sweep, not by inspection |
+| C-15 | §6 does not say whether spending a wild charge consumes the drawn tile | It does: the wild placement replaces the normal placement and the stream advances. Otherwise a charge would grant a free extra move on top of the tile |
+| C-16 | §18.3 requires a suspended level to resume identically, but §17.2's `in_progress` has no field for the undo history | Undo history is not persisted. §5.9 does not require undo to survive a suspend, and persisting it would grow the ~2 KB save without bound |
+| C-17 | §5.7's auto-discard loop never terminates if every direction is blocked but the goal still looks reachable — reachable to a flood fill that ignores gates, unreachable in fact through an unsatisfiable gate | Before the loop, a path with no enterable neighbour at all is declared `DEAD`. The path can never change again, so no gate can ever become satisfiable. The solver uses an equivalent bound: 12 consecutive unplaceable draws, which always spans a full bag |
+
 ---
 
 *End of specification. Version 1.0 — derived from the 2016 `com.hexgame` libGDX prototype

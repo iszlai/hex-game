@@ -1,0 +1,123 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/scenes/level/level.gd" id="1_level"]
+[ext_resource type="Script" path="res://src/view/board_view.gd" id="2_boardview"]
+[ext_resource type="Resource" path="res://src/data/palettes/neon_dark.tres" id="3_palette"]
+
+[node name="Level" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_level")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.039216, 0.054902, 0.078431, 1)
+
+[node name="BoardView" type="Node2D" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_boardview")
+palette = ExtResource("3_palette")
+
+[node name="TopBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 56.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_right = 24
+
+[node name="Row" type="HBoxContainer" parent="TopBar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="TitleLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+vertical_alignment = 1
+text = "Hexflow"
+
+[node name="ScoreLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+vertical_alignment = 1
+horizontal_alignment = 2
+text = "placements 0 / par 0"
+
+[node name="Rail" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = 56.0
+offset_bottom = -56.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="Rail"]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
+
+[node name="Column" type="VBoxContainer" parent="Rail/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="NowLabel" type="Label" parent="Rail/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "NOW"
+
+[node name="NextLabel" type="Label" parent="Rail/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "NEXT"
+
+[node name="Divider" type="HSeparator" parent="Rail/Margin/Column"]
+layout_mode = 2
+
+[node name="RailLabel" type="Label" parent="Rail/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = ""
+
+[node name="Banner" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -56.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="BannerLabel" type="Label" parent="Banner"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+text = ""
