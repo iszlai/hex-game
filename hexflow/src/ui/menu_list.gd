@@ -154,6 +154,19 @@ func _paint() -> void:
 			palette.text_primary if focused else palette.text_secondary)
 		button.add_theme_color_override("font_disabled_color", palette.cell_empty_stroke)
 	_animate_ring()
+	_keep_focus_on_screen()
+
+
+## A list longer than its box — the Controls tab's twenty-odd bindings, or any
+## list at §21's 150% text scale — has to bring the focused row with it. §12.5's
+## "exactly one focused element at all times" and §21's "the focus ring is never
+## invisible" are both broken by a ring that is simply scrolled off.
+func _keep_focus_on_screen() -> void:
+	if _index < 0 or _index >= _buttons.size():
+		return
+	var scroll := get_parent() as ScrollContainer
+	if scroll != null:
+		scroll.ensure_control_visible(_buttons[_index])
 
 
 func _animate_ring() -> void:
@@ -161,14 +174,24 @@ func _animate_ring() -> void:
 		_ring.kill()
 	if _index < 0 or _index >= _buttons.size():
 		return
+	# Built only once there is something to move: a `Tween` that is started and
+	# never given a tweener is an engine error, and on a list where focus has not
+	# actually changed there is nothing to give it.
+	var moving: Array[int] = []
+	for i: int in range(_buttons.size()):
+		if not _buttons[i].scale.is_equal_approx(_want_scale(i)):
+			moving.append(i)
+	if moving.is_empty():
+		return
 	_ring = create_tween()
 	_ring.set_parallel(true)
-	for i: int in range(_buttons.size()):
-		var want: Vector2 = Vector2.ONE * (Motion.FOCUS_RING_SCALE if i == _index else 1.0)
-		if _buttons[i].scale.is_equal_approx(want):
-			continue
-		_ring.tween_property(_buttons[i], "scale", want, Motion.focus_ring_seconds()) \
+	for i: int in moving:
+		_ring.tween_property(_buttons[i], "scale", _want_scale(i), Motion.focus_ring_seconds()) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+func _want_scale(index: int) -> Vector2:
+	return Vector2.ONE * (Motion.FOCUS_RING_SCALE if index == _index else 1.0)
 
 
 func _box(focused: bool, hovered: bool) -> StyleBoxFlat:

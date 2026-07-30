@@ -87,7 +87,7 @@ func _on_activated(id: String) -> void:
 			GameDirector.start_daily(utc_date())
 			GameDirector.go_to(GameDirector.Screen.LEVEL)
 		"settings":
-			GameDirector.go_to(GameDirector.Screen.SETTINGS)
+			GameDirector.open_settings()
 		"quit":
 			# The run is written down first: §18.3's promise is that closing the
 			# window costs no more than a suspend does.

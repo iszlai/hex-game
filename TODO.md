@@ -174,9 +174,20 @@ Exit: persistence `@e2e` scenarios pass, including corrupted-save recovery and s
       trigger rather than one that needs a window to lose focus. Identity is asserted field by field
       — path, edges, placements, discards, charges, stream index, tile — because the fields that go
       missing quietly are the ones nobody looks at
-- [ ] Settings screen with all five tabs: Gameplay, Controls, Video, Audio, Accessibility (§12.2).
-      Three controls are already wired and only need surfacing: cursor mode (snap/free), the haptics
-      slider, and `custom_bindings` rebinding against `InputBindings.ACTIONS`
+- [x] Settings screen with all five tabs: Gameplay, Controls, Video, Audio, Accessibility (§12.2) —
+      `src/scenes/settings/`. The screen is one table: a setting is `{key, label, kind, …}` and four
+      kinds (toggle, choice, range, bind) cover every row, so adding a setting is a row rather than a
+      widget — which is also what makes §21's "layouts that reflow" reachable at all. Every test goes
+      from a key press through to `SettingsService` *and* to the thing the setting does, because the
+      failure mode of a settings screen is a control that moves and changes nothing.
+      **Rebinding is live** (§21's "every action rebindable per device"): a rebind is a *layer* over
+      the §11.3 table in `settings.custom_bindings`, never an edit of it, which is what makes
+      reset-to-default true by construction rather than by keeping a second copy of the defaults. The
+      next input decides the device — a key rebinds the keyboard column, a pad button the pad column.
+      A collision *inside* one action set is refused and named; across sets it is allowed, because
+      §11.1's whole point is that Space means confirm on the board and accept in a modal.
+      **Not offered:** the palette picker. §21 wants four alternate palettes and only `neon_dark`
+      exists — a picker with one entry is not a picker. It lands in M10 with the `.tres` files
 - [x] Pause screen: Resume, Restart (hold), Settings, Quit to map (§12.2) — `src/ui/pause_panel.gd`,
       a modal *inside* `level.tscn` rather than a screen of its own. `Screen.PAUSED` has no entry in
       `GameDirector.SCENES` on purpose: §12.2 pauses over a board that is still there, and swapping

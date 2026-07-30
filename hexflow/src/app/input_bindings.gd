@@ -276,20 +276,32 @@ static var active_set: String = SET_MENU
 
 
 ## Registers the whole table into `InputMap`, replacing anything already there so
-## a second call — a test, or a rebind at M5 — is idempotent.
+## a second call — a test, or a rebind — is idempotent.
+##
+## §21 asks for "every action rebindable per device", and a rebind is a *layer*
+## rather than an edit: `settings.custom_bindings` overrides the table's keys or
+## buttons for one action, the table itself is never rewritten, and clearing the
+## override is what makes "a reset-to-default is always one press away" true by
+## construction rather than by remembering what the default was.
 static func install() -> void:
+	var custom: Dictionary = SettingsService.get_value("custom_bindings") as Dictionary
 	for action: String in ACTIONS:
 		var spec: Dictionary = ACTIONS[action]
+		# `custom_bindings` is a JSON file a player can edit and an older build can
+		# have written, so an entry that is not a dictionary is ignored rather than
+		# cast — §18's promise about saves applies to settings for the same reason.
+		var raw: Variant = custom.get(action, {})
+		var override: Dictionary = raw if raw is Dictionary else {}
 		if InputMap.has_action(action):
 			InputMap.erase_action(action)
 		InputMap.add_action(action, DEADZONE)
 
-		for code: int in (spec["keys"] as Array):
+		for code: int in (override.get("keys", spec["keys"]) as Array):
 			var key := InputEventKey.new()
 			key.keycode = code as Key
 			InputMap.action_add_event(action, key)
 
-		for index: int in (spec["buttons"] as Array):
+		for index: int in (override.get("buttons", spec["buttons"]) as Array):
 			var button := InputEventJoypadButton.new()
 			button.button_index = index as JoyButton
 			InputMap.action_add_event(action, button)
@@ -328,13 +340,80 @@ static func glyph_slot(action: String) -> String:
 	return str((ACTIONS.get(action, {}) as Dictionary).get("glyph", ""))
 
 
-## The keys bound to an action, in table order — the first is the one shown in
-## the HUD when no controller is connected.
+## The keys bound to an action *right now* — the player's override if there is
+## one, the §11.3 table otherwise. The first is the one shown in the HUD when no
+## controller is connected, so a rebind shows up in the rail without the rail
+## knowing rebinding exists.
 static func keys_of(action: String) -> Array[int]:
 	var out: Array[int] = []
-	for code: int in ((ACTIONS.get(action, {}) as Dictionary).get("keys", []) as Array):
+	for code: int in (live_spec(action).get("keys", []) as Array):
 		out.append(code)
 	return out
+
+
+## The buttons bound to an action right now, on the same terms.
+static func buttons_of(action: String) -> Array[int]:
+	var out: Array[int] = []
+	for index: int in (live_spec(action).get("buttons", []) as Array):
+		out.append(index)
+	return out
+
+
+## An action's live binding: the §11.3 row with the player's override laid over
+## it. Everything that asks "what is this bound to" goes through here, so a rebind
+## cannot be visible in one place and invisible in another.
+static func live_spec(action: String) -> Dictionary:
+	var spec: Dictionary = (ACTIONS.get(action, {}) as Dictionary).duplicate()
+	if spec.is_empty():
+		return spec
+	var custom: Dictionary = SettingsService.get_value("custom_bindings") as Dictionary
+	var raw: Variant = custom.get(action, {})
+	spec.merge(raw if raw is Dictionary else {}, true)
+	return spec
+
+
+## Rebinds one device column of one action and installs it (§21, §17.3).
+##
+## Rejected when the input is already spoken for *in the same action set* by a
+## different action: §11.3 shares Esc and Select on purpose, but a collision the
+## player creates by accident is a control they will find unresponsive later with
+## no way to know why. Cross-set collisions are fine and deliberate — the whole
+## point of §11.1 is that Space can mean two things in two places.
+##
+## Returns the action it collided with, or "" on success.
+static func rebind(action: String, keys: Array[int], buttons: Array[int]) -> String:
+	if not ACTIONS.has(action):
+		return action
+	var set_name: String = str((ACTIONS[action] as Dictionary)["set"])
+	for other: String in actions_in(set_name):
+		if other == action:
+			continue
+		for code: int in keys:
+			if keys_of(other).has(code):
+				return other
+		for index: int in buttons:
+			if buttons_of(other).has(index):
+				return other
+
+	var custom: Dictionary = (SettingsService.get_value("custom_bindings") as Dictionary).duplicate(true)
+	custom[action] = {"keys": keys, "buttons": buttons}
+	SettingsService.set_value("custom_bindings", custom)
+	install()
+	return ""
+
+
+## Drops one action's override, or every override when [param action] is empty.
+## §21: "a reset-to-default is always one press away", and the default is whatever
+## the §11.3 table says — never a copy of it kept somewhere else.
+static func reset_binding(action: String = "") -> void:
+	if action == "":
+		SettingsService.set_value("custom_bindings", {})
+		install()
+		return
+	var custom: Dictionary = (SettingsService.get_value("custom_bindings") as Dictionary).duplicate(true)
+	custom.erase(action)
+	SettingsService.set_value("custom_bindings", custom)
+	install()
 
 
 static func actions_in(set_name: String) -> Array[String]:

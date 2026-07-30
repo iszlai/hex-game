@@ -197,7 +197,7 @@ func _on_activated(id: String) -> void:
 		"resume":
 			GameDirector.resume()
 		"settings":
-			GameDirector.go_to(GameDirector.Screen.SETTINGS)
+			GameDirector.open_settings()
 		"quit":
 			# §18.3: the run is written down before the player is taken off it, so
 			# leaving mid-level costs no more than a suspend does.

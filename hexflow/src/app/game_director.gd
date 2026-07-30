@@ -36,6 +36,7 @@ var last_result: Dictionary = {}
 
 var _endless: EndlessRun = null
 var _daily_date: String = ""
+var _settings_return: Screen = Screen.MAIN_MENU
 var _transition: Tween = null
 var _fade: ColorRect = null
 
@@ -112,6 +113,7 @@ func go_to(next: Screen) -> void:
 ## claim on the `Modal` action set (§11.1) and nothing more — the level screen
 ## stops acting on input the moment the set is not its own, which is the mechanism
 ## §11.1 was built around.
+##
 ## Pausing needs a run to pause and needs not to be paused already. It is
 ## deliberately *not* conditioned on `screen == LEVEL`: a level scene run on its
 ## own — editor F6, the capture tool, an `@e2e` test — has never navigated
@@ -130,6 +132,24 @@ func resume() -> void:
 	screen = Screen.LEVEL
 	InputBindings.activate(ACTION_SETS[Screen.LEVEL])
 	screen_changed.emit(Screen.LEVEL)
+
+
+## Settings has two parents — §12.1 opens it from the main menu, §12.2 from the
+## pause menu — and §12.5 says Back goes up exactly *one* level. One level from
+## where, then, is not derivable from the state of the game: a player who has
+## quit to the menu still has a `state` hanging around, and guessing from that
+## would send them back onto a board they had left. So the door is remembered.
+##
+## Pause resolves to `LEVEL` rather than `PAUSED` on the way back, because
+## returning through Settings has already been a scene change: there is nothing
+## left to be modal over.
+func open_settings() -> void:
+	_settings_return = Screen.LEVEL if screen == Screen.PAUSED else screen
+	go_to(Screen.SETTINGS)
+
+
+func close_settings() -> void:
+	go_to(_settings_return)
 
 
 ## Where "Quit to map" goes (§12.2). A campaign level came from the map; an
