@@ -165,5 +165,27 @@ func test_the_hint_points_at_an_optimal_next_move() -> void:
 	assert_eq(GameDirector.hints_used, 1, "hints are unlimited but counted (§12.6)")
 
 
+## Scenario: the rail counts down a campaign level's tiles and never the bag's.
+##
+## C-18 is explicit about the asymmetry: a campaign level's tile array is fixed
+## and finite, so "how many left" is real information; the endless and daily bags
+## are unbounded by construction (§5.3), so any number shown against one would be
+## invented. The stack itself shows the same upcoming tiles either way.
+func test_the_next_caption_counts_only_a_fixed_tile_array() -> void:
+	await _open(_straight_level())
+	var caption: Label = _scene.get_node("%NextLabel")
+	assert_string_contains(caption.text, "6 left", "six fixed tiles, none played")
+	await _press(KEY_SPACE)
+	assert_string_contains(caption.text, "5 left", "and it counts down as they go")
+
+	var bag := Fixtures.seeded_level(20260730)
+	bag.id = "e2e_bag"
+	await _open(bag)
+	caption = _scene.get_node("%NextLabel")
+	assert_eq(caption.text, "NEXT", "an unbounded bag is given no number at all")
+	var stack: TileStack = _scene.get_node("%NextStack")
+	assert_gt(stack.count(), 0, "though the upcoming tiles are still shown")
+
+
 func _cursor() -> Vector3i:
 	return (_scene.get("_router") as InputRouter).cursor

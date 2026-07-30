@@ -1,5 +1,6 @@
-// The four modifier marks of §6 — goal, portal, gate, wild — as camera-facing
-// signed-distance glyphs, all of them in one draw call (C-23).
+// The glyphs of the C-18 presentation as camera-facing signed-distance shapes:
+// the four cell modifiers of §6 — goal, portal, gate, wild — and the direction
+// arrow the rail's tile stack carries. One draw call per multimesh using it (C-23).
 //
 // Two jobs, one per stage.
 //
@@ -12,8 +13,8 @@
 //
 // **fragment** draws the silhouette. §21 asks for a channel that is not colour;
 // [BoardTiles] already spent height on the tile's kind (C-22), so a modifier is
-// told apart by its outline: one ring around a dot, two concentric rings, a
-// padlock, a five-pointed star. The glyph is ringed in `outline` so the shape
+// told apart by its outline: a reticle, two concentric rings, a padlock, a
+// five-pointed star. The glyph is ringed in `outline` so the shape
 // survives being drawn over a tile of similar luminance under a greyscale or
 // high-contrast palette.
 //
@@ -24,6 +25,7 @@
 // INSTANCE_CUSTOM:
 //   r  mark id (BoardMarks.Mark)
 //   g  1.0 when a gate is currently enterable, so its lock opens (§6)
+//   b  rotation in radians, for the rail's direction arrows; 0 on the board
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled,
 	world_vertex_coords;
@@ -32,6 +34,10 @@ const int MARK_GOAL = 0;
 const int MARK_PORTAL = 1;
 const int MARK_GATE = 2;
 const int MARK_WILD = 3;
+// Not a cell modifier: the direction on a tile in the rail's stack (§12.3). It
+// shares this shader because it is the same problem — a glyph that has to stay
+// upright and undistorted while the thing under it is drawn at the board's angle.
+const int MARK_ARROW = 4;
 
 // Width of the ring drawn around every glyph, in quad units. Each silhouette
 // below stays inside 0.9 so this has somewhere to go.
@@ -43,6 +49,7 @@ varying vec2 quad;
 varying vec3 tint;
 varying flat float mark;
 varying flat float open;
+varying flat float spin;
 
 float sd_circle(vec2 p, float r) {
 	return length(p) - r;
@@ -86,8 +93,8 @@ float sd_star5(vec2 p, float r, float rf) {
 	return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
 }
 
-// The four silhouettes. They differ in shape before they differ in anything else,
-// which is the whole of §21's requirement on them.
+// The silhouettes. The four modifiers differ in shape before they differ in
+// anything else, which is the whole of §21's requirement on them.
 float mark_sdf(int id, vec2 p, float lock_open) {
 	if (id == MARK_GOAL) {
 		// A reticle: ring, solid centre, and four ticks. Ring-and-dot alone is a
@@ -118,7 +125,18 @@ float mark_sdf(int id, vec2 p, float lock_open) {
 		vec2 q = p - vec2(lock_open * 0.30, 0.10 + lock_open * 0.12);
 		return min(body, sd_arc(q, 0.30, 0.10));
 	}
-	return sd_star5(p, 0.86, 0.45);
+	if (id == MARK_WILD) {
+		return sd_star5(p, 0.86, 0.45);
+	}
+	// An arrow pointing along +x, which the caller rotates to whichever screen
+	// angle that direction currently has on the board.
+	float shaft = sd_box(p - vec2(-0.22, 0.0), vec2(0.46, 0.13));
+	// The head as the intersection of its base and its two mirrored edges. `q`
+	// folds the plane about y = 0, so one edge stands for both.
+	vec2 q = vec2(p.x, abs(p.y));
+	float edge = dot(q - vec2(0.85, 0.0), normalize(vec2(0.42, 0.6)));
+	float head = max(edge, 0.24 - p.x);
+	return min(shaft, head);
 }
 
 void vertex() {
@@ -126,6 +144,7 @@ void vertex() {
 	tint = COLOR.rgb;
 	mark = INSTANCE_CUSTOM.r;
 	open = INSTANCE_CUSTOM.g;
+	spin = INSTANCE_CUSTOM.b;
 	// The instance transform contributes its origin and its (uniform) scale; its
 	// orientation is the camera's, taken fresh here. INV_VIEW_MATRIX's first two
 	// columns are screen right and screen up in world space.
@@ -136,7 +155,12 @@ void vertex() {
 }
 
 void fragment() {
-	float d = mark_sdf(int(mark + 0.5), quad, open);
+	// Rotating the sample point backwards draws the glyph forwards. Every cell
+	// modifier passes 0 here; only the rail's direction arrows spin.
+	float c = cos(spin);
+	float s = sin(spin);
+	vec2 p = vec2(quad.x * c + quad.y * s, -quad.x * s + quad.y * c);
+	float d = mark_sdf(int(mark + 0.5), p, open);
 	// Resolution-independent edge, as §13.3 does it for the cell SDF.
 	float aa = max(fwidth(d), 0.0005);
 	float ink = 1.0 - smoothstep(-aa, aa, d);

@@ -178,6 +178,20 @@ func unproject_at(point: Vector3, yaw: float) -> Vector2:
 	return view * 0.5 + Vector2(point.dot(b.x), -point.dot(b.y)) * pixels_per_unit
 
 
+## Which way a step along [param plane_delta] runs **on screen** at [param yaw],
+## in radians clockwise from screen-right — the angle a direction glyph has to be
+## drawn at to tell the truth about where that tile will go.
+##
+## Static and camera-free, because the rail's tile stack has its own viewport and
+## its own camera but must still answer the board's question: the arrow on a NOW
+## tile points the way the placement will actually travel, and follows the board
+## round when the player turns it (C-18's six glyphs at six fixed angles).
+static func screen_angle(plane_delta: Vector3, yaw: float) -> float:
+	var b := basis_at(yaw)
+	# Screen y grows downward, as it does everywhere else on the way out.
+	return Vector2(plane_delta.dot(b.x), -plane_delta.dot(b.y)).angle()
+
+
 func is_rotating() -> bool:
 	return _tween != null and _tween.is_running()
 

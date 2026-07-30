@@ -28,6 +28,8 @@ const HOLD_ACTIONS: Array[String] = ["board_restart", "board_hint"]
 @onready var score_label: Label = %ScoreLabel
 @onready var now_label: Label = %NowLabel
 @onready var next_label: Label = %NextLabel
+@onready var now_stack: TileStack = %NowStack
+@onready var next_stack: TileStack = %NextStack
 @onready var rail_label: Label = %RailLabel
 @onready var banner: PanelContainer = %Banner
 @onready var banner_label: Label = %BannerLabel
@@ -92,6 +94,11 @@ func _ready() -> void:
 	EventBus.cell_joined.connect(_on_cell_joined)
 	EventBus.goal_reached.connect(_on_goal_reached)
 
+	# The rail's arrows point where a tile will actually travel, so they follow the
+	# board round. This is the same signal the cursor's screen positions ride, and
+	# it fires with the stop being travelled *to* — so a glance at the rail during
+	# the turn already shows the board that is arriving.
+	board_view.screen_positions_changed.connect(_on_board_turned)
 	get_viewport().size_changed.connect(_layout_board)
 	banner.visible = false
 	hold_panel.visible = false
@@ -106,6 +113,7 @@ func _bind_current_state() -> void:
 	_layout_board()
 	board_view.bind(state, _play_area())
 	_refresh_candidates()
+	_on_board_turned()
 	_on_tile_advanced(state.current_tile(), state.preview(2))
 	_refresh_hud()
 
@@ -408,6 +416,12 @@ func _on_goal_reached(_cell: Vector3i) -> void:
 	_haptics.play("goal")
 
 
+func _on_board_turned() -> void:
+	var yaw: float = BoardCamera.YAW_STOP_RADIANS * float(board_view.camera.yaw_step)
+	now_stack.set_board_yaw(yaw)
+	next_stack.set_board_yaw(yaw)
+
+
 func _on_tile_advanced(_current: int, _preview: Array) -> void:
 	board_view.rebuild()
 	_refresh_hud()
@@ -468,11 +482,14 @@ func _refresh_hud() -> void:
 	title_label.text = level.id if level.id != "" else "Hexflow"
 	score_label.text = "placements %d / par %d" % [state.placements, level.par]
 
+	# The pieces say which directions are coming; the captions say how many are
+	# left. A count only means anything for a level whose tile array is fixed —
+	# the endless and daily bags are unbounded by construction (§5.3, C-18).
 	now_label.text = "NOW   %s" % Direction.name_of(state.current_tile())
-	var names: Array[String] = []
-	for d: int in state.preview(2):
-		names.append(Direction.name_of(d))
-	next_label.text = "NEXT  %s" % " ".join(names)
+	next_label.text = "NEXT" if state.stream.remaining() < 0 \
+		else "NEXT  %d left" % state.stream.remaining()
+	now_stack.show_tiles([state.current_tile()] as Array[int])
+	next_stack.show_tiles(state.preview(next_stack.slots))
 
 	undo_button.text = "↺ Undo        %s" % InputGlyphs.label_for("board_undo")
 	undo_button.disabled = not GameDirector.undo_available()

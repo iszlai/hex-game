@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/scenes/level/level.gd" id="1_level"]
 [ext_resource type="Script" path="res://src/view/board_view_3d.gd" id="2_boardview"]
 [ext_resource type="Resource" path="res://src/data/palettes/neon_dark.tres" id="3_palette"]
 [ext_resource type="Script" path="res://src/ui/legend_panel.gd" id="4_legend"]
+[ext_resource type="Script" path="res://src/view/tile_stack.gd" id="5_stack"]
 
 [node name="Level" type="Control"]
 layout_mode = 3
@@ -97,10 +98,28 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "NOW"
 
+[node name="NowStack" type="SubViewportContainer" parent="Rail/Margin/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 116)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("5_stack")
+palette = ExtResource("3_palette")
+slots = 1
+
 [node name="NextLabel" type="Label" parent="Rail/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "NEXT"
+
+[node name="NextStack" type="SubViewportContainer" parent="Rail/Margin/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("5_stack")
+palette = ExtResource("3_palette")
+slots = 3
 
 [node name="Divider" type="HSeparator" parent="Rail/Margin/Column"]
 layout_mode = 2

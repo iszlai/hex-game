@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 211 tests / 13,906 asserts green in ~61 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 222 tests / 14,031 asserts green in ~61 s, 60 frozen
 level files re-verified.
 
 ---
@@ -25,7 +25,7 @@ level files re-verified.
 | M4 | Input & Deck | ✅ done | — |
 | M5 | Persistence & settings | 🟨 services only | resume-on-boot; settings and pause screens |
 | M6 | Campaign data | 🟨 data only | level select, chapter unlocks, results screen |
-| M7 | Art & feel | 🟨 board done | NEXT stack, HUD layout, fonts, all §14 animation, all §15 audio |
+| M7 | Art & feel | 🟨 board + rail | greyscale under lighting, fonts, all §14 animation, all §15 audio |
 | M8 | Tutorial | ⬜ not started | T1–T12 data-driven, naive playtest |
 | M9 | Modes & Steam | 🟨 logic only | mode screens, GodotSteam, leaderboards |
 | M10 | Accessibility & i18n | ⬜ not started | palettes, text scale, Reduce Motion, extraction |
@@ -33,10 +33,11 @@ level files re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** the NEXT stack (M7). The board itself is now complete enough to play by: prisms, the
-four §6 marks, and the path as one continuous stroke, all turning together on `[` / `]`. What is
-still flat is everything *around* it — C-18 promised the upcoming tiles as a physical stack, and the
-rail still shows them as the M3 text HUD's two words.
+**Next up:** the unshaded material path (M7). Everything C-18 promised is now on screen — prisms,
+the four §6 marks, the path as one stroke, and the upcoming tiles as a stack whose arrows turn with
+the board. What has not been checked is the thing C-18 warned about: §21's greyscale requirement now
+has to survive *lighting*, and nothing yet proves a key light plus an accessibility palette leaves
+the board readable.
 
 > **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
 > **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a
@@ -252,8 +253,17 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       **Not built:** §6 also gives a portal a standing "faint tether line to twin", visible before it
       is used. Only *traversed* jumps are drawn, as in the grey-box. Harmless while every campaign
       level ships exactly one pair, ambiguous the moment one ships two
-- [ ] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
-      array only, never for the unbounded endless/daily bag (C-18)
+- [x] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
+      array only, never for the unbounded endless/daily bag (C-18) — `src/view/tile_stack.gd`, the
+      board's own prism seen at the board's own elevation in a viewport of its own, so a piece in the
+      rail and the tile it becomes are visibly the same object. The arrow on a piece points where
+      that tile will actually travel **and follows the board round**: a direction is a lattice step,
+      so which way it runs on screen depends on the yaw, and a fixed glyph would be lying at five of
+      the six stops (`BoardCamera.screen_angle`). The arrow is a fifth silhouette in
+      `hex_mark.gdshader` and deliberately not a [BoardMarks.Mark] — §6 ships five modifiers and a
+      direction is not a sixth. `tests/unit/test_tile_stack.gd` measures every arrow against the real
+      board's screen positions rather than a written-down table, at all six stops; the count rule is
+      `@e2e`, on the real screen
 - [x] Glyph legibility through rotation — billboarded, and still readable at every one of the six
       stops. **Closed the C5 gap above**: goal, portal, gate and wild all have their mark back —
       `src/view/board_marks.gd` plus `shaders/hex_mark.gdshader`, a second multimesh of one instance
