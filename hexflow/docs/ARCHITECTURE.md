@@ -13,7 +13,7 @@ Section references like §5.4 point into the specification.
 ```sh
 make godot     # fetches the pinned engine into .tools/ — no system install
 make run       # play it
-make test      # 134 tests, ~58 s
+make test      # the whole suite, ~1 min (the count lives in TODO.md, not here)
 make gate      # everything CI runs; do this before you push
 make           # list every target
 ```
@@ -63,7 +63,8 @@ other two are static APIs with a cache.
 hexflow/
 ├── src/core/       pure logic. No engine, no floats, no RNG. 100% testable headlessly
 ├── src/app/        services, the six autoloads, input bindings, router, holds, haptics
-├── src/view/       drawing: board renderer, palette resource, hex↔pixel layout
+├── src/view/       drawing: the C-18 3D board (camera, prisms, shader), the 2D
+│                grey-box, palette resource, cube↔pixel and cube↔plane layout
 ├── src/scenes/     screens (boot, level; the rest are M5+)
 ├── src/ui/         reusable widgets used by more than one screen (the legend panel)
 ├── src/data/       frozen level JSON, palette .tres, schema docs
@@ -331,6 +332,28 @@ mouse or touch test.
 `sig.connect(func(): n += 1)` increments the *closure's own copy*; the outer `n` stays 0 forever. It
 fails silently — no warning, no error, just a counter that never moves. Use a member variable, or a
 container (`Array`/`Dictionary`), which is captured by reference.
+
+**MultiMesh instance data cannot be read back headlessly.** `set_instance_transform` and friends
+write into the rendering server, and under `--headless` the dummy driver hands every instance back as
+an identity transform with a default colour — a direct write followed by a read proves it. So compute
+what an instance should be in a testable method (`BoardTiles.transform_of` / `tint_of` / `custom_of`)
+and let the write path do nothing but push. Otherwise the whole board layer is untestable in CI.
+
+**`Control` has no `to_local` / `to_global`.** They are `Node2D` methods. A `Control` converts through
+`global_position`, which is why `BoardView3D` owns `local_point()` and `screen_position_of()` rather
+than leaving callers to subtract the board's offset — the kind of arithmetic that puts a click one row
+out on any screen with a top bar.
+
+**`SurfaceTool.generate_normals()` smooths by default.** It averages the normals of every face meeting
+at a shared vertex, so a prism's top face comes out leaning sideways. `set_smooth_group(-1)` before
+adding vertices gives flat faces. Deriving normals this way is still worth it: it pins the winding to
+the engine's own convention instead of to your reading of the docs, so a mesh built inside out fails a
+headless test rather than a screenshot.
+
+**A `SubViewportContainer` with `stretch` on owns its viewport's size.** Setting `SubViewport.size`
+yourself is refused with a warning; set the container's `size` and the child follows synchronously.
+That is what keeps container coordinates and viewport coordinates the same numbers — and note that
+this node type is a `Control`, so the full-rect pointer-eating gotcha above applies to it too.
 
 **`assert()` only fires in debug builds.** Loader validation uses `assert` *and* `push_error`, so
 debug fails loudly and release skips the level and logs — one bad file can never brick a player's
