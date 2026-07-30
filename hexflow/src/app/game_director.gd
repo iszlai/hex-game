@@ -144,6 +144,23 @@ func start_level(p_level: Level) -> void:
 	_begin(p_level)
 
 
+## Opens a level, picking the run up where §18.2 left it when this is the level
+## the save says is in progress, and starting it fresh otherwise.
+##
+## This is what stops the level select from undoing §18.1. Autosave writes the run
+## on every move; the map opens on that very level ([method Campaign.last_played]);
+## and if entering it called [method start_level], every one of those writes would
+## be thrown away by the one press that was meant to honour them. Restarting is
+## still one hold of `R` away, which is where §11.3 puts every destructive action.
+func resume_or_start(p_level: Level) -> void:
+	var payload: Variant = SaveService.data.get("in_progress")
+	if payload is Dictionary \
+			and str((payload as Dictionary).get("level_id", "")) == p_level.id \
+			and resume_in_progress():
+		return
+	start_level(p_level)
+
+
 ## §18.2: picks up the campaign level the player was in the middle of, if there is
 ## one. Returns whether it resumed, so the caller can fall back rather than guess.
 ##

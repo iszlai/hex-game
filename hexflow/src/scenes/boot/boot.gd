@@ -33,35 +33,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		_leave()
 
 
+## §12.1 sends Boot to the main menu, and it no longer opens a level itself.
+##
+## §18.2's in-progress run is not lost by that: the map opens on the level the
+## player was in ([method Campaign.last_played]) and entering it *resumes* rather
+## than restarts ([method GameDirector.resume_or_start]). A Deck that slept
+## mid-level therefore wakes to a menu two presses from exactly where it was,
+## which is what a player who has been away for a week wants — the alternative,
+## dropping straight onto a board with no idea which one, only serves the player
+## who was away for ten seconds.
 func _leave() -> void:
 	if _left:
 		return
 	_left = true
-	# M6: GameDirector.go_to(GameDirector.Screen.MAIN_MENU)
-	# §18.2: the level the player was in the middle of comes back before the one
-	# the campaign would otherwise open on. Autosave has been writing this since
-	# M5 and nothing read it until now.
-	if not GameDirector.resume_in_progress():
-		GameDirector.start_level(_first_level())
-	GameDirector.go_to(GameDirector.Screen.LEVEL)
-
-
-## Chapter 1, level 1, from the frozen campaign data — never generated at
-## runtime, because a re-seed would invalidate its par and every stored star
-## (§9, §27).
-func _first_level() -> Level:
-	var lv := LevelRepository.load_level(1, 1)
-	if lv != null:
-		return lv
-	# The campaign data is missing or unreadable. Rather than leave the player at
-	# a black screen, fall back to the reference board of Appendix A, whose
-	# straight six-step solution is always playable.
-	push_warning("campaign data unavailable; falling back to the reference board")
-	var board := Board.build(3, Vector3i(-3, 0, 3), [Vector3i(3, 0, -3)] as Array[Vector3i])
-	var six_ne: Array[int] = [
-		Direction.NE, Direction.NE, Direction.NE, Direction.NE, Direction.NE, Direction.NE
-	]
-	var fallback := Level.build(board, six_ne)
-	fallback.id = "fallback"
-	fallback.par = 6
-	return fallback
+	GameDirector.go_to(GameDirector.Screen.MAIN_MENU)

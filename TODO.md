@@ -190,7 +190,21 @@ Exit: every level file validates and reproduces its par; the whole campaign is p
 - [x] `tools/author_levels.gd` sweeps seeds per slot against the chapter's par band
 - [x] `tests/property/test_level_files.gd` re-verifies every shipped file on every push
 - [x] Level schema documented — `src/data/schemas/level.md`
-- [ ] **Main menu** — Campaign %, Endless best, Daily streak + reset timer, Settings, Quit (§12.2)
+- [x] **Main menu** — Campaign %, Endless best, Daily streak + reset timer, Settings, Quit (§12.2) —
+      `src/scenes/main_menu/`, and **boot now hands to it** rather than opening a level, which is what
+      §12.1's first arrow has always said. The numbers are the requirement, not decoration: a menu
+      that navigates perfectly and shows 0% to a player who has finished two chapters has failed
+      §12.2, so `tests/e2e/test_main_menu.gd` asserts each one. The daily countdown is live off a
+      1 s `Timer` rather than a `_process` that rebuilds five strings a frame to change one (C4).
+      §18.2 survives the change of route: the map opens on the in-progress level and entering it
+      calls `GameDirector.resume_or_start`, so re-entering a run does not throw it away — without
+      that, boot no longer resuming would have quietly cancelled every autosave since M5
+- [x] **`src/ui/menu_list.gd`** — §12.5's focus rules in one place, since every `Menu` and `Modal`
+      screen is the same list with different rows: exactly one focused row, wrapping within the list,
+      a 3 px ring in the accent colour, and §21's 1.04× scale so focus is never carried by colour
+      alone. Disabled rows are stepped over rather than landed on. §12.5's 100 ms is in `Motion`
+      beside the §14.1 table, not inside the widget — but *not in* `TIMINGS`, which is asserted row
+      for row against §14.1 and may not grow a fifteenth entry
 - [x] **Level select** — hex-flower map reusing the board renderer, star pips, chapter progress (§9) —
       `src/scenes/level_select/` plus `src/ui/hex_flower.gd`. §9's "same board renderer" could not be
       taken literally and the reason is **C-25**: both renderers bind a `GameState`, and "level 7, two

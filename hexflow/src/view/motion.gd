@@ -86,6 +86,27 @@ const PARTICLE_BUDGET := {
 }
 const PARTICLE_CAP := 120
 
+## §12.5's focus ring, which is a timing the spec states in prose rather than in
+## §14.1's table: "3 px, accent colour, animated in 100 ms, and never invisible".
+## It is here rather than in [constant TIMINGS] because that dictionary is asserted
+## row for row against §14.1 and is not allowed to grow a fifteenth entry — but a
+## number typed into whichever menu happened to need it is exactly what this file
+## exists to prevent.
+const FOCUS_RING_MS := 100
+const FOCUS_RING_PX := 3
+## §21: the ring "also scales 1.04×", so focus is never carried by colour alone.
+const FOCUS_RING_SCALE := 1.04
+
+
+## The focus ring's animation, in seconds, under §14.5. Reduce Motion shortens it
+## like every other duration — but never to zero, because §12.5 also says the ring
+## is *never invisible*, and an instant ring is still a ring.
+static func focus_ring_seconds() -> float:
+	var ms: float = float(FOCUS_RING_MS)
+	if SettingsService.reduce_motion():
+		ms *= REDUCE_MOTION_SCALE
+	return ms / 1000.0
+
 
 ## The ripple's per-cell delay, in seconds, under §14.5. It scales with everything
 ## else: a wave whose front slowed while its body sped up would tear.

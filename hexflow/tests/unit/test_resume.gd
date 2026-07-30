@@ -176,3 +176,29 @@ func test_a_finished_run_is_cleared_rather_than_reopened() -> void:
 	if now is Dictionary:
 		assert_eq(int((now as Dictionary)["status"]), GameState.Status.PLAYING,
 			"whatever is stored now, it is not a finished run")
+
+
+## §18.2 through the door the player actually uses. Boot no longer opens a level
+## (§12.1 sends it to the main menu), so the resume happens when the map opens
+## the level — and the map opens on exactly the level §18.1 has been writing.
+## If entering it started a fresh run, every autosave since the last menu would be
+## thrown away by the one press meant to honour them.
+func test_opening_the_in_progress_level_from_the_map_resumes_it() -> void:
+	_run_in_progress(3)
+	var placements: int = GameDirector.state.placements
+	assert_gt(placements, 0, "there is a run to lose")
+	var level: Level = GameDirector.level
+
+	GameDirector.state = null
+	GameDirector.resume_or_start(level)
+	assert_eq(GameDirector.state.placements, placements, "the run came back")
+	assert_eq(GameDirector.state.status, GameState.Status.PLAYING)
+
+
+## Any *other* level starts from the top, including one whose run has finished.
+func test_opening_a_different_level_starts_it_fresh() -> void:
+	_run_in_progress(3)
+	var other: Level = LevelRepository.load_level(1, 2)
+	GameDirector.resume_or_start(other)
+	assert_eq(GameDirector.level.id, other.id)
+	assert_eq(GameDirector.state.placements, 0, "a different level is a new run")

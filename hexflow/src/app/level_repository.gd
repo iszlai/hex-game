@@ -86,6 +86,27 @@ static func clear_cache() -> void:
 	_cache.clear()
 
 
+## Something playable when the campaign data is missing or unreadable — the
+## reference board of Appendix A, whose straight six-step solution always works.
+##
+## §17.1 says one bad file must never brick a player's campaign, and the honest
+## end of that sentence is that the *whole tree* being unreadable must not either:
+## a fresh install with a failed download, or a Steam verify mid-flight, should
+## reach a board and a warning rather than a screen with nothing on it. It lived
+## in `boot.gd` until the boot screen stopped opening levels; it is here now
+## because knowing what to do when a level file will not load is this file's job.
+static func fallback_level() -> Level:
+	push_warning("campaign data unavailable; falling back to the reference board")
+	var board := Board.build(3, Vector3i(-3, 0, 3), [Vector3i(3, 0, -3)] as Array[Vector3i])
+	var six_ne: Array[int] = [
+		Direction.NE, Direction.NE, Direction.NE, Direction.NE, Direction.NE, Direction.NE
+	]
+	var level := Level.build(board, six_ne)
+	level.id = "fallback"
+	level.par = 6
+	return level
+
+
 ## Deserialises a level file. Rejects an unknown higher schema with a clear
 ## error rather than guessing at its meaning.
 static func from_dict(d: Dictionary) -> Level:

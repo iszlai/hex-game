@@ -179,13 +179,14 @@ func _open(index: int) -> void:
 		return
 	var level: Level = LevelRepository.load_level(_chapter, index)
 	if level == null:
-		# The campaign data is missing or unreadable; say so rather than fading to
-		# a screen that will not load (§17.1 — one bad file never bricks a save).
-		AudioDirector.play_sfx("ui.reject")
+		# §17.1: one bad file never bricks a campaign, so a level that will not load
+		# hands over the reference board rather than a screen that never arrives.
 		hint_label.text = "Level %d is unavailable" % index
-		return
+		level = LevelRepository.fallback_level()
 	AudioDirector.play_sfx("ui.confirm")
-	GameDirector.start_level(level)
+	# Resumes rather than restarts when this is the level §18.1 has been writing —
+	# the map opens on it by design, and re-entering it must not throw the run away.
+	GameDirector.resume_or_start(level)
 	GameDirector.go_to(GameDirector.Screen.LEVEL)
 
 
