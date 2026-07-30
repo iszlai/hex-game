@@ -45,7 +45,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels shot clean clean-levels legacy-branch status
+        test-file gate levels sfx shot measure clean clean-levels legacy-branch status
 
 ## ---------------------------------------------------------------- meta
 
@@ -95,6 +95,11 @@ shot: check ## Screenshot the board. PRESSES=cceccc OUT=board.png LEVEL=5.1
 	  "$(abspath $(or $(OUT),board.png))" "$(or $(PRESSES),)" "$(or $(LEVEL),)"
 	@echo "wrote $(or $(OUT),board.png)"
 
+measure: check ## Frame cost per renderer (C-3). METHOD=forward_plus|mobile|gl_compatibility
+	@$(RUN_CMD) --resolution 1280x800 \
+	  --rendering-method $(or $(METHOD),gl_compatibility) \
+	  -s res://tools/measure_renderer.gd
+
 ## ---------------------------------------------------------------- test
 
 test: check ## Run the whole suite: @core, @property and @e2e
@@ -122,6 +127,11 @@ levels: check ## Regenerate and re-verify campaign levels. CHAPTER=3 for one
 	@$(RUN_CMD) --headless -s res://tools/author_levels.gd -- $(CHAPTER)
 	@echo
 	@echo "levels are frozen data — commit the JSON, and expect pars to change"
+
+sfx: check ## Re-render §15.2's sixteen effects into assets/sfx/ (commit the output)
+	@$(RUN_CMD) --headless -s res://tools/make_sfx.gd
+	@echo
+	@echo "sound effects are committed assets — commit the .wav files"
 
 ## ---------------------------------------------------------------- misc
 

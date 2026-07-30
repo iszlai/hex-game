@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 306 tests / 14,546 asserts green in ~67 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 316 tests / 14,618 asserts green in ~67 s, 60 frozen
 level files re-verified.
 
 ---
@@ -369,9 +369,19 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       the loops: two captures 0.9 s apart are byte-identical with it on and differ with it off.
       Outstanding until the animations that do not exist yet do — shake, parallax, particles
 - [ ] Audio: 5 chapter beds + menu track, two stems, ducking (§15.1)
-- [ ] All 16 SFX (§15.2); `place.note` pentatonic ascent, resets per level, steps **down** on undo
-      — `AudioDirector` already keeps the index, playback is what is missing
-- [ ] Buses and sliders, −16 LUFS / −1 dBTP, `place.*` voice cap 4 (§15.3)
+- [x] All 16 SFX (§15.2); `place.note` pentatonic ascent, resets per level, steps **down** on undo —
+      `assets/sfx/`, 16 mono WAVs, 328 KB, **synthesised** by `tools/make_sfx.gd` from a table of a
+      few numbers per effect (`make sfx`, output committed like `make levels`). No external artist,
+      no licence to track, and retuning one is an edit rather than a download. The ascent is one
+      sample *pitched* rather than sixteen recorded notes, so the scale lives in code as ratios:
+      major pentatonic, capped at three octaves so a long path cannot climb out of hearing.
+      **Unverified:** I cannot hear them. The table is the point — replacing any effect with a
+      recorded one changes no code
+- [ ] Buses and sliders, −16 LUFS / −1 dBTP, `place.*` voice cap 4 (§15.3) — **buses, sliders and the
+      voice cap are built**: Master → Music / SFX / UI, each effect naming its own bus so the two
+      sliders move different sounds, and `place.*` capped at four voices with the oldest stolen. The
+      loudness targets are not measured — that needs a meter over a real mix and belongs with the
+      music, which is still blocked on C-6
 - [ ] Renderer measured Forward+ vs Mobile for the Deck export, result documented (C-3) — **harness
       built, partly measured, not decided**. `make measure METHOD=…` and `tools/measure_renderer.gd`.
       Three findings, recorded on C-3 in Appendix C. The project has been running **`gl_compatibility`**
