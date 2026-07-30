@@ -203,6 +203,10 @@ func _ensure_nodes() -> void:
 	viewport.add_child(camera)
 
 	pieces = _multimesh("StackPieces", BoardTiles.SHADER, BoardTiles.build_prism_mesh())
+	# A coin's rim is the board's tile side: the pile and the board are the same
+	# object seen at two sizes.
+	(pieces.material_override as ShaderMaterial).set_shader_parameter(
+		"side_ink", palette.board_tile_side)
 	set_flat(SettingsService.flat_board())
 	arrows = _multimesh("StackArrows", BoardMarks.SHADER, BoardMarks.build_quad_mesh())
 	var mat: ShaderMaterial = arrows.material_override

@@ -81,6 +81,7 @@ func bind(state: GameState, layout: HexLayout) -> void:
 		# §6's wall hatch, in the grey-box's own token: the two views cannot then
 		# disagree about what a wall looks like.
 		mat.set_shader_parameter("hatch_ink", palette.wall_stroke)
+		mat.set_shader_parameter("side_ink", palette.board_tile_side)
 	set_flat(SettingsService.flat_board())
 
 	rebuild()

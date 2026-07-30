@@ -838,6 +838,7 @@ Define once in `src/data/palettes/neon_dark.tres`; never hardcode a colour in a 
 | `focus` | `#FFFFFF` | Focus ring |
 | `board.key.light` | `#FFF6E8` | The C-18 board's single key light |
 | `board.ambient` | `#2A3A55` | The ambient it sits in |
+| `board.tile.side` | `#1B2331` | What a prism's side face is pulled toward — the 3D board's inheritance of `cell.empty.stroke` |
 | `board.mark.outline` | `#070B12` | Ring around every §6 modifier mark, so the glyph reads on any tile (C-23) |
 
 ### 13.3 Hex cell rendering

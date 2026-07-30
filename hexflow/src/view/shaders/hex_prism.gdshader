@@ -29,10 +29,12 @@
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
-// How much darker a side face is than a top face when the board takes no light.
-// Enough to read the height as height; not so much that a side goes to black on
-// the high-contrast palette.
+// How much darker a side face is than a top face, and how far it is then pulled
+// toward `side_ink`. The pull is what makes a tile read as an object standing on
+// the board instead of a fill with a dimmer edge — and C-22 needs the sides read
+// as sides, because that is where a tile's height is visible at all.
 const float SIDE_SHADE = 0.45;
+const float SIDE_INK = 0.5;
 
 /// A wall's 45° hatch (§6), which is the only cue it has that is neither colour
 /// nor height. `wall.fill` and `cell.empty.fill` sit within 1% of each other in
@@ -48,6 +50,7 @@ const float HATCH_DUTY = 0.24;
 
 uniform bool flat_board = false;
 uniform vec4 hatch_ink : source_color;
+uniform vec4 side_ink : source_color;
 
 varying vec3 tint;
 varying float cursor;
@@ -84,13 +87,19 @@ void fragment() {
 			1.0 - smoothstep(HATCH_DUTY - aa, HATCH_DUTY + aa, wave));
 	}
 
+	// A side is its tile's own colour, darkened and then pulled toward the board's
+	// edge ink, so every tile has a visible rim without any of them losing which
+	// tile it is.
+	vec3 side = mix(base * SIDE_SHADE, side_ink.rgb, SIDE_INK);
+	vec3 face = mix(side, base, up);
+
 	if (flat_board) {
 		ALBEDO = vec3(0.0);
 		SPECULAR = 0.0;
 		ROUGHNESS = 1.0;
-		EMISSION = base * mix(SIDE_SHADE, 1.0, up) + glow;
+		EMISSION = face + glow;
 	} else {
-		ALBEDO = base;
+		ALBEDO = face;
 		ROUGHNESS = 0.55;
 		SPECULAR = 0.25;
 		EMISSION = glow;

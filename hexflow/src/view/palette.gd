@@ -35,6 +35,14 @@ extends Resource
 ## `.tres`, and a light hardcoded in a script would keep the neon cast in all four.
 @export var board_key_light: Color = Color("FFF6E8")
 @export var board_ambient: Color = Color("2A3A55")
+## The colour a tile's **side** is pulled toward, so a prism reads as an object
+## standing on the board rather than as a flat fill with a dimmer edge. This is the
+## 3D board's inheritance of `cell.empty.stroke`: in two dimensions a cell was told
+## from its neighbour by an outline, and in three the side face *is* that outline.
+## It matters more than it looks — C-22 puts a tile's kind in its height, and a
+## height you cannot see the side of is a height nobody can read.
+@export var board_tile_side: Color = Color("1B2331")
+
 ## Outline carried by every modifier mark (C-23). A mark is drawn on top of a tile
 ## whose own colour is a palette token too, so a mark and its tile can be a similar
 ## luminance under a greyscale or high-contrast palette — the outline is what keeps
