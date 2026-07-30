@@ -17,7 +17,7 @@
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
-const float LINK_GLOW = 0.35;
+const float LINK_GLOW = 0.5;
 
 // Matches [BoardTiles]' own flat path, so a ribbon lying on a tile top steps down
 // with it rather than floating free of it. See `hex_prism.gdshader` for why.

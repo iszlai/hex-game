@@ -24,14 +24,20 @@ const SHADER := "res://src/view/shaders/path_link.gdshader"
 ## differently. A wire format: append, never renumber.
 enum Kind { LINK = 0, TETHER = 1 }
 
-## Ribbon width and thickness as fractions of the cell circumradius. The grey-box
-## drew its connectors at 0.30 of a cell; this is a little narrower because a solid
-## bar in three dimensions reads heavier than a flat stroke does.
-const LINK_WIDTH := 0.26
-const LINK_HEIGHT := 0.09
+## Ribbon width and thickness as fractions of the cell circumradius.
+##
+## Much thinner than the grey-box's 0.30 stroke, and thinner than this started.
+## §13.1 asks for "thin bright strokes" and a path that reads as "a single
+## continuous line of light"; a solid bar in three dimensions reads far heavier
+## than the same number does in two, and at 0.26 wide and 0.09 thick it was a white
+## pipe lying on the board rather than a line drawn on it.
+const LINK_WIDTH := 0.14
+const LINK_HEIGHT := 0.05
 
 ## How far the ribbon is lifted off its own path colour. See [method _colour_at].
-const LINK_LIGHTEN := 0.15
+## Only just enough to separate: the emission is what makes it read, and lightening
+## it any further flattened the depth gradient into one white slash.
+const LINK_LIGHTEN := 0.06
 
 ## A portal jump is not a lattice step, so it is not drawn like one: dashes, and a
 ## thinner ribbon. Two channels that are not colour (§21) — the grey-box used the
