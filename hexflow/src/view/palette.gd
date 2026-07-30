@@ -18,6 +18,10 @@ extends Resource
 
 @export_group("Path")
 @export var path_core: Color = Color("34E5C4")
+## §13.2's `path.glow`: `path.core` at 35%, for the additive bloom around the path
+## and the §14.4 emitters. A token rather than an alpha applied at the call site,
+## so a palette that wants a different glow can say so.
+@export var path_glow: Color = Color("34E5C4", 0.35)
 @export var path_gradient_far: Color = Color("7C6BFF")
 @export var start_cell: Color = Color("7CF3FF")
 @export var goal_cell: Color = Color("FFB43D")

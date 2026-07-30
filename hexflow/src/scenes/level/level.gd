@@ -71,6 +71,10 @@ func _ready() -> void:
 		# grey-box is exercisable without the menu.
 		GameDirector.start_level(LevelRepository.load_level(2, 4))
 
+	# §13.2: not one colour lives in the scene file, so §21's palette swaps stay a
+	# resource change with no code change.
+	(%Background as ColorRect).color = board_view.palette.bg_deep
+
 	_apply_cursor_mode()
 	SettingsService.changed.connect(_on_setting_changed)
 

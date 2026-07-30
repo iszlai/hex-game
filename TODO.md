@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 230 tests / 14,047 asserts green in ~61 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 235 tests / 14,084 asserts green in ~61 s, 60 frozen
 level files re-verified.
 
 ---
@@ -293,7 +293,15 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       capture: hatched walls, flat everything else
 - [x] `board_rotate_cw` / `board_rotate_ccw` given an effect — bound in M4, live now. Turning re-feeds
       `InputRouter` with the new screen positions, so the cone and the cycling turn with the board
-- [ ] Full palette token set audited — never a colour in a script or scene (§13.2)
+- [x] Full palette token set audited — never a colour in a script or scene (§13.2). Three literals
+      were baked into scene files (`boot.tscn`'s background and title, `level.tscn`'s background) and
+      §13.2's `path.glow` had no token at all. All four fixed, and the audit is now **grep-enforced**
+      in `ci_gate.sh` rather than remembered: any colour property in a `.tscn`, or a hex `Color("…")`
+      outside `palette.gd`, fails the gate. The float form is deliberately not scanned in scripts —
+      `set_instance_custom_data` takes a `Color` that is four floats of state, not a colour.
+      `tests/unit/test_palette.gd` also holds the resource to the script: a token declared and then
+      forgotten in the `.tres` does not fail, it silently falls back to the neon-dark default, which
+      is exactly how one of §21's four palettes would ship with a wrong colour in it
 - [ ] Fonts vendored, SIL-OFL only: Space Grotesk, Inter, JetBrains Mono; 18 px absolute floor (§13.4)
 - [ ] Icon atlas, 9 line icons on a 24×24 grid (§13.5)
 - [ ] Real §12.3 HUD layout: 56 px top bar, 400 px rail, 140 px NOW tile, 72 px NEXT, 56 px banner

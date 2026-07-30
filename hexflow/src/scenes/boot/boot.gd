@@ -11,6 +11,15 @@ var _elapsed: float = 0.0
 var _left: bool = false
 
 
+## §13.2 allows a colour in exactly one place, and a `.tscn` is not it: §21's four
+## alternate palettes are a resource swap with no code change, and a literal baked
+## into a scene would survive all four of them.
+func _ready() -> void:
+	var palette: Palette = load("res://src/data/palettes/neon_dark.tres")
+	(%Background as ColorRect).color = palette.bg_deep
+	(%Title as Label).add_theme_color_override("font_color", palette.path_core)
+
+
 func _process(delta: float) -> void:
 	_elapsed += delta
 	if _elapsed >= MAX_SECONDS:

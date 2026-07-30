@@ -33,6 +33,16 @@ echo "== C1 layering: src/core/ touches no node, scene, texture or Input API =="
 hits=$(scan src/core '(^|[^_[:alnum:].])(Node|Node2D|Control|Input|InputEvent|Texture|PackedScene|Viewport|get_tree|get_node|queue_redraw)([^_[:alnum:]]|$)')
 if [ -n "$hits" ]; then echo "$hits"; fail "engine dependency in src/core/ (C1)"; fi
 
+echo "== §13.2 palette: no colour outside the palette =="
+# Two ways a colour gets hardcoded in practice. In scenes, any colour property;
+# in scripts, a hex literal. The float form is *not* scanned in scripts, because
+# `MultiMesh.set_instance_custom_data` takes a `Color` that is not a colour at all
+# — it is four floats of per-instance state, and the board pushes three of those.
+hits=$(grep -rn "= Color(" --include="*.tscn" src 2>/dev/null)
+if [ -n "$hits" ]; then echo "$hits"; fail "colour literal in a scene (§13.2, §21)"; fi
+hits=$(scan src 'Color[(]"' | grep -v 'src/view/palette.gd')
+if [ -n "$hits" ]; then echo "$hits"; fail "hex colour literal outside palette.gd (§13.2, §21)"; fi
+
 echo "== §16.5 autoloads: exactly six =="
 count=$(sed -n '/^\[autoload\]/,/^\[[a-z]/p' project.godot | grep -cE '^[A-Za-z][A-Za-z0-9_]*=')
 if [ "$count" -ne 6 ]; then fail "expected 6 autoloads, found $count (§16.5)"; fi
