@@ -64,3 +64,6 @@ build/
 
 ## OS Specific
 .DS_Store
+
+# Engine fetched by `make godot`
+.tools/

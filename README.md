@@ -4,9 +4,21 @@ This repository holds two things: a 2016 libGDX prototype, and the Godot rebuild
 
 ## `hexflow/` — the current game
 
-The active project. Godot 4.7.1, GDScript, targeting Steam Deck and desktop. See
-[`hexflow/README.md`](hexflow/README.md) to run it, and [`HEXFLOW-SPEC.md`](HEXFLOW-SPEC.md) for the
-full design and build specification.
+The active project. Godot 4.7.1, GDScript, targeting Steam Deck and desktop.
+
+```sh
+make godot     # fetch the pinned engine into .tools/ — no system install needed
+make run       # play it
+make test      # the whole suite
+make           # list every target
+```
+
+| Document | What it is for |
+|---|---|
+| [`hexflow/docs/ARCHITECTURE.md`](hexflow/docs/ARCHITECTURE.md) | **Start here if you are new.** Codebase tour, layering rules, data flow, gotchas |
+| [`hexflow/docs/BUILD-SUMMARY.md`](hexflow/docs/BUILD-SUMMARY.md) | What is built, what is not, what was learned |
+| [`HEXFLOW-SPEC.md`](HEXFLOW-SPEC.md) | The authoritative design and build specification |
+| [`hexflow/README.md`](hexflow/README.md) | Pinned versions and the raw commands behind the Makefile |
 
 ## The 2016 prototype — being retired
 

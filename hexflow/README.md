@@ -37,19 +37,37 @@ its screen class and became untestable (defect B4).
 
 ## Running
 
+Everything goes through the Makefile at the repository root.
+
+```sh
+make godot          # fetch Godot 4.7.1 into .tools/ — no system install
+make run            # play at the 1280x800 Deck reference resolution
+make test           # @core, @property and @e2e
+make gate           # the full push gate; run this before pushing
+make                # list every target
+```
+
+To use an engine you already have, pass it in: `make test GODOT=/path/to/Godot`.
+
+Raw equivalents, if you would rather not use make:
+
 ```sh
 GODOT=/path/to/Godot                       # 4.7.1-stable
 
-# play
 $GODOT --path . --resolution 1280x800
-
-# every test: @core, @property and @e2e
 $GODOT --headless -s res://addons/gut/gut_cmdln.gd \
     -gdir=res://tests -ginclude_subdirs -gexit -gprefix=test_
-
-# the full push gate, including the determinism and i18n greps
-./tools/ci_gate.sh
+GODOT=$GODOT ./tools/ci_gate.sh
 ```
+
+## Documentation
+
+| Document | What it is for |
+|---|---|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | **Start here if you are new.** Codebase tour, layering rules, data flow, gotchas |
+| [`docs/BUILD-SUMMARY.md`](docs/BUILD-SUMMARY.md) | What is built, what is not, what was learned |
+| [`src/data/schemas/level.md`](src/data/schemas/level.md) | The level file format |
+| [`../HEXFLOW-SPEC.md`](../HEXFLOW-SPEC.md) | The authoritative design specification |
 
 ## Authoring campaign levels
 
@@ -58,8 +76,8 @@ runtime — a re-seed would change the tile sequence and silently invalidate eve
 and comparison (§9, §27).
 
 ```sh
-$GODOT --headless --path . -s res://tools/author_levels.gd        # all 60
-$GODOT --headless --path . -s res://tools/author_levels.gd -- 3   # chapter 3 only
+make levels             # all 60
+make levels CHAPTER=3   # one chapter
 ```
 
 Every candidate is proved solvable by the solver before it is written, and
@@ -68,7 +86,7 @@ Every candidate is proved solvable by the solver before it is written, and
 ## Capturing a screenshot
 
 ```sh
-$GODOT --path . --resolution 1280x800 -s res://tools/screenshot.gd -- out.png "cceccc"
+make shot OUT=board.png PRESSES=cceccc
 ```
 
 The press string sends one key per frame: `c` confirm, `z` undo, `q`/`e` cycle, `d` discard,
@@ -85,10 +103,5 @@ The press string sends one key per frame: `c` confirm, `z` undo, `q`/`e` cycle, 
 | M6 Campaign data | levels generated and frozen; level select and chapter unlocks still to build |
 | M4, M5, M7–M11 | not started |
 
-## Notes for the next session
-
-- Fonts, SFX and music are not yet vendored; `assets/` holds the empty tree. §13.4 requires
-  SIL-OFL fonts embedded in the project, and §22 requires all strings to move to
-  `assets/i18n/en.csv` before M10.
-- `tools/ci_gate.sh` already runs the §19 banned-API grep. The §22 string-literal check is
-  scaffolded but permissive until the i18n extraction of M10.
+Full detail, including the two specification defects found during the build, is in
+[`docs/BUILD-SUMMARY.md`](docs/BUILD-SUMMARY.md).
