@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 134 tests / 11,631 asserts green in ~58 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 147 tests / 12,561 asserts green in ~58 s, 60 frozen
 level files re-verified.
 
 ---
@@ -191,8 +191,12 @@ Exit: every §12.4 feedback requirement met against the grey-box; §20 frame bud
 Rewritten for the orthographic-3D perspective of **C-18**. The 2D grey-box stays alive underneath as
 the headless/test view — if a 3D change breaks the grey-box tests, the 3D change is wrong.
 
-- [ ] Cube → ground plane: `hex_layout.gd` gains `(x, z)` output, same §4.3 formula, floats still
-      confined to the view (C-13)
+- [x] Cube → ground plane: `hex_layout.gd` gains `(x, z)` output, same §4.3 formula, floats still
+      confined to the view (C-13) — `to_plane` / `from_plane`, with the formula written once and
+      shared with `to_pixel`, so the 3D board cannot drift from the grey-box.
+      `tests/unit/test_hex_layout.gd` is also the layout's *first* direct test: the conversion, both
+      round trips, §4.4's size table and the margin the fit rule claims to leave were all covered
+      only transitively through `BoardView` before
 - [ ] `Camera3D`, `projection = ORTHOGONAL`, fixed pitch; yaw snaps to the six 60° lattice positions,
       tweened; §4.4's fit rule applied to the **projected** bounds
 - [ ] Pointer hit-test as camera ray ∩ `y = 0`, then the existing `HexLayout.from_pixel` — B7's fix

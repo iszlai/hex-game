@@ -45,16 +45,50 @@ func corners() -> PackedVector2Array:
 ## start `(-3,0,3)` lands bottom-left and goal `(3,0,-3)` top-right, exactly as
 ## the 2016 prototype laid them out.
 func to_pixel(c: Vector3i) -> Vector2:
-	var q := float(c.x)
-	var r := float(c.z)
-	return origin + Vector2(size * SQRT3 * (q + r / 2.0), size * 1.5 * r)
+	return origin + _offset(c)
 
 
 ## Inverse conversion for mouse and touch, through fractional cube coordinates
 ## and cube rounding. Always route hit-testing through this rather than raw
 ## screen coordinates (defect B7).
 func from_pixel(p: Vector2) -> Vector3i:
-	var local := p - origin
+	return _unoffset(p - origin)
+
+
+## Cube → the ground plane of the orthographic-3D board (C-18), at `y = 0`.
+##
+## §4.3's formula unchanged, fed straight into world `(x, z)`. [member origin]
+## deliberately does **not** apply: the 3D board is centred on the world origin and
+## framing is the camera's job (§4.4's fit rule applied to the projected bounds),
+## whereas [member origin] exists to centre the 2D board inside a `Control`. Tile
+## thickness extrudes upward from here, which is why the plane itself stays at zero.
+##
+## A camera pitched downward at yaw 0 sees world `+x` to the right and world `+z`
+## toward the bottom of the screen — the same handedness as Godot's y-down 2D — so
+## the lattice reads identically to the grey-box: start `(-3,0,3)` bottom-left,
+## goal `(3,0,-3)` top-right.
+func to_plane(c: Vector3i) -> Vector3:
+	var p := _offset(c)
+	return Vector3(p.x, 0.0, p.y)
+
+
+## Inverse of [method to_plane], for C-18's camera-ray ∩ `y = 0` hit-test.
+## [param p]`.y` is ignored, so a ray hit landing a hair off the plane still
+## resolves. The rounding is [method from_pixel]'s own, shared rather than
+## reimplemented, so B7's fix survives the move to 3D.
+func from_plane(p: Vector3) -> Vector3i:
+	return _unoffset(Vector2(p.x, p.z))
+
+
+## The §4.3 conversion itself, origin-free: the one place the formula is written.
+## [method to_pixel] adds the 2D origin, [method to_plane] spreads it over `(x, z)`.
+func _offset(c: Vector3i) -> Vector2:
+	var q := float(c.x)
+	var r := float(c.z)
+	return Vector2(size * SQRT3 * (q + r / 2.0), size * 1.5 * r)
+
+
+func _unoffset(local: Vector2) -> Vector3i:
 	var q_f := (local.x * SQRT3 / 3.0 - local.y / 3.0) / size
 	var r_f := (local.y * 2.0 / 3.0) / size
 	return _cube_round(q_f, -q_f - r_f, r_f)
