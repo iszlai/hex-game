@@ -40,8 +40,11 @@ const float SIDE_SHADE = 0.45;
 /// empty cell — height alone is a band a few pixels deep on a near-black tile.
 /// Pitch is a fraction of the tile's own width, so it holds at every §4.4 size.
 const int KIND_WALL = 4;
-const float HATCH_PITCH = 0.30;
-const float HATCH_DUTY = 0.42;
+/// Sparse on purpose: the grey-box drew five thin lines across a cell, and §13.1
+/// wants generous negative space. At half the period inked, a wall stops being a
+/// dark quiet block and starts competing with the path for attention.
+const float HATCH_PITCH = 0.36;
+const float HATCH_DUTY = 0.24;
 
 uniform bool flat_board = false;
 uniform vec4 hatch_ink : source_color;
