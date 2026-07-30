@@ -70,8 +70,10 @@ func test_instances_stand_where_the_layout_puts_them() -> void:
 		assert_almost_eq(t.origin.z, want.z, 0.01, "%v z" % c)
 		assert_almost_eq(t.origin.y, 0.0, 0.01, "%v sits on the plane" % c)
 		var scale: Vector3 = t.basis.get_scale()
-		assert_almost_eq(scale.x, _layout.size, 0.01, "%v is one cell wide" % c)
-		assert_almost_eq(scale.z, _layout.size, 0.01, "%v is one cell deep" % c)
+		var width: float = _layout.size * BoardTiles.TILE_INSET
+		assert_almost_eq(scale.x, width, 0.01, "%v is one cell wide, less the gap" % c)
+		assert_almost_eq(scale.z, width, 0.01, "%v is one cell deep, less the gap" % c)
+		assert_lt(width, _layout.size, "the gap is what separates neighbours (§13.2)")
 
 
 ## §21 / C5, in three dimensions: kind by height, so a greyscale palette or a

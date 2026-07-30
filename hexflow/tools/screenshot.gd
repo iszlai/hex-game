@@ -2,8 +2,14 @@ extends SceneTree
 ## Dev tool: boots a scene, lets it settle, and writes a PNG.
 ## Run non-headless: Godot --path . -s res://tools/screenshot.gd -- <out.png> [presses]
 ## `presses` is a string of keys sent one per frame — `c` confirm, `z` undo,
-## `q`/`e` cycle, `d` discard, `h` hint. Letters only: Godot drops a
-## whitespace-only command-line argument. Not part of the shipped game.
+## `q`/`e` cycle, `d` discard, `h` hint, `r`/`l` turn the board clockwise and
+## anticlockwise. Letters only: Godot drops a whitespace-only command-line
+## argument. Not part of the shipped game.
+
+## Frames to let the last press finish animating before the capture. Must outlast
+## the longest animation a press can start — currently the 260 ms board yaw (C-21),
+## which is ~16 frames at 60 fps.
+const SETTLE_FRAMES := 30
 
 var _frames: int = 0
 var _out: String = "user://shot.png"
@@ -36,7 +42,7 @@ func _process(_delta: float) -> bool:
 		# `tests/e2e/` covers the real viewport dispatch path.
 		_level.call("_unhandled_input", ev)
 		return false
-	if i < _presses.length() + 6:
+	if i < _presses.length() + SETTLE_FRAMES:
 		return false
 	var img := root.get_texture().get_image()
 	img.save_png(_out)
@@ -62,5 +68,9 @@ func _key_for(c: String) -> Key:
 			return KEY_D
 		"h":
 			return KEY_H
+		"r":
+			return KEY_BRACKETRIGHT
+		"l":
+			return KEY_BRACKETLEFT
 		_:
 			return KEY_SPACE

@@ -124,6 +124,19 @@ func cell_at(local_point: Vector2) -> Vector3i:
 	return layout.from_plane(camera.plane_point(local_point))
 
 
+## A whole-window position — where a click or a finger actually arrives — brought
+## into the board's own space. A `Control` has no `to_local`, and subtracting the
+## board's offset by hand at the call site is how a screen with a top bar ends up
+## hit-testing one row out, so the conversion lives here with the thing it converts.
+func local_point(at: Vector2) -> Vector2:
+	return at - global_position
+
+
+## The inverse: where [param cell] is on the window, for aiming a pointer at it.
+func screen_position_of(cell: Vector3i) -> Vector2:
+	return global_position + centre_of(cell)
+
+
 func _ensure_nodes() -> void:
 	if viewport != null:
 		return
@@ -132,7 +145,6 @@ func _ensure_nodes() -> void:
 	# The board gets a world of its own so nothing else in the scene can light it
 	# or appear in it by accident.
 	viewport.own_world_3d = true
-	viewport.transparent_bg = true
 	add_child(viewport)
 	camera = BoardCamera.new()
 	camera.name = "BoardCamera"
@@ -143,6 +155,41 @@ func _ensure_nodes() -> void:
 	tiles.name = "BoardTiles"
 	tiles.palette = palette
 	viewport.add_child(tiles)
+	_add_lighting()
+
+
+## One key light and one environment, both fixed in world space.
+##
+## Fixed is the point: the light does not follow the yaw, so turning the board moves
+## the shadows across it and the rotation reads as a rotation. It sits high and to
+## one side, which is what gives C-22's tile heights something to cast — the height
+## *is* the colour-independent channel, and a light straight down would flatten it.
+##
+## §14.3 is unaffected: this is not camera motion, and nothing here moves at all.
+func _add_lighting() -> void:
+	var key := DirectionalLight3D.new()
+	key.name = "KeyLight"
+	key.light_color = palette.board_key_light
+	key.light_energy = 1.15
+	# Down 50°, and yawed off the camera's opening axis so the prism sides that face
+	# the viewer are not the ones in full shadow.
+	key.rotation_degrees = Vector3(-50.0, 35.0, 0.0)
+	key.shadow_enabled = true
+	# The tiles are the only casters and they are all within a board's width, so the
+	# split can stay tight and the shadows stay sharp.
+	key.directional_shadow_max_distance = BoardCamera.DISTANCE * 0.5
+	viewport.add_child(key)
+
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = palette.bg_deep
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = palette.board_ambient
+	env.ambient_light_energy = 0.95
+	var holder := WorldEnvironment.new()
+	holder.name = "BoardEnvironment"
+	holder.environment = env
+	viewport.add_child(holder)
 
 
 func _recompute_positions(yaw: float) -> void:

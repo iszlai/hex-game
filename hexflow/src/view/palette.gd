@@ -29,6 +29,13 @@ extends Resource
 @export var gate: Color = Color("6F8CFF")
 @export var wild: Color = Color("F7F16B")
 
+@export_group("Board lighting")
+## The single key light of the C-18 board and the ambient it sits in. Tokens rather
+## than literals for the same reason every other colour is: §21's palettes swap the
+## `.tres`, and a light hardcoded in a script would keep the neon cast in all four.
+@export var board_key_light: Color = Color("FFF6E8")
+@export var board_ambient: Color = Color("2A3A55")
+
 @export_group("Feedback")
 @export var danger: Color = Color("FF5470")
 @export var text_primary: Color = Color("EAF2FF")

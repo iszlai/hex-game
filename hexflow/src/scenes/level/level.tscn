@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/scenes/level/level.gd" id="1_level"]
-[ext_resource type="Script" path="res://src/view/board_view.gd" id="2_boardview"]
+[ext_resource type="Script" path="res://src/view/board_view_3d.gd" id="2_boardview"]
 [ext_resource type="Resource" path="res://src/data/palettes/neon_dark.tres" id="3_palette"]
 [ext_resource type="Script" path="res://src/ui/legend_panel.gd" id="4_legend"]
 
@@ -25,8 +25,10 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.039216, 0.054902, 0.078431, 1)
 
-[node name="BoardView" type="Node2D" parent="."]
+[node name="Board" type="SubViewportContainer" parent="."]
 unique_name_in_owner = true
+offset_top = 56.0
+mouse_filter = 2
 script = ExtResource("2_boardview")
 palette = ExtResource("3_palette")
 

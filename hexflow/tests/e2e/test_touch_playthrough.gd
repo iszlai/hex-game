@@ -37,14 +37,14 @@ func _open(level: Level) -> void:
 	await wait_process_frames(2)
 
 
-func _board() -> BoardView:
-	return _scene.get_node("%BoardView") as BoardView
+func _board() -> BoardView3D:
+	return _scene.get_node("%Board") as BoardView3D
 
 
 ## A finger on a cell. The position is derived the same way the board draws it, so
 ## the test cannot pass by agreeing with a bug in its own arithmetic.
 func _tap_cell(cell: Vector3i) -> void:
-	var at := _board().to_global(_board().centre_of(cell))
+	var at := _board().screen_position_of(cell)
 	var down := InputEventScreenTouch.new()
 	down.index = 0
 	down.position = at

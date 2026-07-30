@@ -91,8 +91,7 @@ const ACTIONS := {
 		"axes": [],
 		"glyph": "r1",
 	},
-	# Bound now, inert until the C-18 camera exists in M7. Registering them here
-	# means the binding table is written once rather than twice.
+	# Turns the C-18 board between its six 60° stops (§14.3 as amended).
 	"board_rotate_ccw": {
 		"set": SET_BOARD,
 		"keys": [KEY_BRACKETLEFT],

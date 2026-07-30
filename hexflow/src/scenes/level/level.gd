@@ -23,7 +23,7 @@ const TOUCH_TARGET := 44.0
 ## destructive; the hint is a trigger that a resting finger brushes.
 const HOLD_ACTIONS: Array[String] = ["board_restart", "board_hint"]
 
-@onready var board_view: BoardView = %BoardView
+@onready var board_view: BoardView3D = %Board
 @onready var title_label: Label = %TitleLabel
 @onready var score_label: Label = %ScoreLabel
 @onready var now_label: Label = %NowLabel
@@ -152,10 +152,10 @@ func _pointer(event: InputEvent) -> bool:
 		at = (event as InputEventScreenTouch).position
 	if at == Vector2.INF:
 		return false
-	# Converted through the board's own transform rather than by subtracting its
-	# position: the board is a Node2D under a Control, so any offset of the screen
-	# itself has to come out too, and only `to_local` knows about all of it.
-	if _router.point_at(board_view.cell_at(board_view.to_local(at))):
+	# Converted by the board itself: it is the only thing that knows where it sits
+	# and how a point on the window becomes a cell (§4.3, and B7 for why this never
+	# happens in screen coordinates).
+	if _router.point_at(board_view.cell_at(board_view.local_point(at))):
 		_confirm()
 	return true
 
@@ -231,12 +231,22 @@ func _action(event: InputEvent) -> bool:
 		EventBus.pause_requested.emit()
 	elif event.is_action_pressed("board_back"):
 		EventBus.pause_requested.emit()
-	elif event.is_action_pressed("board_rotate_cw") or event.is_action_pressed("board_rotate_ccw"):
-		# Bound in M4, effective in M7 when the C-18 camera exists.
-		pass
+	elif event.is_action_pressed("board_rotate_cw"):
+		_rotate(1)
+	elif event.is_action_pressed("board_rotate_ccw"):
+		_rotate(-1)
 	else:
 		return false
 	return true
+
+
+## Turning the board moves every candidate on screen, so the router has to be re-fed
+## with the new positions — §11.2 works in screen space and knows nothing about a
+## camera. `BoardView3D` has already jumped its positions to the stop it is heading
+## for, so this reads the destination rather than the tween.
+func _rotate(steps: int) -> void:
+	board_view.rotate_by(steps)
+	_refresh_candidates()
 
 
 func _process(delta: float) -> void:

@@ -137,14 +137,14 @@ func test_cycling_visits_every_legal_target_and_wraps() -> void:
 ## Hence this test.
 func test_a_mouse_click_places_on_the_clicked_cell() -> void:
 	await _open(_straight_level())
-	var board: BoardView = _scene.get_node("%BoardView")
+	var board: BoardView3D = _scene.get_node("%Board")
 	var target := Fixtures.START + Direction.delta(Direction.NE)
 	assert_true(GameDirector.state.legal_targets().has(target))
 
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
-	click.position = board.to_global(board.centre_of(target))
+	click.position = board.screen_position_of(target)
 	_scene.get_viewport().push_input(click, true)
 	await wait_process_frames(1)
 

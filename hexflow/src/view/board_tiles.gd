@@ -30,6 +30,13 @@ const WALL_TOP := 0.52
 ## room for — see [constant BoardView3D.TILE_TOP_RATIO].
 const MAX_TOP := WALL_TOP
 
+## Prisms are drawn a little narrower than their cell, so the background shows
+## between them. This is the 3D board's answer to `cell_empty_stroke`: without it,
+## neighbouring tiles meet face to face and a field of empty cells reads as one
+## unlit slab. The *hit* region is unaffected — [method BoardView3D.cell_at] rounds
+## on the full cell, so a press in the gap still lands on the nearest tile.
+const TILE_INSET := 0.93
+
 @export var palette: Palette = null
 
 var _board: Board = null
@@ -185,8 +192,9 @@ static func _add_triangle(st: SurfaceTool, points: Array[Vector3], uvs: Array[Ve
 ## scaled to the cell size, with the height its kind earns it.
 func transform_of(cell: Vector3i) -> Transform3D:
 	var height: float = _layout.size * top_ratio(kind_of(cell))
+	var width: float = _layout.size * TILE_INSET
 	return Transform3D(
-		Basis().scaled(Vector3(_layout.size, height, _layout.size)),
+		Basis().scaled(Vector3(width, height, width)),
 		_layout.to_plane(cell)
 	)
 
