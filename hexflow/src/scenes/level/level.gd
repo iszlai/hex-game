@@ -90,6 +90,9 @@ func _ready() -> void:
 	_holds.cancelled.connect(_on_hold_cancelled)
 
 	EventBus.state_reset.connect(_on_state_reset)
+	# §5.8's dead state is recoverable, so the board's colour has to come back with
+	# it — an undo out of a dead end is exactly when a grey board would lie.
+	EventBus.legal_targets_changed.connect(_on_targets_for_life)
 	EventBus.legal_targets_changed.connect(_on_legal_targets_changed)
 	EventBus.tile_advanced.connect(_on_tile_advanced)
 	EventBus.level_won.connect(_on_level_won)
@@ -371,6 +374,12 @@ func _on_wild_button() -> void:
 
 # --- facts -------------------------------------------------------------------
 
+## Any move that leaves the player with somewhere to go has left the dead state.
+func _on_targets_for_life(targets: Array) -> void:
+	if not targets.is_empty():
+		board_view.clear_dead()
+
+
 func _on_state_reset(state: GameState) -> void:
 	banner.visible = false
 	_router.has_cursor = false
@@ -474,6 +483,7 @@ func _on_level_won(placements: int, par: int, stars: int) -> void:
 func _on_level_dead() -> void:
 	# Never a hard fail: undo takes the default focus (§5.8).
 	_haptics.play("dead")
+	board_view.play_dead()
 	_flash_banner("No route left — %s undo · %s restart" % [
 		InputGlyphs.label_for("board_undo"), InputGlyphs.label_for("board_restart")
 	])

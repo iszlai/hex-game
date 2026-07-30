@@ -23,6 +23,10 @@
 class_name BoardView3D
 extends SubViewportContainer
 
+## §14.1's dead board: 70% saturation, not zero. It is a recoverable state, and a
+## board drained to grey would read as a finished one.
+const DEAD_SATURATION := 0.7
+
 ## How far past the far end of the path the band travels before it is done, so the
 ## last cell gets a full pass rather than a half one.
 const FLOW_TAIL := 0.25
@@ -51,6 +55,8 @@ var _state: GameState = null
 var _screen: Dictionary = {}     # Vector3i -> Vector2, in sub-viewport pixels
 var _flow: Tween = null
 var _flow_head: float = -1.0
+var _drain: Tween = null
+var _saturation: float = 1.0
 
 
 func _ready() -> void:
@@ -85,6 +91,9 @@ func bind(state: GameState, play_area: Vector2) -> void:
 	particles.bind(layout)
 	# A new level is a new completion, so §14.3's once-per-level budget resets here.
 	camera.reset_shake()
+	# A new level is never dead, whatever the last one was.
+	_saturation = 1.0
+	_set_saturation(1.0)
 	_recompute_positions(camera.yaw_radians())
 
 
@@ -175,6 +184,41 @@ func play_completion() -> bool:
 ## than from the world.
 func play_illegal(cell: Vector3i) -> void:
 	tiles.shake(cell, camera.global_transform.basis.x)
+
+
+## §14.1's dead-state desaturation: the board drains to 70% saturation over 400 ms.
+##
+## §5.8 makes DEAD recoverable — an undo or a restart brings the level back — so
+## this has an inverse and uses it. A board that stayed grey after the player undid
+## their way out would be telling them the level was still lost.
+func play_dead() -> void:
+	_drain_to(DEAD_SATURATION)
+
+
+func clear_dead() -> void:
+	_drain_to(1.0)
+
+
+func saturation() -> float:
+	return _saturation
+
+
+func _drain_to(target: float) -> void:
+	if _drain != null and _drain.is_running():
+		_drain.kill()
+	if is_equal_approx(_saturation, target):
+		return
+	_drain = create_tween()
+	Motion.shape(_drain, "dead_desaturate")
+	_drain.tween_method(_set_saturation, _saturation, target,
+		Motion.seconds("dead_desaturate"))
+
+
+func _set_saturation(value: float) -> void:
+	_saturation = value
+	for mesh: GeometryInstance3D in [tiles, links, marks]:
+		if mesh != null and mesh.material_override is ShaderMaterial:
+			(mesh.material_override as ShaderMaterial).set_shader_parameter("saturation", value)
 
 
 func set_candidates(targets: Array[Vector3i]) -> void:

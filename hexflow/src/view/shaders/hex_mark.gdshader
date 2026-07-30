@@ -54,6 +54,17 @@ uniform vec4 outline : source_color;
 // Same one-uniform trick as the tiles' breathing.
 uniform float pulse_seconds = 0.0;
 
+// §14.1's dead-state desaturation: the board drops to 70% saturation over 400 ms.
+// Applied last, over whatever else the shader has decided, so nothing on a dead
+// board keeps its colour while the rest of it loses one.
+uniform float saturation = 1.0;
+
+vec3 drain(vec3 c) {
+	// Rec. 601 luma, the same weighting §21's greyscale checks read the board by.
+	return mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, saturation);
+}
+
+
 varying vec2 quad;
 varying vec3 tint;
 varying flat float mark;
@@ -182,6 +193,6 @@ void fragment() {
 	float aa = max(fwidth(d), 0.0005);
 	float ink = 1.0 - smoothstep(-aa, aa, d);
 	float shell = 1.0 - smoothstep(-aa, aa, d - OUTLINE);
-	ALBEDO = mix(outline.rgb, tint * glow, ink);
+	ALBEDO = drain(mix(outline.rgb, tint * glow, ink));
 	ALPHA = shell;
 }

@@ -223,6 +223,35 @@ func test_the_goal_pulse_runs_at_double_speed() -> void:
 	assert_eq(_view.flow_head(), -1.0, "a 2x pulse is over in half the time")
 
 
+## §14.1's dead-state desaturation, and the half §5.8 adds to it: DEAD is
+## *recoverable*, so the drain has an inverse. A board that stayed grey after the
+## player undid their way out would be telling them the level was still lost.
+func test_a_dead_board_drains_and_comes_back() -> void:
+	assert_eq(_view.saturation(), 1.0, "a live board keeps its colour")
+
+	_view.play_dead()
+	await wait_seconds(Motion.seconds("dead_desaturate") + 0.15)
+	assert_almost_eq(_view.saturation(), BoardView3D.DEAD_SATURATION, 0.001,
+		"§14.1's 70%")
+	assert_gt(_view.saturation(), 0.0, "70%, not grey — the level is not over")
+	for mesh: GeometryInstance3D in [_view.tiles, _view.links, _view.marks]:
+		assert_almost_eq(float((mesh.material_override as ShaderMaterial)
+			.get_shader_parameter("saturation")), BoardView3D.DEAD_SATURATION, 0.001,
+			"the whole board drains, not part of it")
+
+	_view.clear_dead()
+	await wait_seconds(Motion.seconds("dead_desaturate") + 0.15)
+	assert_almost_eq(_view.saturation(), 1.0, 0.001, "and undoing brings it back")
+
+
+## Binding a new level cannot inherit the last one's mood.
+func test_a_new_level_is_never_born_dead() -> void:
+	_view.play_dead()
+	await wait_seconds(Motion.seconds("dead_desaturate") + 0.15)
+	_view.bind(GameState.start(Fixtures.fixed_level(Fixtures.shortest_route_tiles())), PLAY)
+	assert_eq(_view.saturation(), 1.0, "a fresh level starts in full colour")
+
+
 ## A `Control` that swallows pointer events in the GUI pass is precisely how B7 hid
 ## for all of M3. This node sits over the whole play area, so it must never do it.
 func test_the_container_does_not_swallow_pointer_input() -> void:

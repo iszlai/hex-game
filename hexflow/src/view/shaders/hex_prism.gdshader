@@ -84,6 +84,16 @@ const float RIPPLE_GAIN = 0.55;
 uniform float ripple_time = -1.0;
 uniform float ripple_step = 0.028;
 
+// §14.1's dead-state desaturation: the board drops to 70% saturation over 400 ms.
+// Applied last, over whatever else the shader has decided, so nothing on a dead
+// board keeps its colour while the rest of it loses one.
+uniform float saturation = 1.0;
+
+vec3 drain(vec3 c) {
+	// Rec. 601 luma, the same weighting §21's greyscale checks read the board by.
+	return mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, saturation);
+}
+
 
 varying vec3 tint;
 varying float cursor;
@@ -161,11 +171,11 @@ void fragment() {
 		ALBEDO = vec3(0.0);
 		SPECULAR = 0.0;
 		ROUGHNESS = 1.0;
-		EMISSION = face + glow;
+		EMISSION = drain(face + glow);
 	} else {
-		ALBEDO = face;
+		ALBEDO = drain(face);
 		ROUGHNESS = 0.55;
 		SPECULAR = 0.25;
-		EMISSION = glow;
+		EMISSION = drain(glow);
 	}
 }

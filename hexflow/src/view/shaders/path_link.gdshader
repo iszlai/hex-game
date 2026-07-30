@@ -25,6 +25,17 @@ const float SIDE_SHADE = 0.45;
 
 uniform bool flat_board = false;
 
+// §14.1's dead-state desaturation: the board drops to 70% saturation over 400 ms.
+// Applied last, over whatever else the shader has decided, so nothing on a dead
+// board keeps its colour while the rest of it loses one.
+uniform float saturation = 1.0;
+
+vec3 drain(vec3 c) {
+	// Rec. 601 luma, the same weighting §21's greyscale checks read the board by.
+	return mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, saturation);
+}
+
+
 // §14.1's flow pulse: a bright band travelling from the start along the path to
 // the cell that was just joined, 300 ms. It rides the depth ratio each instance
 // already carries, so the band crosses a tile and the stroke lying on it at the
@@ -57,13 +68,13 @@ void fragment() {
 		ALBEDO = vec3(0.0);
 		SPECULAR = 0.0;
 		ROUGHNESS = 1.0;
-		EMISSION = tint * mix(SIDE_SHADE, 1.0, up) + glow;
+		EMISSION = drain(tint * mix(SIDE_SHADE, 1.0, up) + glow);
 	} else {
-		ALBEDO = tint;
+		ALBEDO = drain(tint);
 		// Smoother and shinier than a tile, so the ribbon separates from the prism
 		// it lies on without needing a second colour to do it.
 		ROUGHNESS = 0.32;
 		SPECULAR = 0.35;
-		EMISSION = glow;
+		EMISSION = drain(glow);
 	}
 }
