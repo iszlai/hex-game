@@ -40,6 +40,12 @@ const TILE_INSET := 0.93
 ## §14.1's placement pop starts here and settles at 1.0.
 const POP_FROM := 0.82
 
+## §14.1's illegal shake: ±4 px sideways, and a red flash at 40% of the way to
+## `danger`. The flash is *feedback* rather than motion, which is why §14.5 keeps it
+## and drops only the movement.
+const SHAKE_PIXELS := 4.0
+const SHAKE_FLASH := 0.4
+
 @export var palette: Palette = null
 
 var _board: Board = null
@@ -55,6 +61,8 @@ var _depth: Dictionary = {}
 var _pop: Dictionary = {}       # Vector3i -> scale factor
 ## Where the last §14.1 ripple left from. Every cell's distance to it rides in the
 ## instance data, so the wave needs no per-cell bookkeeping while it travels.
+var _shake: Dictionary = {}     # Vector3i -> sideways offset in world units
+var _shake_axis: Vector3 = Vector3.RIGHT
 var _ripple_origin: Vector3i = Vector3i.ZERO
 var _ripple: Tween = null
 
@@ -231,6 +239,48 @@ func pop(cell: Vector3i) -> void:
 	tween.finished.connect(func() -> void: _clear_pop(cell))
 
 
+## §14.1's illegal shake, on the cell that was refused. [param axis] is screen-right
+## in board space — the spec says *horizontal*, which after a 60° turn is not the
+## world's x any more, so the caller with the camera supplies it.
+##
+## §14.5 takes the movement and leaves the flash. "This is a motion reduction, not
+## a feedback removal": a player who cannot see the board shake still has to be told
+## the move was refused.
+func shake(cell: Vector3i, axis: Vector3) -> void:
+	if multimesh == null or not _index.has(cell):
+		return
+	_shake_axis = axis.normalized()
+	_shake[cell] = SHAKE_PIXELS if not SettingsService.reduce_motion() else 0.0
+	_write(cell)
+	var tween := create_tween()
+	Motion.shape(tween, "illegal_shake")
+	tween.tween_method(func(v: float) -> void: _set_shake(cell, v),
+		float(_shake[cell]), 0.0, Motion.seconds("illegal_shake"))
+	tween.finished.connect(func() -> void: _clear_shake(cell))
+
+
+## Whether [param cell] is mid-refusal, which is what turns its flash on. Separate
+## from the offset because under §14.5 the offset is zero and the flash is not.
+func is_shaking(cell: Vector3i) -> bool:
+	return _shake.has(cell)
+
+
+func shake_offset(cell: Vector3i) -> float:
+	return float(_shake.get(cell, 0.0))
+
+
+func _set_shake(cell: Vector3i, value: float) -> void:
+	_shake[cell] = value
+	if multimesh != null and _index.has(cell):
+		_write(cell)
+
+
+func _clear_shake(cell: Vector3i) -> void:
+	_shake.erase(cell)
+	if multimesh != null and _index.has(cell):
+		_write(cell)
+
+
 ## §14.2's opening beat: the goal cell swells to 1.25 and settles back over 340 ms.
 ## The same channel the placement pop rides, because a cell can only be one size —
 ## and a goal that popped *and* flourished at once would fight itself.
@@ -279,7 +329,7 @@ func transform_of(cell: Vector3i) -> Transform3D:
 	var width: float = _layout.size * TILE_INSET * pop_factor
 	return Transform3D(
 		Basis().scaled(Vector3(width, height, width)),
-		_layout.to_plane(cell)
+		_layout.to_plane(cell) + _shake_axis * shake_offset(cell)
 	)
 
 
@@ -309,6 +359,12 @@ func _write(cell: Vector3i) -> void:
 ## The same reading as the grey-box's fills, from the same tokens (§13.2), so the
 ## two views cannot drift apart on what a cell's colour means.
 func tint_of(cell: Vector3i) -> Color:
+	if is_shaking(cell):
+		return _fill_of(cell).lerp(palette.danger, SHAKE_FLASH)
+	return _fill_of(cell)
+
+
+func _fill_of(cell: Vector3i) -> Color:
 	match kind_of(cell):
 		Kind.WALL:
 			return palette.wall_fill

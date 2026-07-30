@@ -170,6 +170,13 @@ func play_completion() -> bool:
 	return camera.shake_once()
 
 
+## §14.1's refusal, on the cell that was refused. Horizontal means horizontal *on
+## screen*, so the axis comes from the camera the player is looking through rather
+## than from the world.
+func play_illegal(cell: Vector3i) -> void:
+	tiles.shake(cell, camera.global_transform.basis.x)
+
+
 func set_candidates(targets: Array[Vector3i]) -> void:
 	tiles.set_candidates(targets)
 

@@ -456,9 +456,10 @@ func _on_auto_skipped(dir: int) -> void:
 	_flash_banner("No move — %s skipped, no cost" % Direction.name_of(dir))
 
 
-func _on_illegal(_cell: Vector3i) -> void:
+func _on_illegal(cell: Vector3i) -> void:
 	# §12.4 gives an illegal confirm the same double haptic as a cone rejection.
 	_haptics.play("cursor_reject")
+	board_view.play_illegal(cell)
 	_flash_banner("Not a legal target")
 
 

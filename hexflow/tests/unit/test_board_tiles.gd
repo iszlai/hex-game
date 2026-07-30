@@ -252,6 +252,49 @@ func test_the_wave_runs_long_enough_to_reach_the_far_rim() -> void:
 	assert_eq(_tiles.ripple_time(), -1.0, "and parks when it is over")
 
 
+## §14.1's illegal shake, and the half of §14.5 that is easiest to get wrong.
+## "This is a motion reduction, not a feedback removal" — so Reduce Motion takes the
+## movement and leaves the red flash, because a player who cannot see the board move
+## still has to be told the move was refused.
+func test_a_refused_cell_shakes_sideways_and_flashes_red() -> void:
+	var cell := Vector3i(-1, 0, 1)
+	var steady: Vector3 = _transform_of(cell).origin
+	var fill: Color = _colour_of(cell)
+
+	_tiles.shake(cell, Vector3.RIGHT)
+	assert_eq(_tiles.shake_offset(cell), BoardTiles.SHAKE_PIXELS, "§14.1's 4 px, at once")
+	assert_ne(_transform_of(cell).origin, steady, "and it moved")
+	assert_almost_eq(_transform_of(cell).origin.y, steady.y, 0.001, "sideways, not upward")
+	assert_ne(_colour_of(cell), fill, "with §14.1's red flash on it")
+
+	await wait_seconds(Motion.seconds("illegal_shake") + 0.15)
+	assert_eq(_transform_of(cell).origin, steady, "and it comes back exactly")
+	assert_eq(_colour_of(cell), fill, "and stops being red")
+
+
+func test_reduce_motion_keeps_the_flash_and_drops_the_movement() -> void:
+	SettingsService.set_value("reduce_motion", true)
+	var cell := Vector3i(-1, 0, 1)
+	var steady: Vector3 = _transform_of(cell).origin
+	var fill: Color = _colour_of(cell)
+
+	_tiles.shake(cell, Vector3.RIGHT)
+	assert_eq(_transform_of(cell).origin, steady, "§14.5: no shake")
+	assert_ne(_colour_of(cell), fill, "but the refusal is still visible (§14.5)")
+	SettingsService.set_value("reduce_motion", false)
+
+
+## Horizontal means horizontal *on screen*. After a 60° turn the world's x is not
+## the screen's, so the axis is the caller's to supply.
+func test_the_shake_runs_along_whatever_axis_it_was_given() -> void:
+	var cell := Vector3i(-1, 0, 1)
+	var steady: Vector3 = _transform_of(cell).origin
+	_tiles.shake(cell, Vector3.BACK)
+	var moved: Vector3 = _transform_of(cell).origin - steady
+	assert_almost_eq(moved.z, BoardTiles.SHAKE_PIXELS, 0.001, "along the axis given")
+	assert_almost_eq(moved.x, 0.0, 0.001, "and not along any other")
+
+
 ## The winding is the engine's, not my reading of it: `generate_normals` derives the
 ## normals from the triangle order, so normals pointing the wrong way is a board
 ## rendered inside out — caught here rather than at the first screenshot.
