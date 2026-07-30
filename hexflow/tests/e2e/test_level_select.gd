@@ -25,6 +25,7 @@ func after_each() -> void:
 	if pending is Tween and (pending as Tween).is_running():
 		(pending as Tween).kill()
 	_scene = null
+	_clear_navigated_scenes()
 	GameDirector.state = null
 	GameDirector.level = null
 	GameDirector.screen = GameDirector.Screen.LEVEL
@@ -174,3 +175,16 @@ func test_a_tap_opens_the_level_it_landed_on() -> void:
 	await wait_process_frames(2)
 	assert_eq(flower.cursor(), 2)
 	assert_eq(GameDirector.level.id, LevelRepository.id_for(1, 2))
+
+
+## §14.1's transition is a *real* scene change: 160 ms after `go_to`, a tween
+## callback swaps the running scene, and in a headless run that scene lands at the
+## root and stays there — still answering `_unhandled_input`. Two screens then act
+## on the same Space and the one that answers last decides where the game goes,
+## which is how this file first reported Replay opening the level *after* the one
+## it replayed. Anything the director navigated to is cleared here.
+func _clear_navigated_scenes() -> void:
+	for child: Node in get_tree().root.get_children():
+		if child.scene_file_path.begins_with("res://src/scenes/"):
+			get_tree().root.remove_child(child)
+			child.queue_free()

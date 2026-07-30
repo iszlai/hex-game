@@ -85,6 +85,16 @@ func move(step: int) -> bool:
 	return false
 
 
+## Whether a row exists and can be pressed. A screen picking its default focus has
+## to be able to ask, because §12.5's "exactly one focused element" is not
+## satisfied by one that is greyed out.
+func enabled(id: String) -> bool:
+	for row: Dictionary in _rows:
+		if str(row.get("id", "")) == id:
+			return bool(row.get("enabled", true))
+	return false
+
+
 ## Puts focus on a row by id, ignoring a request for one that is not there — a
 ## screen asking for the row it *had* after a refresh is normal, not an error.
 func focus_id(id: String) -> void:

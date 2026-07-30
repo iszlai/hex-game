@@ -27,7 +27,15 @@ var state: GameState = null
 var level: Level = null
 var hints_used: int = 0
 
+## What the run that just finished was worth. Kept here rather than read off the
+## live state, because the Results screen is a scene of its own: by the time it is
+## looking, a Replay or the next endless stage may already have reset `state` under
+## it, and a results card that reports the run *after* the one it is celebrating is
+## worse than no card at all.
+var last_result: Dictionary = {}
+
 var _endless: EndlessRun = null
+var _daily_date: String = ""
 var _transition: Tween = null
 var _fade: ColorRect = null
 
@@ -207,9 +215,24 @@ func start_endless(p_seed: int) -> void:
 
 
 func start_daily(utc_date: String) -> void:
+	var daily: Level = Generator.daily(utc_date)
+	if daily == null:
+		# §7.3 verifies solvability at generation time on the client, so this is the
+		# day the verification failed. Better a warning and no navigation than a
+		# black screen behind a fade.
+		push_warning("the daily puzzle for %s could not be generated" % utc_date)
+		return
 	mode = Mode.DAILY
 	_endless = null
-	_begin(Generator.daily(utc_date))
+	_daily_date = utc_date
+	_begin(daily)
+
+
+## The UTC date of the daily run in play. Kept so a Replay re-opens *today's*
+## board: §7.3 allows unlimited retries, and a retry on a different board is not a
+## retry — the whole point of the mode is that everyone is solving the same one.
+func daily_date() -> String:
+	return _daily_date
 
 
 func _begin(p_level: Level) -> void:
@@ -301,17 +324,46 @@ func _publish(events: Array) -> void:
 
 func _on_won(placements: int) -> void:
 	var stars := Scoring.stars(placements, level.par)
+	var at: Vector2i = LevelRepository.locate(level.id)
+	last_result = {
+		"mode": mode,
+		"level_id": level.id,
+		"chapter": at.x,
+		"index": at.y,
+		"placements": placements,
+		"par": level.par,
+		"stars": stars,
+		"hinted": hints_used > 0,
+	}
 	EventBus.level_won.emit(placements, level.par, stars)
 	match mode:
 		Mode.CAMPAIGN:
 			SaveService.record_completion(level.id, placements, stars, hints_used > 0)
 			SteamService.unlock_achievement("first_flow")
+			_show_results()
 		Mode.ENDLESS:
+			# §7.2 has no results card between stages: reaching a goal *is* the next
+			# stage, and the run only ends on a dead board (§12.1, Endless →
+			# RunSummary).
 			if _endless != null:
 				_endless.advance()
 				_begin(_endless.current_level())
 		Mode.DAILY:
-			pass
+			# §12.1: Daily → Results : WON. The completion is not recorded against
+			# the campaign — §7.3's puzzle is not a campaign level and has no slot.
+			_show_results()
+
+
+## §14.2 puts the Results card at t=700, after the goal flourish, the burst, the
+## ripple and the flow pulse have all had their turn. Sending the player away at
+## t=0 would cut off the only celebration the game has.
+func _show_results() -> void:
+	var delay: float = Motion.beat_seconds("results")
+	await get_tree().create_timer(delay).timeout
+	# The player may have restarted or left during those 700 ms; a results card for
+	# a run they walked away from would be a screen arriving out of nowhere.
+	if state != null and state.status == GameState.Status.WON:
+		go_to(Screen.RESULTS)
 
 
 ## §18.3: the moments the operating system tells us the player may not be coming

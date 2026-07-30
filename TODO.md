@@ -227,8 +227,19 @@ Exit: every level file validates and reproduces its par; the whole campaign is p
       which are all the ways a player gets stuck: 7 of 12 does not open a chapter, a Next button
       never points into a locked one, and a map cursor never lands on a level the save says is
       shut. The screens that consume it are the three items above and below
-- [ ] **Results screen** — animated stars, placements vs par, Next / Replay / Map, focus on Next (§12.2)
-- [ ] Hint-used dot on the star display (§12.6)
+- [x] **Results screen** — animated stars, placements vs par, Next / Replay / Map, focus on Next (§12.2)
+      — `src/scenes/results/`. The stars are the screen, so they arrive one at a time on §14.1's
+      3 × 260 ms `BACK`/`EASE_OUT` staggered 140 ms with a chord note each; a card that simply
+      displayed "★★☆" would satisfy the word "stars" in §12.2 and none of the reason it is there.
+      The card is scheduled at §14.2's **t=700**, after the flourish, the burst, the ripple and the
+      flow pulse, and it is *cancelled* if the player restarts during those 700 ms. Next is disabled
+      rather than allowed to fail late when §7.1's threshold leaves nowhere to go, and focus falls to
+      Replay — §12.5 wants exactly one focused element and a greyed-out one does not count. This
+      closes the last clause of §24.2's gamepad scenario, "the results screen offers Next with
+      default focus", which M4 could not assert because there was no results screen
+- [x] Hint-used dot on the star display (§12.6) — beside the pips rather than among them, so it can
+      never be miscounted as a star, and on the level-select cell too. It marks the *level*, not the
+      attempt: `SaveService.record_completion` ORs it in, so a later clean run does not erase it
 - [ ] `@e2e`: campaign playable boot → credits; completion recorded and progression advances (closes B6)
 
 ## M7 — Art & feel 🟨

@@ -27,9 +27,15 @@ const SETTLE_FRAMES := 30
 var _frames: int = 0
 var _out: String = "user://shot.png"
 var _presses: String = ""
+var _screen: String = "level"
+var _at: PackedStringArray = PackedStringArray()
 var _level: Node = null
 
 
+## Arguments only. Nothing is *done* here: `_initialize` runs before the autoloads
+## have had their `_ready`, so a signal emitted from this function reaches a bus
+## nobody has connected to yet — which is exactly how the first results capture
+## came back showing a level that had never been played.
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
@@ -37,20 +43,30 @@ func _initialize() -> void:
 	if args.size() > 1:
 		_presses = args[1]
 	if args.size() > 2 and args[2].contains("."):
-		# Before the scene exists, so `level.gd` finds a level already started and
-		# leaves its own standalone default alone.
-		var at: PackedStringArray = args[2].split(".")
-		var director: Node = root.get_node_or_null("GameDirector")
-		if director != null:
-			director.call("start_level", LevelRepository.load_level(int(at[0]), int(at[1])))
-	var name: String = args[3] if args.size() > 3 and args[3] != "" else "level"
-	var scene: PackedScene = load("res://src/scenes/%s/%s.tscn" % [name, name])
+		_at = args[2].split(".")
+	if args.size() > 3 and args[3] != "":
+		_screen = args[3]
+
+
+## The scene is built on the first frame, once the autoloads are live. The level is
+## started before the scene exists, so `level.gd` finds one already going and
+## leaves its own standalone default alone.
+func _setup() -> void:
+	var director: Node = root.get_node_or_null("GameDirector")
+	if _at.size() == 2 and director != null:
+		director.call("start_level", LevelRepository.load_level(int(_at[0]), int(_at[1])))
+	if _screen == "results":
+		_win_the_level()
+	var scene: PackedScene = load("res://src/scenes/%s/%s.tscn" % [_screen, _screen])
 	_level = scene.instantiate()
 	root.add_child(_level)
 
 
 func _process(_delta: float) -> bool:
 	_frames += 1
+	if _frames == 1:
+		_setup()
+		return false
 	if _frames < 10:
 		return false
 	var i: int = _frames - 10
@@ -73,6 +89,33 @@ func _process(_delta: float) -> bool:
 	var state: Variant = director.get("state") if director != null else null
 	print("wrote ", _out, " placements=", state.placements if state != null else -1)
 	return true
+
+
+## The results card only says anything if there is a run behind it, so capturing
+## it means finishing a level first. The stored solution is replayed through the
+## real intent path — `EventBus` into [GameDirector] — rather than through
+## `Solver.replay`, because it is `GameDirector` that fills in `last_result`, and
+## a card fed a hand-built dictionary would be a capture of nothing.
+func _win_the_level() -> void:
+	var director: Node = root.get_node_or_null("GameDirector")
+	# Autoloads are not compiled into a `-s` MainLoop script, so both of these are
+	# reached through the tree rather than by their global names.
+	var bus: Node = root.get_node_or_null("EventBus")
+	if director == null or bus == null:
+		return
+	var level: Variant = director.get("level")
+	if level == null:
+		director.call("start_level", LevelRepository.load_level(1, 1))
+		level = director.get("level")
+	for step: Variant in level.solution_script:
+		var s: Array = step
+		match int(s[0]):
+			Solver.ACTION_PLACE:
+				bus.emit_signal("place_requested", s[1] as Vector3i)
+			Solver.ACTION_WILD:
+				bus.emit_signal("wild_place_requested", s[1] as Vector3i)
+			Solver.ACTION_DISCARD:
+				bus.emit_signal("discard_requested")
 
 
 func _key_for(c: String) -> Key:
