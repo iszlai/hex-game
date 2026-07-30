@@ -247,8 +247,24 @@ func tint_of(i: int) -> Color:
 	return _segments[i][3] as Color
 
 
+## What the bar *is*, for the shader: which kind, and how far along the path it
+## sits — the same 0-to-1 the tiles carry, so §14.1's flow pulse crosses the tile
+## and the stroke lying on it at one moment rather than two.
 func custom_of(i: int) -> Color:
-	return Color(float(kind_of(i)), 0.0, 0.0, 0.0)
+	return Color(float(kind_of(i)), _depth_ratio_of(i), 0.0, 0.0)
+
+
+func _depth_ratio_of(i: int) -> float:
+	if _depth.size() <= 1 or kind_of(i) == Kind.TETHER:
+		return 0.0
+	var to: Vector3i = _cell_of(i)
+	return clampf(float(_depth.get(to, 0)) / float(_depth.size() - 1), 0.0, 1.0)
+
+
+## The cell a bar arrives at, which is the one whose depth it takes.
+func _cell_of(i: int) -> Vector3i:
+	var arrives_at: Vector3 = _segments[i][1]
+	return _layout.from_plane(arrives_at)
 
 
 ## The same gradient the grey-box's connectors used, from the same tokens: a

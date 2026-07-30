@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 257 tests / 14,322 asserts green in ~61 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 259 tests / 14,329 asserts green in ~62 s, 60 frozen
 level files re-verified.
 
 ---
@@ -322,10 +322,11 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       `tests/unit/test_motion.gd` asserts every row against §14.1 and would fail a silent retune.
       **Wired so far:** candidate breathing and the goal pulse, both in the shader off `TIME` so
       every candidate breathes in phase for free; the placement pop and the connector draw, both as
-      one tween writing one instance for a fifth of a second. Still to do: the flow pulse, queue
-      advance, auto-discard arc, illegal shake, board ripple, screen transition, results stars and
-      dead-state desaturate — several of which are rail or screen animations and want §12.3's real
-      layout under them first
+      one tween writing one instance for a fifth of a second; the flow pulse, one band crossing the
+      tiles *and* the stroke lying on them off a single uniform. Still to do: queue advance,
+      auto-discard arc, illegal shake, board ripple, screen transition, results stars and dead-state
+      desaturate — several of which are rail or screen animations and want §12.3's real layout under
+      them first
 - [ ] Goal-reached sequence §14.2; camera limited to §14.3 (2 px shake, once per completion)
 - [ ] Four GPU emitters, hard cap 120 live particles (§14.4)
 - [ ] Reduce Motion path: durations ×0.4, no shake/parallax/particles/breathing, still fully legible

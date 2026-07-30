@@ -42,6 +42,8 @@ const float SIDE_INK = 0.5;
 /// empty cell — height alone is a band a few pixels deep on a near-black tile.
 /// Pitch is a fraction of the tile's own width, so it holds at every §4.4 size.
 const int KIND_CANDIDATE = 1;
+const int KIND_PATH = 2;
+const int KIND_START = 3;
 const int KIND_WALL = 4;
 
 // §14.1: stroke alpha 0.55 to 1.0. The 3D board has no stroke, so it is the
@@ -63,9 +65,20 @@ uniform vec4 side_ink : source_color;
 // One uniform rather than a period plus a flag, so the two cannot disagree.
 uniform float breathe_seconds = 0.0;
 
+// §14.1's flow pulse: a bright band travelling from the start along the path to
+// the cell that was just joined, 300 ms. It rides the depth ratio each instance
+// already carries, so the band crosses a tile and the stroke lying on it at the
+// same instant rather than needing two clocks. Negative means no pulse is running.
+const float FLOW_WIDTH = 0.16;
+const float FLOW_GAIN = 0.5;
+
+uniform float flow_head = -1.0;
+
+
 varying vec3 tint;
 varying float cursor;
 varying flat float kind;
+varying flat float depth_along;
 varying vec3 world;
 varying flat float tile_width;
 
@@ -73,6 +86,7 @@ void vertex() {
 	tint = COLOR.rgb;
 	cursor = INSTANCE_CUSTOM.g;
 	kind = INSTANCE_CUSTOM.r;
+	depth_along = INSTANCE_CUSTOM.b;
 	// Board space, not view space: the hatch is painted on the tile, so it turns
 	// with the board instead of swimming across it as the camera yaws.
 	world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -106,6 +120,13 @@ void fragment() {
 		float aa = max(fwidth(wave), 0.001);
 		base = mix(base, hatch_ink.rgb,
 			1.0 - smoothstep(HATCH_DUTY - aa, HATCH_DUTY + aa, wave));
+	}
+
+	// The travelling band of §14.1, on the cells the path actually runs through.
+	int k = int(kind + 0.5);
+	if (flow_head >= 0.0 && (k == KIND_PATH || k == KIND_START)) {
+		float band = 1.0 - smoothstep(0.0, FLOW_WIDTH, abs(depth_along - flow_head));
+		base += tint * band * FLOW_GAIN;
 	}
 
 	// A side is its tile's own colour, darkened and then pulled toward the board's

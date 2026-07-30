@@ -169,6 +169,34 @@ func test_positions_are_recomputed_on_yaw_change_and_not_per_frame() -> void:
 		"the tween landing changes nothing: the positions were already the target's")
 
 
+## §14.1's flow pulse. One band crosses the tiles *and* the stroke lying on them,
+## which is the whole reason it is driven from here rather than from either mesh:
+## two tweens would be two clocks, and the tile would brighten a frame apart from
+## its own connector.
+func test_the_flow_pulse_runs_one_band_across_both_meshes() -> void:
+	assert_eq(_view.flow_head(), -1.0, "no band until something is placed")
+
+	_view.play_flow_pulse()
+	assert_eq(_view.flow_head(), 0.0, "it starts at the start, not a frame later")
+	for mesh: GeometryInstance3D in [_view.tiles, _view.links]:
+		assert_eq((mesh.material_override as ShaderMaterial)
+			.get_shader_parameter("flow_head"), 0.0, "both meshes take the same head")
+
+	await wait_seconds(Motion.seconds("flow_pulse") + 0.2)
+	assert_eq(_view.flow_head(), -1.0, "and parks off the path when it is done")
+	assert_eq((_view.tiles.material_override as ShaderMaterial)
+		.get_shader_parameter("flow_head"), -1.0, "so no band is left lit")
+
+
+## A second placement while the first pulse is still travelling restarts it rather
+## than running two bands down the same path.
+func test_a_second_placement_restarts_the_pulse() -> void:
+	_view.play_flow_pulse()
+	await wait_process_frames(2)
+	_view.play_flow_pulse()
+	assert_eq(_view.flow_head(), 0.0, "back to the start")
+
+
 ## A `Control` that swallows pointer events in the GUI pass is precisely how B7 hid
 ## for all of M3. This node sits over the whole play area, so it must never do it.
 func test_the_container_does_not_swallow_pointer_input() -> void:

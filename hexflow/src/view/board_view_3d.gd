@@ -23,6 +23,10 @@
 class_name BoardView3D
 extends SubViewportContainer
 
+## How far past the far end of the path the band travels before it is done, so the
+## last cell gets a full pass rather than a half one.
+const FLOW_TAIL := 0.25
+
 ## Height of the tallest tile above the plane as a fraction of the cell
 ## circumradius, which the fit has to reserve room for (§4.4 against the projected
 ## bounds). Owned by [BoardTiles], because that is what stands things up.
@@ -44,6 +48,8 @@ var layout: HexLayout = null
 var _board: Board = null
 var _state: GameState = null
 var _screen: Dictionary = {}     # Vector3i -> Vector2, in sub-viewport pixels
+var _flow: Tween = null
+var _flow_head: float = -1.0
 
 
 func _ready() -> void:
@@ -94,6 +100,39 @@ func rebuild() -> void:
 func play_placement(cell: Vector3i) -> void:
 	tiles.pop(cell)
 	links.draw_newest()
+	play_flow_pulse()
+
+
+## §14.1's flow pulse: one band, travelling the whole path from the start to the
+## cell just joined, over 300 ms.
+##
+## Driven from here rather than from either mesh because it crosses both — a tile
+## and the stroke lying on top of it have to brighten at the same instant, and two
+## tweens would be two clocks. The band's position is a single uniform; where each
+## instance sits along the path is a number it already carries.
+func play_flow_pulse() -> void:
+	if _flow != null and _flow.is_running():
+		_flow.kill()
+	# At the start *now*, not on the tween's first step: a tween does not run until
+	# the next idle frame, and the band would otherwise be a frame late — and would
+	# still be sitting wherever the last pulse left it for that frame.
+	_set_flow_head(0.0)
+	_flow = create_tween()
+	Motion.shape(_flow, "flow_pulse")
+	_flow.tween_method(_set_flow_head, 0.0, 1.0 + FLOW_TAIL, Motion.seconds("flow_pulse"))
+	# Parked well outside 0…1 so no band is drawn until the next placement.
+	_flow.finished.connect(func() -> void: _set_flow_head(-1.0))
+
+
+func flow_head() -> float:
+	return _flow_head
+
+
+func _set_flow_head(value: float) -> void:
+	_flow_head = value
+	for mesh: GeometryInstance3D in [tiles, links]:
+		if mesh != null and mesh.material_override is ShaderMaterial:
+			(mesh.material_override as ShaderMaterial).set_shader_parameter("flow_head", value)
 
 
 func set_candidates(targets: Array[Vector3i]) -> void:

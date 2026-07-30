@@ -25,16 +25,33 @@ const float SIDE_SHADE = 0.45;
 
 uniform bool flat_board = false;
 
+// §14.1's flow pulse: a bright band travelling from the start along the path to
+// the cell that was just joined, 300 ms. It rides the depth ratio each instance
+// already carries, so the band crosses a tile and the stroke lying on it at the
+// same instant rather than needing two clocks. Negative means no pulse is running.
+const float FLOW_WIDTH = 0.16;
+const float FLOW_GAIN = 0.5;
+
+uniform float flow_head = -1.0;
+
+
 varying vec3 tint;
 varying flat float kind;
+varying flat float depth_along;
 
 void vertex() {
 	tint = COLOR.rgb;
 	kind = INSTANCE_CUSTOM.r;
+	depth_along = INSTANCE_CUSTOM.g;
 }
 
 void fragment() {
 	vec3 glow = tint * mix(LINK_GLOW, 0.0, kind);
+	// A tether is topology rather than route, so the pulse does not run down it.
+	if (flow_head >= 0.0 && kind < 0.5) {
+		float band = 1.0 - smoothstep(0.0, FLOW_WIDTH, abs(depth_along - flow_head));
+		glow += tint * band * FLOW_GAIN;
+	}
 	if (flat_board) {
 		float up = clamp((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, 0.0, 1.0);
 		ALBEDO = vec3(0.0);
