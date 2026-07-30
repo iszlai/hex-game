@@ -73,6 +73,8 @@ var _legend_armed: bool = false
 
 ## Rail button -> the right-hand `Label` carrying its binding. Built once (C4).
 var _hints: Dictionary = {}
+## Rail button -> its §13.5 line icon, likewise built once.
+var _icons: Dictionary = {}
 
 
 func _ready() -> void:
@@ -420,7 +422,25 @@ func _style_hud() -> void:
 func _build_hints(palette: Palette) -> void:
 	if not _hints.is_empty():
 		return
-	for button: Button in [undo_button, discard_button, wild_button, hint_button]:
+	for pair: Array in [
+		[undo_button, Icon.Kind.UNDO], [discard_button, Icon.Kind.DISCARD],
+		[wild_button, Icon.Kind.WILD], [hint_button, Icon.Kind.HINT],
+	]:
+		var button: Button = pair[0]
+		# §13.5's line icon, on the left of the row where §12.3 draws its glyph. It
+		# ignores the pointer, so the row is still one tap target (§11.4).
+		var icon := Icon.new()
+		icon.kind = pair[1]
+		icon.colour = palette.text_primary
+		button.add_child(icon)
+		icon.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+		icon.anchor_right = 0.0
+		icon.offset_left = 14.0
+		icon.offset_right = 14.0 + Icon.GRID
+		icon.offset_top = -Icon.GRID * 0.5
+		icon.offset_bottom = Icon.GRID * 0.5
+		_icons[button] = icon
+
 		var hint := Label.new()
 		hint.name = "Hint"
 		hint.theme_type_variation = Typography.variation_for(Typography.Role.CAPTION)
@@ -444,8 +464,11 @@ func _build_hints(palette: Palette) -> void:
 		_hints[button] = hint
 
 
+## A rail row: §13.5's icon, the action, and its binding. The label is padded on
+## the left because a `Button` centres or left-aligns *its own* text and knows
+## nothing about the icon standing in front of it.
 func _row(button: Button, label: String, action: String) -> void:
-	button.text = label
+	button.text = "     " + label if _icons.has(button) else label
 	var hint: Label = _hints.get(button)
 	if hint != null:
 		hint.text = InputGlyphs.label_for(action)
@@ -663,12 +686,15 @@ func _refresh_hud() -> void:
 	# halves are set here rather than in the scene, so the scene holds no literal
 	# for §22's check to catch at M10 and a rebind shows up without the rail
 	# knowing rebinding exists.
-	_row(undo_button, "↺ Undo", "board_undo")
+	_row(undo_button, "Undo", "board_undo")
 	undo_button.disabled = not GameDirector.undo_available()
-	_row(discard_button, "✕ Discard %d" % state.discards_left, "board_discard")
-	_row(wild_button, "%s Wild %d" % ["▣" if _wild_active() else "★", state.wild_charges],
-		"board_wild_modifier")
-	_row(hint_button, "? Hint", "board_hint")
+	_row(discard_button, "Discard %d" % state.discards_left, "board_discard")
+	_row(wild_button, "Wild %d" % state.wild_charges, "board_wild_modifier")
+	# The armed wild is the one row whose *state* has to show: §11.3's "Wild button,
+	# then cell" is a mode, and a mode with no indicator is a mode nobody trusts.
+	(_icons[wild_button] as Icon).colour = board_view.palette.wild if _wild_active() \
+		else board_view.palette.text_primary
+	_row(hint_button, "Hint", "board_hint")
 	# §12.3's rail is four action rows. Legend and Restart are not among them and
 	# do not fit — six rows plus a 140 px NOW tile overflow the 400 px rail, which
 	# is how they came to be there in M3 with the key hints displaced into the

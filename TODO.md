@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 432 tests / 15,180 asserts green in ~79 s, 60 frozen
+Last verified: **2026-07-30** — Godot 4.7.1, 438 tests / 15,590 asserts green in ~79 s, 60 frozen
 level files re-verified.
 
 ---
@@ -422,7 +422,15 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       **Not done:** §13.6's subsetting to Latin-Extended. The three full variable fonts are 1.2 MB
       together, nowhere near §20's 250 MB build budget, and subsetting needs a tool the repo does not
       vendor. Worth doing before the store build, not before the next feature
-- [ ] Icon atlas, 9 line icons on a 24×24 grid (§13.5)
+- [x] Icon atlas, 9 line icons on a 24×24 grid (§13.5) — `src/ui/icon.gd`. §13.5 offers a choice,
+      "drawn as vector paths or an SVG-imported atlas", and the paths win for C-23's reason: an atlas
+      is a raster at one size, and the same nine shapes are drawn at a rail row's size, at a legend
+      row's size and at §21's 1.0–1.5 text scale on top of both. No import step, no texture memory
+      (§20), no second file to keep in step with the palette. The grid is the contract — every path
+      is written in 24×24 units and scaled once, so "2 px stroke on a 24 grid" holds at every drawn
+      size, and `tests/unit/test_icon.gd` asserts the family: nine icons, none off the grid, none too
+      small to sit beside the others, and no two the same drawing. The four rail icons are live;
+      the legend's rows still use text glyphs
 - [x] Real §12.3 HUD layout: 56 px top bar, 400 px rail, 140 px NOW tile, 72 px NEXT, 56 px banner —
       the last thing on the level screen that was still M3's. The band sizes are constants in
       `level.gd` rather than numbers in the scene, because §12.3's diagram is *dimensioned* and a
