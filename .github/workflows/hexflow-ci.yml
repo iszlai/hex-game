@@ -1,0 +1,59 @@
+name: hexflow
+
+# §24.3 push gate. The engine version is pinned exactly and never floated (§25).
+
+on:
+  push:
+    paths: ['hexflow/**', '.github/workflows/hexflow-ci.yml']
+  pull_request:
+    paths: ['hexflow/**', '.github/workflows/hexflow-ci.yml']
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hexflow
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned Godot
+        run: |
+          curl -sL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+          godot --version
+
+      - name: Import assets
+        run: godot --headless --import
+
+      - name: Run the push gate
+        run: GODOT=godot ./tools/ci_gate.sh
+
+  # The nightly sweep raises the property test from the push gate's seed count to
+  # the 100 000 of §24.1. Kept separate so a push is never blocked on it.
+  nightly-property-sweep:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hexflow
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Godot
+        run: |
+          curl -sL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+      - run: godot --headless --import
+      - run: |
+          godot --headless -s res://addons/gut/gut_cmdln.gd \
+            -gdir=res://tests/property -ginclude_subdirs -gexit -gprefix=test_

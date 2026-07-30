@@ -1,0 +1,37 @@
+; Hexflow — Godot project configuration
+; Engine version is pinned in README.md. Do not float.
+
+config_version=5
+
+[application]
+
+config/name="Hexflow"
+config/version="0.1.0"
+run/main_scene="res://src/scenes/boot/boot.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+EventBus="*res://src/app/event_bus.gd"
+SettingsService="*res://src/app/settings_service.gd"
+SaveService="*res://src/app/save_service.gd"
+AudioDirector="*res://src/app/audio_director.gd"
+SteamService="*res://src/app/steam_service.gd"
+GameDirector="*res://src/app/game_director.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.039216, 0.054902, 0.078431, 1)
