@@ -192,7 +192,14 @@ Exit: every level file validates and reproduces its par; the whole campaign is p
 - [x] Level schema documented — `src/data/schemas/level.md`
 - [ ] **Main menu** — Campaign %, Endless best, Daily streak + reset timer, Settings, Quit (§12.2)
 - [ ] **Level select** — hex-flower map reusing the board renderer, star pips, chapter progress (§9)
-- [ ] **Chapter unlocks** — a chapter opens at 8 of 12 completed in the previous one (§7.1)
+- [x] **Chapter unlocks** — a chapter opens at 8 of 12 completed in the previous one (§7.1) —
+      `src/app/campaign.gd`, the one place that answers "is this unlocked", "how far along am I"
+      and "what is next". Not in `src/core/` because every one of those is a question about the
+      *save file*, which the core is deliberately ignorant of; not an autoload because §16.5 fixes
+      the list at six and it holds no state. `tests/unit/test_campaign.gd` stands on the boundaries,
+      which are all the ways a player gets stuck: 7 of 12 does not open a chapter, a Next button
+      never points into a locked one, and a map cursor never lands on a level the save says is
+      shut. The screens that consume it are the three items above and below
 - [ ] **Results screen** — animated stars, placements vs par, Next / Replay / Map, focus on Next (§12.2)
 - [ ] Hint-used dot on the star display (§12.6)
 - [ ] `@e2e`: campaign playable boot → credits; completion recorded and progression advances (closes B6)
