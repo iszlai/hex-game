@@ -40,6 +40,7 @@ Single developer, so there is no review to wait for and no branch protection to 
 | [`hexflow/docs/ARCHITECTURE.md`](hexflow/docs/ARCHITECTURE.md) | Where things live and why. Start here. §9 lists the GDScript gotchas that cost real time |
 | [`HEXFLOW-SPEC.md`](HEXFLOW-SPEC.md) §4, §5, §16, §24 | Coordinate math, ruleset, layering, acceptance criteria. The spec is the authority on *what* the game is |
 | [`TODO.md`](TODO.md) | What is done, what is next |
+| [`hexflow/docs/ASSET-REQUIREMENTS.md`](hexflow/docs/ASSET-REQUIREMENTS.md) | Every image, colour, sound and setting someone outside the repo has to provide, and what stands in for it today |
 
 The spec outranks every other document. If code and spec disagree, the code is a bug. If the **spec**
 is wrong, log it in Appendix C and fix it there — do not silently diverge (constraint C7).
