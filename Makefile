@@ -45,7 +45,9 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels sfx shot measure clean clean-levels legacy-branch status
+        test-file gate levels sfx art assets assets-add shot measure \
+        playtest playtest-restore \
+        clean clean-levels legacy-branch status
 
 ## ---------------------------------------------------------------- meta
 
@@ -137,6 +139,20 @@ art: check ## Re-render §13.7's backdrops and panel surfaces into assets/art/ (
 	@$(RUN_CMD) --headless -s res://tools/make_art.gd
 	@echo
 	@echo "art is a committed asset — commit the .png files (C-27: placeholder until an illustrator)"
+
+assets: check ## What art and audio the game has, and what it is still missing
+	@$(RUN_CMD) --headless -s res://tools/assets.gd -- status
+
+assets-add: check ## Put a file where the game looks for it. FILE=~/x.png AS=chapter_3
+	@$(RUN_CMD) --headless -s res://tools/assets.gd -- add "$(FILE)" "$(or $(AS),)"
+
+playtest: check ## Play as a first-time player would: your save is moved aside, not deleted
+	@$(RUN_CMD) --headless -s res://tools/playtest.gd -- reset
+	@echo
+	@$(RUN_CMD) --resolution 1280x800
+
+playtest-restore: check ## Put your own save back after a playtest
+	@$(RUN_CMD) --headless -s res://tools/playtest.gd -- restore
 
 ## ---------------------------------------------------------------- misc
 

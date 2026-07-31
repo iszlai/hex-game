@@ -7,6 +7,21 @@ This list is derived from the spec, not from taste: each row names the section t
 row disagrees with [`HEXFLOW-SPEC.md`](../../HEXFLOW-SPEC.md), the spec is right and this file is
 stale. Progress lives in [`TODO.md`](../../TODO.md), not here.
 
+## Check it from the terminal
+
+```sh
+make assets                                        what is here, what is missing
+make assets-add FILE=~/Downloads/x.png AS=chapter_3
+```
+
+`make assets` is this document in the form a machine can check — it names every
+role, whether the file is there, its real dimensions and what is still wanted.
+`assets-add` puts a file where the game looks for it and **copies rather than
+moves**, so the original stays in your Downloads folder.
+
+Prose goes stale silently; the command cannot. Where the two disagree, run the
+command.
+
 ## How to read the status column
 
 | | Meaning |
