@@ -104,8 +104,8 @@ measure: check ## Frame cost per renderer (C-3). METHOD=forward_plus|mobile|gl_c
 
 ## ---------------------------------------------------------------- test
 
-test: check ## Run the whole suite: @core, @property and @e2e
-	@$(RUN_CMD) $(GUT) -gdir=res://tests
+test: check ## Run the whole suite: @core, @property and @e2e. JOBS=1 to run it serially
+	@GODOT="$(GODOT_CMD)" ./$(PROJECT)/tools/run_tests.sh
 
 test-core: check ## Pure logic only — fast, no scenes
 	@$(RUN_CMD) $(GUT) -gdir=res://tests/unit

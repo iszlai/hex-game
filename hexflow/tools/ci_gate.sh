@@ -57,21 +57,31 @@ else
   echo "   skipped: assets/i18n/en.csv does not exist yet (M10)"
 fi
 
+# The boot smoke test is started here and collected at the end: it is a whole
+# engine launch that nothing above depends on, so making the gate wait for it in
+# sequence was three seconds of nobody's time.
+boot_log="$(mktemp)"
+( "$GODOT" --headless --path . --quit-after 120 >"$boot_log" 2>&1 ) &
+boot_pid=$!
+
 echo "== tests: @core, @property, @e2e =="
-out=$("$GODOT" --headless -s res://addons/gut/gut_cmdln.gd \
-    -gdir=res://tests -ginclude_subdirs -gexit -gprefix=test_ 2>&1)
-echo "$out" | grep -E "^(Scripts|Tests|Passing|Failing|Asserts|Time) " || true
-if ! echo "$out" | grep -q "All tests passed"; then
-  echo "$out" | grep -E "\[Failed\]" | head -40
-  fail "test suite red"
-fi
+# One engine process per test script, several at a time — see tools/run_tests.sh
+# for why that is safe. The scans above are grep and cost nothing; this is the
+# gate, and it used to be twice as long as the work in it.
+test_log="$(mktemp)"
+GODOT="$GODOT" ./tools/run_tests.sh >"$test_log" 2>&1 || fail "test suite red"
+# The per-script "ok" lines are progress, not a result; the gate prints the
+# totals and whatever a failure had to say for itself.
+grep -vE "^  ok " "$test_log"
+rm -f "$test_log"
 
 echo "== headless boot smoke test =="
-boot=$("$GODOT" --headless --path . --quit-after 120 2>&1)
-if echo "$boot" | grep -q "SCRIPT ERROR"; then
-  echo "$boot" | grep -A2 "SCRIPT ERROR" | head -20
+wait "$boot_pid"
+if grep -q "SCRIPT ERROR" "$boot_log"; then
+  grep -A2 "SCRIPT ERROR" "$boot_log" | head -20
   fail "boot produced a script error"
 fi
+rm -f "$boot_log"
 
 if [ "$status" -eq 0 ]; then
   echo
