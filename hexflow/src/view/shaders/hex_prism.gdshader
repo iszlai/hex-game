@@ -93,6 +93,27 @@ uniform bool flat_board = false;
 uniform vec4 hatch_ink : source_color;
 uniform vec4 side_ink : source_color;
 
+// A drawn board outlines its pieces and insets their faces, and those two lines
+// are most of why one reads as an object and a shaded prism reads as a render.
+// Both ride `UV.x`, the radial fraction — 0 at the centre of the top face, 1 at
+// the outer rim — so they follow the hexagon exactly and cost no geometry.
+//
+// The ink is the palette's own outline token, the one C-23 gives every modifier
+// mark. Reused rather than added to: it is *the* ink of this board, it already
+// inverts with the surfaces in a light palette, and a second token would be a
+// second thing to keep in step for no gain.
+uniform vec4 tile_ink : source_color;
+
+// Where the silhouette is drawn, and how much of the rim it takes.
+const float OUTLINE_AT = 1.0;
+const float OUTLINE_W = 0.05;
+
+// The seam between the raised rim and the inset face, and how much lighter the
+// face sits. Small — this is a plate set into a border, not a second tile.
+const float PLATE_AT = 0.76;
+const float PLATE_W = 0.022;
+const float PLATE_LIFT = 1.06;
+
 // §14.1's candidate breathing, as a period in seconds — and **zero when it must
 // not run at all**, which is what §14.5 asks for: a loop under Reduce Motion does
 // not go faster, it stops, and the candidate holds the bright end of its stroke.
@@ -193,6 +214,21 @@ void fragment() {
 		float aa = max(fwidth(wave), 0.001);
 		base = mix(base, hatch_ink.rgb,
 			1.0 - smoothstep(HATCH_DUTY - aa, HATCH_DUTY + aa, wave));
+	}
+
+	// The plate and its outline, on the face only: a side is already dark and is
+	// separated from its neighbour by the gap between prisms, so an outline there
+	// would be ink on ink. Drawn after the hatch so a wall is outlined too rather
+	// than having its outline hatched over.
+	if (up > 0.35) {
+		float face = smoothstep(0.35, 0.75, up);
+		// Inside the seam the face is lifted a little, which is what makes the rim
+		// around it read as standing proud rather than as a drawn ring.
+		base *= mix(1.0, PLATE_LIFT, face * (1.0 - smoothstep(
+			PLATE_AT - PLATE_W, PLATE_AT + PLATE_W, UV.x)));
+		float seam = 1.0 - smoothstep(0.0, PLATE_W, abs(UV.x - PLATE_AT));
+		float rim = smoothstep(OUTLINE_AT - OUTLINE_W, OUTLINE_AT, UV.x);
+		base = mix(base, tile_ink.rgb, clamp(max(seam * 0.55, rim), 0.0, 1.0) * face);
 	}
 
 	// The travelling band of §14.1, on the cells the path actually runs through.

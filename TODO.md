@@ -131,7 +131,11 @@ action rows, and it only fits because the key hints were moved into the legend.
       facet at its own angle to the key light instead of meeting the side on one hard line; and the
       three C-22 heights roughly doubled, keeping their order and their gaps —
       `test_board_tiles.gd` now asserts that ordering directly, since a thickening pass that
-      squashed two together would quietly cost §21 a channel
+      squashed two together would quietly cost §21 a channel. Then the two lines that finish the
+      job: an **ink outline** on the silhouette and an **inset plate** inside the rim, both riding
+      the radial fraction the mesh already carries, so they follow the hexagon exactly and cost no
+      geometry. The ink is C-23's mark outline reused rather than a new token — one outline colour
+      is what makes the tiles and the marks look drawn by the same hand
 - [x] The **edge** a placement would cross, lit on each candidate — `src/view/board_seams.gd`. The
       tint said *where* a tile may go and could not say *which way in*: a tile is a direction, so
       every candidate is entered from exactly one anchor across one of its six edges (§5.4's

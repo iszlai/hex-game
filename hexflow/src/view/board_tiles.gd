@@ -113,6 +113,10 @@ func bind(state: GameState, layout: HexLayout) -> void:
 		# disagree about what a wall looks like.
 		mat.set_shader_parameter("hatch_ink", palette.wall_stroke)
 		mat.set_shader_parameter("side_ink", palette.board_tile_side)
+		# The board's ink, shared with the modifier marks (C-23) rather than given a
+		# token of its own — one outline colour is what makes them look drawn by the
+		# same hand, and it already inverts with the surfaces in a light palette.
+		mat.set_shader_parameter("tile_ink", palette.board_mark_outline)
 		_apply_grain(mat)
 	set_flat(SettingsService.flat_board())
 	set_motion()
