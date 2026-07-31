@@ -45,7 +45,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels sfx art assets assets-add assets-ui shot measure \
+        test-file gate levels sfx art glyphs assets assets-add assets-ui shot measure \
         playtest playtest-restore \
         clean clean-levels legacy-branch status
 
@@ -140,8 +140,13 @@ art: check ## Re-render §13.7's backdrops and panel surfaces into assets/art/ (
 	@echo
 	@echo "art is a committed asset — commit the .png files (C-27: placeholder until an illustrator)"
 
-assets: check ## What art and audio the game has, and what it is still missing
-	@$(RUN_CMD) --headless -s res://tools/assets.gd -- status
+glyphs: check ## Re-render §11.4's 52 controller glyphs into assets/glyphs/. FRESH=1 overwrites
+	@$(RUN_CMD) --headless -s res://tools/make_glyphs.gd -- $(if $(FRESH),fresh,)
+	@echo
+	@echo "glyphs are committed assets — commit the .png files (placeholders until a licensed pack)"
+
+assets: check ## What art and audio the game has, and what it is missing. ROLE=glyphs for one group's files
+	@$(RUN_CMD) --headless -s res://tools/assets.gd -- status "$(or $(ROLE),)"
 
 assets-add: check ## Put a file where the game looks for it. FILE=~/x.png AS=chapter_3
 	@$(RUN_CMD) --headless -s res://tools/assets.gd -- add "$(FILE)" "$(or $(AS),)"

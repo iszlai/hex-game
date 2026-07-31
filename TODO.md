@@ -144,7 +144,10 @@ at all.
       GodotSteam in M9 — there is no Steam API in the build yet
 - [x] Touch-only path; every on-screen button ≥44 px at 1280×800, asserted on the rendered rect (§11.4)
 - [x] Controller glyph atlas, data-driven by `Input.get_joy_name`, Deck names for View/Menu (§11.4) —
-      **labels**, not icons; the 24×24 icon textures are M7's §13.5 atlas, on these same slots
+      **labels**, not icons. The 52 icon textures now *exist* — `assets/glyphs/`, 48×48, drawn by
+      `tools/make_glyphs.gd` from this same atlas, so a glyph cannot disagree with the label it will
+      replace — but **nothing loads them yet**: `InputGlyphs.label_for()` still returns a string and
+      every HUD asks for a string. The swap is M7's §13.5 work and is not done
 - [x] Haptics table and the 0–100% slider, default 70% (§11.5) — pattern table and slider scaling
       verified headlessly. **Rumble on real hardware is unverified**: CI has no controller
 - [x] Surface `cycling_hint_wanted` as the toast after 3 cone rejections (§11.2)

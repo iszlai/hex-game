@@ -70,7 +70,7 @@ files it writes beside them.
 | Panel frame | `panel_frame.png` | 96×96, 9-slice inset **24 px** | 1 | `surface_frame` | **Placeholder** | Generated bevel with a diagonal grain; opaque middle |
 | Panel fill | `panel_fill.png` | 96×96, 9-slice inset **24 px** | 1 | `surface_panel` | **Placeholder** | Generated fibre texture |
 | Board material | `tile_grain.png` | 256×256, **seamlessly tiling** | 1 | not tinted — a *value* map | **Placeholder** | Generated grain, sampled in board space so it turns with the board. Off entirely under §21's flat-board setting |
-| Controller glyphs | `assets/glyphs/<family>_<slot>.png` | 24×24 | **52** (13 slots × 4 families) | `text_primary` | **Missing** | Text labels — the Deck's "View", a pad's "A" — from `src/data/input_glyphs.json` |
+| Controller glyphs | `assets/glyphs/<family>_<slot>.png` | 48×48 | **52** (13 slots × 4 families) | `text_primary` | **Placeholder** | Drawn by `make glyphs`: the outline a thumb looks for, plus 1–4 letters taken from `src/data/input_glyphs.json`. **Nothing loads them yet** — the HUD still shows the text label |
 | Brand mark | `logo.png` | 512×512 raster preferred | 1 | — | **Provided** | A painted title card, 1024×1024. A vector `logo.svg` is still worth having for the store page |
 
 ### Backdrops — the detail that matters
@@ -95,7 +95,18 @@ Four families — `deck`, `playstation`, `nintendo`, `xbox` — and thirteen slo
 `a`, `b`, `x`, `y`, `l1`, `l2`, `r1`, `r2`, `start`, `select`, `stick`, `rstick`, `dpad`.
 
 §11.4 forbids hardcoding Xbox glyphs: the Deck calls Select and Start **View** and **Menu**, a
-DualSense has no A button. Licensing differs per platform holder — check before shipping any of them.
+DualSense has no A button. That is also why the placeholder set is *generated from the atlas* rather
+than drawn by hand — a glyph cannot end up disagreeing with the label it replaces.
+
+`make glyphs` renders all 52 and **never overwrites a file that exists**, so a licensed pack replaces
+them by landing in the folder, one file or all of them. `make glyphs FRESH=1` re-renders over the top
+when you actually mean to.
+
+What is drawn is legible before it is pretty: a circle for a face button, a bumper for a shoulder, a
+pill for View/Menu, four arrows for the D-pad, and PlayStation's ✕○□△ and the Switch's −/+ as the
+shapes those buttons actually are. White on transparent, because `text_primary` colours them.
+
+Licensing differs per platform holder — check before shipping any pack, including this one.
 
 ---
 
