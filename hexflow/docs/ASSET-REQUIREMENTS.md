@@ -71,7 +71,7 @@ files it writes beside them.
 | Panel fill | `panel_fill.png` | 96×96, 9-slice inset **24 px** | 1 | `surface_panel` | **Placeholder** | Generated fibre texture |
 | Board material | `tile_grain.png` | 256×256, **seamlessly tiling** | 1 | not tinted — a *value* map | **Placeholder** | Generated grain, sampled in board space so it turns with the board. Off entirely under §21's flat-board setting |
 | Controller glyphs | `assets/glyphs/<family>_<slot>.png` | 24×24 | **52** (13 slots × 4 families) | `text_primary` | **Missing** | Text labels — the Deck's "View", a pad's "A" — from `src/data/input_glyphs.json` |
-| Brand mark | `logo.svg` + `logo.png` | vector; 512×512 raster | 2 | — | **Missing** | The word HEXFLOW set in Space Grotesk |
+| Brand mark | `logo.png` | 512×512 raster preferred | 1 | — | **Provided** | A painted title card, 1024×1024. A vector `logo.svg` is still worth having for the store page |
 
 ### Backdrops — the detail that matters
 
