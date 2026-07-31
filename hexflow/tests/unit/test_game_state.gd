@@ -277,3 +277,31 @@ func test_the_reason_is_cleared_by_recovering() -> void:
 	assert_true(state.undo())
 	assert_eq(state.status, GameState.Status.PLAYING)
 	assert_eq(state.dead_reason, GameState.Dead.NONE, "the ending was taken back")
+
+
+## The board draws the edge a placement would cross, and `anchor_of` is what it
+## asks. So the contract that matters is not what the function returns on its own —
+## it is that the move then *actually comes from there*. A view promising one edge
+## while the commit takes another would have the board lying about where the line
+## is going, which is worse than saying nothing.
+func test_anchor_of_names_the_cell_the_move_really_comes_from() -> void:
+	var state := GameState.start(Fixtures.fixed_level(
+		["NE", "NE", "E", "E", "E"] as Array[String]))
+	for _i: int in range(2):
+		assert_true(state.place(state.legal_targets()[0]))
+
+	var targets: Array[Vector3i] = state.legal_targets()
+	assert_gt(targets.size(), 1, "a fork is the case worth checking")
+	for target: Vector3i in targets:
+		var predicted: Vector3i = state.anchor_of(target)
+		assert_true(state.path.has(predicted), "%s is entered from off the path" % target)
+
+		var probe := GameState.start(Fixtures.fixed_level(
+			["NE", "NE", "E", "E", "E"] as Array[String]))
+		for _i: int in range(2):
+			probe.place(probe.legal_targets()[0])
+		assert_true(probe.place(target))
+		var edge: Array = probe.edges[probe.edges.size() - 1]
+		assert_eq(edge[0], predicted,
+			"%s was promised an entry from %s and took one from %s"
+				% [target, predicted, edge[0]])

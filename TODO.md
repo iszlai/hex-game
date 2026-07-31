@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 507 tests / 16,170 asserts green in ~90 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 516 tests / 16,201 asserts green in ~90 s, 60 frozen
 level files re-verified.
 
 ---
@@ -107,6 +107,14 @@ action rows, and it only fits because the key hints were moved into the legend.
 - [x] `hex_layout.gd` — pointy-top cube↔pixel both ways, floats kept out of core (C-13)
 - [x] `board_view.gd` — `_draw` grey-box, geometry prebuilt in `bind()`, nothing allocates per frame (C4)
 - [x] Every modifier readable by glyph **and** shape **and** colour, never colour alone (C5, §21)
+- [x] The **edge** a placement would cross, lit on each candidate — `src/view/board_seams.gd`. The
+      tint said *where* a tile may go and could not say *which way in*: a tile is a direction, so
+      every candidate is entered from exactly one anchor across one of its six edges (§5.4's
+      injectivity), and on a path that has doubled back the cell a given candidate connects from is
+      genuinely ambiguous. Which edge is not decided in the view — `GameState.anchor_of()` is asked,
+      because it is what the commit uses, and a second opinion there could promise an edge the rules
+      then do not take. Drawn in `path_core` rather than the candidate token: it is a ghost of the
+      connector that replaces it a moment later
 - [x] `palette.gd` + `neon_dark.tres` indirection — no hardcoded colours
 - [x] `input_router.gd` — snap-to-candidate and free cursor, ±75° cone, clockwise cycling (§11.2)
 - [x] Keyboard bindings; mouse click-to-place through `HexLayout.from_pixel` (closes B7) — the

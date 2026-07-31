@@ -47,6 +47,7 @@ var viewport: SubViewport = null
 var tiles: BoardTiles = null
 var links: BoardLinks = null
 var marks: BoardMarks = null
+var seams: BoardSeams = null
 var particles: BoardParticles = null
 var layout: HexLayout = null
 
@@ -88,6 +89,7 @@ func bind(state: GameState, play_area: Vector2) -> void:
 	tiles.bind(state, layout)
 	links.bind(state, layout, tiles)
 	marks.bind(state, layout, tiles)
+	seams.bind(state, layout, tiles)
 	particles.bind(layout)
 	# A new level is a new completion, so §14.3's once-per-level budget resets here.
 	camera.reset_shake()
@@ -219,13 +221,14 @@ func _drain_to(target: float) -> void:
 
 func _set_saturation(value: float) -> void:
 	_saturation = value
-	for mesh: GeometryInstance3D in [tiles, links, marks]:
+	for mesh: GeometryInstance3D in [tiles, links, marks, seams]:
 		if mesh != null and mesh.material_override is ShaderMaterial:
 			(mesh.material_override as ShaderMaterial).set_shader_parameter("saturation", value)
 
 
-func set_candidates(targets: Array[Vector3i]) -> void:
+func set_candidates(targets: Array[Vector3i], wild: bool = false) -> void:
 	tiles.set_candidates(targets)
+	seams.set_candidates(targets, wild)
 
 
 func set_cursor(cell: Vector3i, visible_cursor: bool = true) -> void:
@@ -323,6 +326,13 @@ func _ensure_nodes() -> void:
 	marks.name = "BoardMarks"
 	marks.palette = palette
 	viewport.add_child(marks)
+	# The edge a placement would cross, in a fourth. Not part of [BoardTiles]
+	# because a seam belongs to the *boundary* between two cells and every instance
+	# there is one cell.
+	seams = BoardSeams.new()
+	seams.name = "BoardSeams"
+	seams.palette = palette
+	viewport.add_child(seams)
 	# §14.4's four emitters, built once and reused — never one per event.
 	particles = BoardParticles.new()
 	particles.name = "BoardParticles"
@@ -375,6 +385,7 @@ func _add_lighting() -> void:
 func set_flat(flat: bool) -> void:
 	tiles.set_flat(flat)
 	links.set_flat(flat)
+	seams.set_flat(flat)
 	var key: DirectionalLight3D = viewport.get_node_or_null("KeyLight")
 	if key != null:
 		key.shadow_enabled = not flat

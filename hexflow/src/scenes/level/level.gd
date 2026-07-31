@@ -589,7 +589,7 @@ func _refresh_candidates() -> void:
 	targets = _tutorial_gate(targets)
 	if _branch_available(targets):
 		_try_trigger("branch_available")
-	board_view.set_candidates(targets)
+	board_view.set_candidates(targets, _wild_active() and state.wild_charges > 0)
 	_router.set_candidates(targets, board_view.centres(), _play_area() * 0.5)
 	board_view.set_cursor(_router.cursor, _router.has_cursor)
 	_refresh_hud()

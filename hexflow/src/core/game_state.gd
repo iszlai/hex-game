@@ -276,6 +276,18 @@ func _set_status(s: Status) -> void:
 		events.append({"type": EV_DEAD, "reason": dead_reason})
 
 
+## The cell [param target] would actually be entered *from*, and therefore the edge
+## a placement would cross — the ordinary anchor for the tile in hand, or the wild's
+## canonical one when [param wild] is set.
+##
+## Public because the board draws that edge. A view computing it a second way would
+## be free to light the seam the move does not use, which is worse than lighting
+## none: it would be a promise about where the line is going that the rules then
+## break.
+func anchor_of(target: Vector3i, wild: bool = false) -> Vector3i:
+	return _pick_wild_anchor(target) if wild else Rules.anchor_for(target, current_tile())
+
+
 ## Any path neighbour is a valid anchor for a wild placement; the canonical order
 ## keeps the choice deterministic so replays match.
 func _pick_wild_anchor(target: Vector3i) -> Vector3i:
