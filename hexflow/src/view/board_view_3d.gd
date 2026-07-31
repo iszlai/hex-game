@@ -176,6 +176,9 @@ func play_goal_reached(cell: Vector3i) -> void:
 ## because "once per level completion, nowhere else" is a claim worth being able to
 ## check rather than assume.
 func play_completion() -> bool:
+	# C-28: the route draws itself, start to goal, once — the only time the line
+	# exists at all, which is what makes it worth watching.
+	links.play_trace()
 	return camera.shake_once()
 
 

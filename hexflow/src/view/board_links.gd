@@ -71,6 +71,12 @@ var _board: Board = null
 var _state: GameState = null
 var _layout: HexLayout = null
 var _depth: Dictionary = {}
+
+## C-28: how much of the route is drawn, 0 to 1. Zero for the whole of play — the
+## path is read off the filled cells — and driven to one by [method play_trace]
+## when the level is won, so the line the player built runs start to goal once,
+## as the thing they get for finishing.
+var _traced: float = 0.0
 var _segments: Array = []    # of [Vector3 from, Vector3 to, Kind, Color]
 ## §14.1's connector draw, mid-flight: how much of the newest bar exists yet.
 var _drawing: float = 1.0
@@ -139,14 +145,29 @@ func rebuild() -> void:
 		multimesh.set_instance_transform(i, transform_of(i))
 		multimesh.set_instance_color(i, tint_of(i))
 		multimesh.set_instance_custom_data(i, custom_of(i))
-	# The rest of the buffer keeps whatever it last held and is simply not drawn.
-	multimesh.visible_instance_count = live
+	# C-28: at rest the board shows tethers only. The lattice connectors are built,
+	# ordered and ready, and how many of them are drawn is `_traced`.
+	multimesh.visible_instance_count = _visible_count()
 
 
 ## One entry per bar to draw, in path order: `[from, to, kind, colour]` with the
 ## ends already lifted onto the tile tops they run between. Computed apart from the
 ## push because instance data cannot be read back under the headless renderer.
+## Tethers first, then lattice links ordered by how far along the path they are.
+##
+## The order is the mechanism (C-28). Tethers are always drawn and links are
+## revealed by count, so `visible_instance_count = tethers` is "no line" and
+## `tethers + all links` is the whole route — and every value between the two is a
+## line running outward from the start, which is the trace itself.
 func segments() -> Array:
+	var out: Array = _tethers()
+	var links: Array = _links()
+	links.sort_custom(func(a: Array, b: Array) -> bool: return float(a[4]) < float(b[4]))
+	out.append_array(links)
+	return out
+
+
+func _tethers() -> Array:
 	var out: Array = []
 	for e: Variant in _state.edges:
 		var edge: Array = e
@@ -156,18 +177,39 @@ func segments() -> Array:
 			continue
 		var a: Vector3 = _top_of(from)
 		var b: Vector3 = _top_of(to)
+		if int(edge[1]) != Direction.PORTAL:
+			continue
+		# A tether spans two cells that are not neighbours, so it is cut into
+		# dashes rather than drawn as one long bar — and thrown over the board
+		# rather than dragged across it.
+		#
+		# C-28 removed the lattice connectors from play and kept these: a portal
+		# joins two cells that are *not* neighbours, so with no line at all nothing
+		# on the board says the path jumped. Every other connection is implied by
+		# two filled cells sitting next to each other.
+		var rise: float = a.distance_to(b) * TETHER_RISE
+		for i: int in range(TETHER_DASHES):
+			var t0: float = (float(i) + TETHER_GAP * 0.5) / float(TETHER_DASHES)
+			var t1: float = (float(i) + 1.0 - TETHER_GAP * 0.5) / float(TETHER_DASHES)
+			out.append([arc_point(a, b, rise, t0), arc_point(a, b, rise, t1),
+				Kind.TETHER, palette.portal])
+	return out
+
+
+## The lattice connectors, each carrying the depth of the cell it arrives at so
+## `segments` can order them from the start outward.
+func _links() -> Array:
+	var out: Array = []
+	for e: Variant in _state.edges:
+		var edge: Array = e
+		var from: Vector3i = edge[0]
+		var to: Vector3i = edge[2]
 		if int(edge[1]) == Direction.PORTAL:
-			# A tether spans two cells that are not neighbours, so it is cut into
-			# dashes rather than drawn as one long bar — and thrown over the board
-			# rather than dragged across it.
-			var rise: float = a.distance_to(b) * TETHER_RISE
-			for i: int in range(TETHER_DASHES):
-				var t0: float = (float(i) + TETHER_GAP * 0.5) / float(TETHER_DASHES)
-				var t1: float = (float(i) + 1.0 - TETHER_GAP * 0.5) / float(TETHER_DASHES)
-				out.append([arc_point(a, b, rise, t0), arc_point(a, b, rise, t1),
-					Kind.TETHER, palette.portal])
-		else:
-			out.append([a, b, Kind.LINK, _colour_at(to)])
+			continue
+		if not _board.has(from) or not _board.has(to):
+			continue
+		out.append([_top_of(from), _top_of(to), Kind.LINK, _colour_at(to),
+			float(_depth.get(to, 0))])
 	return out
 
 
@@ -176,6 +218,12 @@ func segments() -> Array:
 ## of the ribbon is already there and must not flicker when one more joins it.
 func draw_newest() -> void:
 	if multimesh == null or _segments.is_empty():
+		return
+	# C-28: nothing to grow while the route is hidden. §14.1's `connector_draw` row
+	# stays in the table and stays wired — it runs when the trace has revealed the
+	# ribbon, which is after the level is over — but during play the placement's
+	# feedback is the tile pop, not a bar nobody can see.
+	if _traced <= 0.0:
 		return
 	# Set to zero *now*, not on the tween's first step. A tween does not run until
 	# the next idle frame, so the bar would otherwise be drawn at full length for
@@ -203,6 +251,42 @@ func _set_drawing(value: float) -> void:
 ## at both ends, so the tether still meets the two tiles it belongs to.
 static func arc_point(a: Vector3, b: Vector3, rise: float, t: float) -> Vector3:
 	return a.lerp(b, t) + Vector3.UP * (rise * 4.0 * t * (1.0 - t))
+
+
+## Tethers always, plus however much of the route the trace has reached.
+func _visible_count() -> int:
+	var tethers: int = 0
+	for entry: Variant in _segments:
+		if (entry as Array)[2] == Kind.TETHER:
+			tethers += 1
+	var links: int = _segments.size() - tethers
+	var shown: int = tethers + int(round(_traced * float(links)))
+	return mini(shown, multimesh.instance_count)
+
+
+## C-28's payoff: on the winning move the connectors arrive in path order, so the
+## route the player built draws itself from the start out to the goal. It is the
+## one time the line exists, which is what makes it worth watching.
+func play_trace() -> void:
+	if multimesh == null or _segments.is_empty():
+		return
+	if Motion.seconds("goal_reached") <= 0.0:
+		set_trace(1.0)
+		return
+	set_trace(0.0)
+	var tween := create_tween()
+	Motion.shape(tween, "goal_reached")
+	tween.tween_method(set_trace, 0.0, 1.0, Motion.seconds("goal_reached"))
+
+
+func set_trace(value: float) -> void:
+	_traced = clampf(value, 0.0, 1.0)
+	if multimesh != null:
+		multimesh.visible_instance_count = _visible_count()
+
+
+func traced() -> float:
+	return _traced
 
 
 func count() -> int:
@@ -257,12 +341,14 @@ func custom_of(i: int) -> Color:
 func _depth_ratio_of(i: int) -> float:
 	if _depth.size() <= 1 or kind_of(i) == Kind.TETHER:
 		return 0.0
-	var to: Vector3i = _cell_of(i)
+	var to: Vector3i = cell_of(i)
 	return clampf(float(_depth.get(to, 0)) / float(_depth.size() - 1), 0.0, 1.0)
 
 
 ## The cell a bar arrives at, which is the one whose depth it takes.
-func _cell_of(i: int) -> Vector3i:
+## The cell a bar arrives at — what its depth, its colour and C-28's ordering are
+## all measured against.
+func cell_of(i: int) -> Vector3i:
 	var arrives_at: Vector3 = _segments[i][1]
 	return _layout.from_plane(arrives_at)
 

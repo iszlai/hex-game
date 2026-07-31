@@ -60,14 +60,48 @@ func _links_only() -> Array:
 	return out
 
 
-func test_the_ribbon_starts_empty_and_grows_one_bar_per_placement() -> void:
-	assert_eq(_links.count(), 0, "nothing is joined yet, so there is no stroke")
+## C-28: the route is built as the player plays and **not drawn**. The path is
+## read off the filled cells; two lit cells sitting next to each other are already
+## saying they are joined, and the line was saying it twice.
+func test_the_route_is_built_as_it_is_played_and_not_drawn() -> void:
+	assert_eq(_links.count(), 0, "nothing is joined yet")
 	assert_eq(_links.multimesh.visible_instance_count, 0)
 	for i: int in range(4):
 		_place_along_the_route(1)
-		assert_eq(_links.count(), i + 1, "one bar per step")
-		assert_eq(_links.multimesh.visible_instance_count, i + 1,
-			"and only the live prefix is drawn")
+		assert_eq(_links.count(), i + 1, "one bar per step, built and ready")
+		assert_eq(_links.multimesh.visible_instance_count, 0,
+			"and none of them drawn while the level is still being played")
+
+
+## C-28's payoff, and the whole reason the connectors still exist: on the winning
+## move the route draws itself from the start out to the goal.
+func test_the_win_draws_the_route_from_the_start_outward() -> void:
+	_place_along_the_route(4)
+	assert_eq(_links.multimesh.visible_instance_count, 0)
+
+	_links.set_trace(0.5)
+	var half: int = _links.multimesh.visible_instance_count
+	assert_gt(half, 0, "half way through, half the route is on screen")
+	assert_lt(half, _links.count(), "and only half")
+
+	_links.set_trace(1.0)
+	assert_eq(_links.multimesh.visible_instance_count, _links.count(),
+		"and at the end, all of it")
+
+
+## The order is the mechanism: revealed by count, so the bars have to be sorted
+## from the start outward or the line would appear in the order the player
+## happened to place in, which on a branching path is not a line at all.
+func test_the_route_is_ordered_from_the_start_outward() -> void:
+	_place_along_the_route(4)
+	var depth: Dictionary = PathDepth.of(_state)
+	var last: float = -1.0
+	for i: int in range(_links.count()):
+		if _links.kind_of(i) != BoardLinks.Kind.LINK:
+			continue
+		var d: float = float(depth.get(_links.cell_of(i), 0))
+		assert_gte(d, last, "bar %d arrives before one closer to the start" % i)
+		last = d
 
 
 ## C4: the buffer is sized once for the worst case a level can reach, and a
@@ -159,8 +193,8 @@ func test_undo_shortens_the_stroke() -> void:
 	var before: int = _links.count()
 	assert_true(_state.undo(), "the fixture must be undoable")
 	_view.rebuild()
-	assert_eq(_links.count(), before - 1, "the undone step is no longer drawn")
-	assert_eq(_links.multimesh.visible_instance_count, before - 1)
+	assert_eq(_links.count(), before - 1, "the undone step is no longer in the route")
+	assert_eq(_links.multimesh.visible_instance_count, 0, "and nothing is drawn during play")
 
 
 ## A portal jump is not a lattice step and must not draw like one (§6): dashes, and
@@ -219,8 +253,14 @@ func test_a_tether_runs_between_its_two_portal_cells() -> void:
 
 ## §14.1's connector draw: the newest bar grows out of its anchor over 160 ms, and
 ## nothing already on the board grows with it.
+##
+## C-28 moved *when* this happens rather than removing it. During play there is no
+## ribbon to grow into — the row is still in §14.1's table and still wired, and it
+## runs once the trace has revealed the route, which is after the level is over.
+## The trace is set here so the beat has something to draw.
 func test_the_newest_connector_draws_itself_from_its_anchor() -> void:
 	_place_along_the_route(3)
+	_links.set_trace(1.0)
 	var last: int = _links.count() - 1
 	var full: Transform3D = _links.transform_of(last)
 
@@ -245,6 +285,7 @@ func test_the_newest_connector_draws_itself_from_its_anchor() -> void:
 ## sits *on* its anchor, and at every length after that its near end is still there.
 func test_a_connector_grows_out_of_its_anchor() -> void:
 	_place_along_the_route(2)
+	_links.set_trace(1.0)
 	var last: int = _links.count() - 1
 	var anchor: Vector3 = (_links.segments()[last] as Array)[0]
 
@@ -309,3 +350,14 @@ func test_the_bar_is_a_unit_cube_wound_outward() -> void:
 		var centroid: Vector3 = (verts[i] + verts[i + 1] + verts[i + 2]) / 3.0
 		assert_gt(normals[i].dot(centroid.normalized()), 0.5,
 			"face at %v must point away from the centre" % centroid)
+
+
+## C-28: while the route is hidden, §14.1's connector draw has nothing to draw and
+## must not quietly rewrite an instance the player cannot see.
+func test_the_connector_draw_does_nothing_while_the_route_is_hidden() -> void:
+	_place_along_the_route(3)
+	var last: int = _links.count() - 1
+	var before: Transform3D = _links.transform_of(last)
+	_links.draw_newest()
+	assert_eq(_links.draw_progress(last), 1.0, "there is no partial bar during play")
+	assert_eq(_links.transform_of(last), before, "and nothing was touched")
