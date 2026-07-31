@@ -17,7 +17,7 @@ const DEFAULTS := {
 	# a tile's colour on screen is its palette colour and nothing else. Off by
 	# default — the key light is what gives C-22's tile heights something to cast.
 	"flat_board": false,
-	"palette": "neon_dark",     # neon_dark | deuter | protan | tritan | high_contrast
+	"palette": "cairn_warm",    # cairn_warm | neon_dark | deuter | protan | tritan
 	"text_scale": 1.0,          # 1.0 .. 1.5
 	"show_glyphs": true,
 	"hold_to_confirm": true,

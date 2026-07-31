@@ -61,7 +61,7 @@ var _saturation: float = 1.0
 
 func _ready() -> void:
 	if palette == null:
-		palette = load("res://src/data/palettes/neon_dark.tres")
+		palette = Palette.current()
 	stretch = true
 	# A `Control` that keeps Godot's default STOP swallows every mouse and touch
 	# event in the GUI pass before `_unhandled_input` sees one. That is exactly the

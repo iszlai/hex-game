@@ -55,11 +55,54 @@ extends Resource
 ## is its own token rather than a reuse of `bg.deep`.
 @export var board_mark_outline: Color = Color("070B12")
 
+@export_group("Surfaces (C-26)")
+## The illustrated direction's materials, every one a **tint** rather than a
+## colour: §13.6's art files are drawn neutral and multiplied by these, which is
+## the only way §21's four palettes can reach a texture at all. A texture carrying
+## its own final colour would look identical in all four.
+@export var surface_frame: Color = Color("2A2118")
+@export var surface_panel: Color = Color("161C26")
+@export var surface_ink: Color = Color("6B7A90")
+## What a chapter's backdrop is multiplied by, and the dim laid over it behind a
+## panel. §13.7 makes the contrast floor a property of the scrim's alpha rather
+## than of whichever illustration happens to be behind it.
+@export var backdrop_tint: Color = Color("FFFFFF")
+@export var backdrop_scrim: Color = Color("0A0E14", 0.72)
+
 @export_group("Feedback")
 @export var danger: Color = Color("FF5470")
 @export var text_primary: Color = Color("EAF2FF")
 @export var text_secondary: Color = Color("8FA3BF")
 @export var focus: Color = Color("FFFFFF")
+
+
+## The palette the player is actually playing in (§21). Read through here rather
+## than by loading a path, so switching palettes is a setting rather than an edit
+## in twenty files — and so C-26's tints reach every texture in the game at once.
+##
+## Cached, because this is called from `_ready` on every screen and from the board
+## every time it rebinds; the cache is dropped when the setting changes.
+static var _current: Palette = null
+static var _current_name: String = ""
+
+const DIR := "res://src/data/palettes/"
+const FALLBACK := "cairn_warm"
+
+
+static func current() -> Palette:
+	var wanted: String = str(SettingsService.get_value("palette"))
+	if _current != null and wanted == _current_name:
+		return _current
+	var path: String = DIR + wanted + ".tres"
+	if not ResourceLoader.exists(path):
+		# A palette named in the settings that is not in the build — an older save,
+		# a hand-edited file, or one removed between versions. §21's promise is that
+		# a palette choice can never leave the player unable to see the game.
+		push_warning("palette '%s' is not in this build; using %s" % [wanted, FALLBACK])
+		path = DIR + FALLBACK + ".tres"
+	_current = load(path)
+	_current_name = wanted
+	return _current
 
 
 ## Path colour at [param depth] of [param max_depth] steps from the start, so a

@@ -32,13 +32,17 @@ const CHAPTER_NAMES: Array[String] = [
 var _chapter: int = 1
 var _router: InputRouter = InputRouter.new()
 var _palette: Palette = null
+## §13.7's backdrop follows the chapter being paged through, because each chapter
+## is a different place and the map is where the player chooses which one.
+var _backdrop: Backdrop = null
 
 
 func _ready() -> void:
 	InputBindings.activate(InputBindings.SET_MENU)
-	_palette = load("res://src/data/palettes/neon_dark.tres")
+	_palette = Palette.current()
 	flower.palette = _palette
-	(%Background as ColorRect).color = _palette.bg_deep
+	_backdrop = Backdrop.install(self, _chapter)
+	(%Background as ColorRect).color = Color(_palette.bg_deep, 0.0)
 	_apply_type_roles()
 
 	# §12.2's default focus: the last played level, which is the run in progress if
@@ -154,6 +158,8 @@ func _page_chapter(step: int) -> void:
 		return
 	_chapter = next
 	AudioDirector.play_sfx("ui.move")
+	if _backdrop != null:
+		_backdrop.texture = Art.backdrop(_chapter)
 	# The cursor goes to where the player left *this* chapter, not to the cell it
 	# happened to be on in the last one. §12.2's "last played level" is a rule about
 	# what the map should be pointing at, and it does not stop applying because the

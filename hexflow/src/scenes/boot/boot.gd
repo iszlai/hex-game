@@ -15,8 +15,9 @@ var _left: bool = false
 ## alternate palettes are a resource swap with no code change, and a literal baked
 ## into a scene would survive all four of them.
 func _ready() -> void:
-	var palette: Palette = load("res://src/data/palettes/neon_dark.tres")
-	(%Background as ColorRect).color = palette.bg_deep
+	var palette: Palette = Palette.current()
+	Backdrop.install(self)
+	(%Background as ColorRect).color = Color(palette.bg_deep, 0.0)
 	var title := %Title as Label
 	title.add_theme_color_override("font_color", palette.path_core)
 	title.theme_type_variation = Typography.variation_for(Typography.Role.DISPLAY)

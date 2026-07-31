@@ -46,7 +46,7 @@ var _rows: VBoxContainer = null
 
 func _ready() -> void:
 	if palette == null:
-		palette = load("res://src/data/palettes/neon_dark.tres")
+		palette = Palette.current()
 	visible = false
 	_build()
 

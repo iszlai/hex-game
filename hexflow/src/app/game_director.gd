@@ -204,7 +204,7 @@ func _fade_layer() -> ColorRect:
 
 
 func _palette() -> Palette:
-	return load("res://src/data/palettes/neon_dark.tres")
+	return Palette.current()
 
 
 # --- level lifecycle ---------------------------------------------------------

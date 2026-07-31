@@ -90,7 +90,11 @@ func _ready() -> void:
 
 	# §13.2: not one colour lives in the scene file, so §21's palette swaps stay a
 	# resource change with no code change.
-	(%Background as ColorRect).color = board_view.palette.bg_deep
+	# §13.7: the board plays over the chapter's painted backdrop. The flat fill
+	# stays as the clear colour underneath, at zero alpha, so a build with no art
+	# in it (C-27) looks exactly as it did before rather than black.
+	Backdrop.install(self, LevelRepository.locate(GameDirector.level.id).x)
+	(%Background as ColorRect).color = Color(board_view.palette.bg_deep, 0.0)
 	_apply_type_roles()
 
 	_apply_cursor_mode()

@@ -69,7 +69,7 @@ var _font_size: int = 18
 
 func _ready() -> void:
 	if palette == null:
-		palette = load("res://src/data/palettes/neon_dark.tres")
+		palette = Palette.current()
 	# §13.4 by role. Built once — a `FontVariation` per frame would be exactly the
 	# per-frame allocation C4 exists to stop.
 	_font = Typography.font_of(Typography.Role.NUMERAL)

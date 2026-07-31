@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-30** — Godot 4.7.1, 438 tests / 15,590 asserts green in ~79 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 440 tests / 15,598 asserts green in ~79 s, 60 frozen
 level files re-verified.
 
 ---
@@ -44,6 +44,17 @@ whatever `GameDirector.screen` becomes is what gets instantiated — so a screen
 somewhere §12.1 does not go fails there rather than in front of a player. What is still M3's is the
 level screen's *layout*: the rail is a stack of six full-width buttons rather than §12.3's four
 action rows, and it only fits because the key hints were moved into the legend.
+
+> **Art direction changed, decided 2026-07-31 (spec Appendix C, C-26).** §13.1's "neon on near-black,
+> nothing textured, nothing skeuomorphic, everything drawn with SDF shaders" is superseded by an
+> **illustrated, warm, material** direction: painted chapter backdrops, panels built from timber and
+> waxed paper, light that comes from somewhere in the scene. Three things are kept — §21's
+> colour-independence, §13.2's palette indirection (every texture is *tinted* through a token, so the
+> four alternate palettes still reach the art), and the board's whole C-18/C-22/C-23/C-24 stack, which
+> only changes surface. The direction adds one rule: **art is data, never code**, so an illustrator can
+> replace the look without a script changing. Where the art comes from is **C-27**, open — until it is
+> answered the game ships generated placeholder art, committed like `make sfx` and `make levels`
+> commit theirs. `neon_dark` is not lost: it becomes one of §21's alternates.
 
 > **Perspective change, decided 2026-07-30 (spec Appendix C, C-18).** The board becomes an oblique
 > **orthographic 3D** view that the player can rotate in 60° steps, with the upcoming tiles as a

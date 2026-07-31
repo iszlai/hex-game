@@ -69,7 +69,7 @@ var _ripple: Tween = null
 
 func _ready() -> void:
 	if palette == null:
-		palette = load("res://src/data/palettes/neon_dark.tres")
+		palette = Palette.current()
 
 
 ## Allocates the multimesh for [param state]'s board and fills it. Called once per

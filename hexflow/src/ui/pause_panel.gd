@@ -29,7 +29,7 @@ var _restart_armed: bool = false
 
 func _ready() -> void:
 	if palette == null:
-		palette = load("res://src/data/palettes/neon_dark.tres")
+		palette = Palette.current()
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build()

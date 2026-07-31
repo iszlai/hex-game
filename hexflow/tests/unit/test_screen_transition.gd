@@ -65,6 +65,6 @@ func test_reduce_motion_uses_the_number_the_spec_names() -> void:
 ## swaps reach the one moment the whole screen is one colour.
 func test_the_fade_is_a_palette_colour() -> void:
 	GameDirector.go_to(GameDirector.Screen.LEVEL)
-	var palette: Palette = load("res://src/data/palettes/neon_dark.tres")
+	var palette: Palette = Palette.current()
 	var fade: ColorRect = _fade()
 	assert_eq(Color(fade.color, 1.0), palette.bg_deep, "the window's own clear colour")

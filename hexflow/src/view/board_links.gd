@@ -78,7 +78,7 @@ var _drawing: float = 1.0
 
 func _ready() -> void:
 	if palette == null:
-		palette = load("res://src/data/palettes/neon_dark.tres")
+		palette = Palette.current()
 
 
 ## Allocates the buffer for the longest path [param state]'s board could ever hold

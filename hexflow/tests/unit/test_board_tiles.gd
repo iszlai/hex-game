@@ -15,7 +15,7 @@ var _palette: Palette = null
 
 
 func before_each() -> void:
-	_palette = load("res://src/data/palettes/neon_dark.tres")
+	_palette = Palette.current()
 	# Walls deliberately off the NE diagonal, so the fixture's straight route still
 	# plays and the tests can place along it.
 	_state = GameState.start(Fixtures.fixed_level(

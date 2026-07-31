@@ -19,7 +19,7 @@ var _palette: Palette = null
 
 
 func before_each() -> void:
-	_palette = load("res://src/data/palettes/neon_dark.tres")
+	_palette = Palette.current()
 	_state = GameState.start(Fixtures.fixed_level(Fixtures.shortest_route_tiles()))
 	_bind(_state)
 

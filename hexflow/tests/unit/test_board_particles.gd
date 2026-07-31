@@ -90,7 +90,7 @@ func test_reduce_motion_silences_every_emitter() -> void:
 ## Every emitter's colour is a palette token, so §21's four palettes reach the
 ## particles too rather than stopping at the board.
 func test_every_emitter_is_coloured_from_the_palette() -> void:
-	var palette: Palette = load("res://src/data/palettes/neon_dark.tres")
+	var palette: Palette = Palette.current()
 	for name: Variant in BoardParticles.EMITTERS:
 		var token: String = str(BoardParticles.EMITTERS[name]["token"])
 		var mat := _particles.emitter(str(name)).process_material as ParticleProcessMaterial

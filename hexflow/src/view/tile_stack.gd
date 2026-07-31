@@ -62,7 +62,7 @@ var _yaw: float = 0.0
 
 func _ready() -> void:
 	if palette == null:
-		palette = load("res://src/data/palettes/neon_dark.tres")
+		palette = Palette.current()
 	stretch = true
 	# Same reason as [BoardView3D]: a `Control` that keeps Godot's default STOP
 	# swallows pointer events before `_unhandled_input` ever sees them (B7).

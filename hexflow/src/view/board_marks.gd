@@ -60,7 +60,7 @@ var _marks: Array = []      # of [Vector3i cell, Mark, int ordinal within the ce
 
 func _ready() -> void:
 	if palette == null:
-		palette = load("res://src/data/palettes/neon_dark.tres")
+		palette = Palette.current()
 
 
 ## Allocates one instance per mark on [param state]'s board and fills them. The

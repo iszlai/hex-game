@@ -35,7 +35,7 @@ var _palette: Palette = null
 ## test here.
 func before_each() -> void:
 	SettingsService.set_value("reduce_motion", true)   # six real tweens, quickly
-	_palette = load("res://src/data/palettes/neon_dark.tres")
+	_palette = Palette.current()
 	_state = GameState.start(Fixtures.modifier_level())
 	_view = BoardView3D.new()
 	add_child_autofree(_view)

@@ -65,7 +65,7 @@ func test_no_two_icons_are_the_same_drawing() -> void:
 func test_an_icon_takes_its_colour_from_whoever_places_it() -> void:
 	var icon := Icon.new()
 	add_child_autofree(icon)
-	var palette: Palette = load("res://src/data/palettes/neon_dark.tres")
+	var palette: Palette = Palette.current()
 	icon.colour = palette.path_core
 	assert_eq(icon.colour, palette.path_core)
 	assert_eq(icon.custom_minimum_size, Vector2(GRID, GRID), "§13.5's 24×24 grid")

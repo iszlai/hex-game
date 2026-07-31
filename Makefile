@@ -133,6 +133,11 @@ sfx: check ## Re-render §15.2's sixteen effects into assets/sfx/ (commit the ou
 	@echo
 	@echo "sound effects are committed assets — commit the .wav files"
 
+art: check ## Re-render §13.7's backdrops and panel surfaces into assets/art/ (commit the output)
+	@$(RUN_CMD) --headless -s res://tools/make_art.gd
+	@echo
+	@echo "art is a committed asset — commit the .png files (C-27: placeholder until an illustrator)"
+
 ## ---------------------------------------------------------------- misc
 
 legacy-branch: ## Re-pin legacy/libgdx-2016 at the last commit holding the prototype

@@ -20,9 +20,10 @@ var _result: Dictionary = {}
 
 func _ready() -> void:
 	InputBindings.activate(InputBindings.SET_MENU)
-	_palette = load("res://src/data/palettes/neon_dark.tres")
+	_palette = Palette.current()
 	menu.palette = _palette
-	(%Background as ColorRect).color = _palette.bg_deep
+	Backdrop.install(self)
+	(%Background as ColorRect).color = Color(_palette.bg_deep, 0.0)
 	_result = GameDirector.last_result.duplicate()
 	_apply_type_roles()
 	menu.activated.connect(_on_activated)

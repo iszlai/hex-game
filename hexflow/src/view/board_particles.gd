@@ -32,7 +32,7 @@ var _scale: float = 1.0
 
 func _ready() -> void:
 	if palette == null:
-		palette = load("res://src/data/palettes/neon_dark.tres")
+		palette = Palette.current()
 	_build()
 
 
