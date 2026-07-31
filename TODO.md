@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 553 tests / 16,600 asserts green in ~35 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 555 tests / 16,600 asserts green in ~35 s, 60 frozen
 level files re-verified.
 
 ---
@@ -440,7 +440,18 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       because "this portal has been travelled" is a visible state like any other (C5). The shader's
       `mix(LINK_GLOW, 0.0, kind)` had to become a `step` — it goes *negative* the moment a third kind
       exists, which would have subtracted light from the board. It also gives §10.2's T11 something
-      to point at: "Portals link both ends" was said over a board with no line between them
+      to point at: "Portals link both ends" was said over a board with no line between them.
+      **C-31: the stroke is drawn, not ruled, and it pulses.** The connectors C-30 brought back were
+      dead-straight bars of one weight — the diagram C-26 says the game is not. The bar mesh is
+      sliced along its length so a vertex shader has rings to bend, and each bar bows and varies in
+      weight off three sine octaves seeded from where it *is* (not from its index, or the ribbon
+      would redraw itself differently on every move). The envelope is zero at both ends, so a bar
+      that wanders in the middle still meets its neighbours exactly at the tile centres they share.
+      And §13.1's "line of light that grows **and pulses**" finally pulses: a wave runs the length of
+      the route on a loop, off a coordinate normalised by the deepest cell rather than the cell count
+      — §5.1 makes the path a tree, and dividing by the count leaves the wave short of the far end.
+      `PULSE_SECONDS` is a chosen number and says so; §14.1 never tabulated one and its table may not
+      grow a fifteenth row
 - [x] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
       array only, never for the unbounded endless/daily bag (C-18) — `src/view/tile_stack.gd`, the
       board's own prism seen at the board's own elevation in a viewport of its own, so a piece in the

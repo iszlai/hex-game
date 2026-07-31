@@ -341,16 +341,29 @@ func test_the_tether_arcs_clear_of_the_tallest_thing_on_the_board() -> void:
 		"and the rise is the rise at the top")
 
 
-func test_the_bar_is_a_unit_cube_wound_outward() -> void:
+func test_the_bar_is_a_unit_box_sliced_along_its_length_and_wound_outward() -> void:
 	var mesh := BoardLinks.build_bar_mesh()
 	var arrays: Array = mesh.surface_get_arrays(0)
 	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-	assert_eq(verts.size(), 36, "six faces of two triangles")
+
+	# C-31 slices the four long faces so the vertex shader has something to bend.
+	# Two caps plus four faces per slice, two triangles each, three vertices each.
+	assert_eq(verts.size(), (2 + 4 * BoardLinks.BAR_SEGMENTS) * 6,
+		"two caps and %d slices" % BoardLinks.BAR_SEGMENTS)
+
+	# Still exactly the unit box it always was — the wobble is the shader's, and a
+	# mesh that had grown outside these bounds would break every length assertion
+	# above it, which read the bar's span off the instance basis alone.
+	var xs: Dictionary = {}
 	for v: Vector3 in verts:
-		assert_almost_eq(absf(v.x), 0.5, 0.001, "centred on its own origin")
-		assert_almost_eq(absf(v.y), 0.5, 0.001)
-		assert_almost_eq(absf(v.z), 0.5, 0.001)
+		assert_lte(absf(v.x), 0.5 + 0.001, "within the unit length")
+		assert_almost_eq(absf(v.y), 0.5, 0.001, "full thickness at every ring")
+		assert_almost_eq(absf(v.z), 0.5, 0.001, "full width at every ring")
+		xs[snappedf(v.x, 0.0001)] = true
+	assert_eq(xs.size(), BoardLinks.BAR_SEGMENTS + 1,
+		"one ring per slice boundary, and the shader can only bend what has rings")
+
 	# Winding is the engine's convention rather than a reading of it, as it is for
 	# the prism: a bar built inside out fails here instead of on a screenshot.
 	for i: int in range(0, verts.size(), 3):
@@ -445,3 +458,40 @@ func _of_kind(kind: BoardLinks.Kind) -> Array:
 		if _links.kind_of(i) == kind:
 			out.append(i)
 	return out
+
+
+## §13.1 asks for "a single continuous line of light that grows **and pulses**".
+## The wave rides a coordinate that runs the length of the whole route, so it
+## travels *along* the path rather than lighting one bar at a time — which is what
+## the per-bar depth ratio on its own could do.
+func test_the_pulse_rides_one_continuous_coordinate_along_the_route() -> void:
+	_place_along_the_route(4)
+	var links: Array = _links_only()
+	assert_gt(links.size(), 2, "a route worth running a wave down")
+
+	# `g` is where a bar starts along the route and `a` is how much of the route
+	# one step is worth. Together they have to tile the whole 0-to-1 span with no
+	# gap and no overlap, or the wave stutters at the joins.
+	var step: float = _links.custom_of(links[0]).a
+	assert_gt(step, 0.0, "a step has a length")
+	var previous: float = -step
+	for i: int in links:
+		var starts_at: float = _links.custom_of(i).g
+		assert_almost_eq(starts_at, previous + step, 0.001,
+			"bar %d starts where the one before it ended" % i)
+		previous = starts_at
+	assert_almost_eq(previous + step, 1.0, 0.001, "and the last one reaches the end")
+
+
+## §14.5 stops a loop dead rather than slowing it, and zero seconds is how the
+## shader is told. Not routed through `Motion.loops` — §14.1's table is asserted
+## row for row and may not grow an entry for a duration §14.1 never tabulated.
+func test_reduce_motion_stops_the_pulse_rather_than_slowing_it() -> void:
+	var mat: ShaderMaterial = _links.material_override as ShaderMaterial
+	_links.set_motion()
+	assert_eq(mat.get_shader_parameter("pulse_seconds"), BoardLinks.PULSE_SECONDS)
+
+	SettingsService.set_value("reduce_motion", true)
+	_links.set_motion()
+	assert_eq(mat.get_shader_parameter("pulse_seconds"), 0.0, "stopped, not hurried")
+	SettingsService.set_value("reduce_motion", false)

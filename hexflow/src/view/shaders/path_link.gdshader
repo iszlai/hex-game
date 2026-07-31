@@ -14,6 +14,9 @@
 //
 // INSTANCE_CUSTOM:
 //   r  BoardLinks.Kind — 0 a lattice connector, 1 a portal tether, 2 a standing one
+//   g  how far along the path the bar sits, 0 at the start
+//   b  C-31's per-bar seed, so no two strokes wobble alike
+//   a  one lattice step as a fraction of the whole path, so `along` is continuous
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
@@ -45,15 +48,73 @@ const float FLOW_GAIN = 0.5;
 
 uniform float flow_head = -1.0;
 
+// §13.1: "a single continuous line of light that grows **and pulses**". A wave
+// runs the length of the path, start to end, on a loop — the route being alive
+// rather than the route asking for attention (§2.2's first pillar is calm).
+//
+// §14.1 never gave this a duration, so [BoardLinks.PULSE_SECONDS] chose one and
+// says so. Zero stops it dead, which is what §14.5 asks a loop to do under Reduce
+// Motion — not to run slowly.
+const float PULSE_WIDTH = 0.22;
+const float PULSE_GAIN = 0.55;
+
+uniform float pulse_seconds = 0.0;
+
+
+// C-31: the stroke is drawn rather than ruled.
+//
+// C-26 makes the game "a hand-drawn scene the player is looking into, not a
+// diagram they are reading", and a bar laid dead straight between two cell
+// centres is a diagram. So each bar bows and breathes along its own length, off
+// two sine octaves seeded per instance.
+//
+// The envelope is the important part. It is `sin(pi * t)`, which is **zero at
+// both ends** — so however far a bar wanders in the middle, it still meets its
+// neighbours exactly at the tile centres they share. Without that, every joint in
+// the route would show a step, and a line made of disconnected pieces is worse
+// than a straight one. The same trick the tether's arc uses (`arc_point`).
+// Three octaves, not two. Two gave a lazy S-curve — a line drawn slowly by a
+// ruler-shy hand. The third is the *jolt*: short, sharp, and small enough to read
+// as the tremor in a drawn stroke rather than as noise.
+const float WOBBLE = 0.105;      // lateral bow, as a fraction of the bar's length
+const float WAVER = 0.34;        // how much the stroke thickens and thins
+const float PI_ = 3.14159265;
+const float TAU_ = 6.28318530;
+
+float ink(float t, float seed) {
+	return sin(t * 3.1 + seed * TAU_) * 0.54
+		+ sin(t * 7.3 + seed * 17.0) * 0.31
+		+ sin(t * 16.1 + seed * 41.0) * 0.15;
+}
 
 varying vec3 tint;
 varying flat float kind;
-varying flat float depth_along;
+// Where this fragment sits along the *whole* route, 0 at the start. `depth_along`
+// is flat per bar, so on its own a travelling wave would light one bar at a time
+// and hop; adding the fraction along the bar makes the coordinate continuous.
+varying float along;
 
 void vertex() {
 	tint = COLOR.rgb;
 	kind = INSTANCE_CUSTOM.r;
-	depth_along = INSTANCE_CUSTOM.g;
+
+	// The instance basis scales x by the span, y by the thickness and z by the
+	// width, so a local offset is in units of whichever of those it rides. The
+	// bow is wanted in *board* units and has to be divided back out of the width,
+	// or a thin ribbon would wander less than a thick one.
+	float span = length(MODEL_MATRIX[0].xyz);
+	float width = max(length(MODEL_MATRIX[2].xyz), 0.0001);
+	float t = VERTEX.x + 0.5;
+	float envelope = sin(t * PI_);
+	float seed = INSTANCE_CUSTOM.b;
+
+	VERTEX.z += ink(t, seed) * envelope * span * WOBBLE / width;
+	// And the line is not one weight for its whole run — a drawn one is heavier
+	// where the hand pressed. Scaled rather than offset, so it stays symmetric
+	// about the surface it is lying on.
+	VERTEX.y *= 1.0 + ink(t, seed + 0.37) * envelope * WAVER;
+
+	along = INSTANCE_CUSTOM.g + t * INSTANCE_CUSTOM.a;
 }
 
 void fragment() {
@@ -64,8 +125,17 @@ void fragment() {
 	vec3 glow = tint * LINK_GLOW * step(kind, 0.5);
 	// A tether is topology rather than route, so the pulse does not run down it.
 	if (flow_head >= 0.0 && kind < 0.5) {
-		float band = 1.0 - smoothstep(0.0, FLOW_WIDTH, abs(depth_along - flow_head));
+		float band = 1.0 - smoothstep(0.0, FLOW_WIDTH, abs(along - flow_head));
 		glow += tint * band * FLOW_GAIN;
+	}
+	// The standing pulse of §13.1, on the same coordinate as the placement one so
+	// the two read as the same light rather than as two effects sharing a wire.
+	// It runs off the *end* of the path and starts again, so a long route carries
+	// a wave along it and a two-cell one is lit almost all at once.
+	if (pulse_seconds > 0.0 && kind < 0.5) {
+		float head = fract(TIME / pulse_seconds);
+		float band = 1.0 - smoothstep(0.0, PULSE_WIDTH, abs(along - head));
+		glow += tint * band * PULSE_GAIN;
 	}
 	if (flat_board) {
 		float up = clamp((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, 0.0, 1.0);

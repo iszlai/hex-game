@@ -39,6 +39,22 @@ enum Kind { LINK = 0, TETHER = 1, TETHER_IDLE = 2 }
 const LINK_WIDTH := 0.14
 const LINK_HEIGHT := 0.05
 
+## How many slices the bar mesh is cut into along its own length (C-31).
+##
+## A box has two rings of vertices, and a vertex shader can only bend a stroke
+## where it has vertices to bend. Eight is enough for the two-octave wobble in
+## `path_link.gdshader` to read as a drawn line rather than as a hinge, and it is
+## still one mesh in one MultiMesh in one draw call — the geometry §20 budgeted.
+const BAR_SEGMENTS := 8
+
+## How long one pulse takes to run the whole length of the path, in seconds.
+##
+## §13.1 asks for "a single continuous line of light that **grows and pulses**"
+## and §14.1 never gave the pulsing a duration — so this is a chosen number and
+## says so, the way C-21's camera angles are. Slow: the pulse is the path being
+## alive, not the path demanding attention, and §2.2's first pillar is calm.
+const PULSE_SECONDS := 2.6
+
 ## How far the ribbon is lifted off its own path colour. See [method _colour_at].
 ## Only just enough to separate: the emission is what makes it read, and lightening
 ## it any further flattened the depth gradient into one white slash.
@@ -138,6 +154,7 @@ func bind(state: GameState, layout: HexLayout, tiles: BoardTiles) -> void:
 		mat.shader = load(SHADER)
 		material_override = mat
 	set_flat(SettingsService.flat_board())
+	set_motion()
 
 	# The ribbon takes light but never casts it. A connector lying on a tile would
 	# drop a shadow onto the tile it is lying on, and the tether — which arcs over
@@ -388,14 +405,58 @@ func tint_of(i: int) -> Color:
 ## sits — the same 0-to-1 the tiles carry, so §14.1's flow pulse crosses the tile
 ## and the stroke lying on it at one moment rather than two.
 func custom_of(i: int) -> Color:
-	return Color(float(kind_of(i)), _depth_ratio_of(i), 0.0, 0.0)
+	return Color(float(kind_of(i)), _depth_ratio_of(i), seed_of(i), _depth_step())
 
 
+## How much of the path's whole length one lattice step is worth.
+##
+## The ratio in `g` is constant per bar, so on its own it can only light a bar at
+## a time — a travelling pulse built on it would jump from cell to cell. With the
+## step, the shader adds the fraction *along* the bar and gets one continuous
+## 0-to-1 coordinate running the length of the route, which is what §13.1's line
+## "that grows and pulses" needs in order to pulse along rather than in chunks.
+##
+## Normalised by the deepest cell rather than by how many cells there are. On a
+## branching path those differ — §5.1 makes the path a tree — and dividing by the
+## count would leave the wave stopping short of the far end by however much the
+## other branches weigh. The colour gradient keeps its own normalisation; this one
+## exists to reach 1.0 exactly at the end of the longest branch.
+func _depth_step() -> float:
+	return 1.0 / float(_max_depth())
+
+
+func _max_depth() -> int:
+	var deepest: int = 1
+	for d: Variant in _depth.values():
+		deepest = maxi(deepest, int(d))
+	return deepest
+
+
+## A stable 0-to-1 number per bar, so C-31's wobble differs from one stroke to the
+## next and a straight run of six steps does not draw as six identical bows.
+##
+## Taken from *where the bar is* rather than from its index, which is what keeps a
+## drawn line from redrawing itself differently every time the ribbon is rebuilt —
+## and it is rebuilt on every move and every undo. A hand that redrew the whole
+## page each time the player placed a tile would be the one thing more distracting
+## than a ruled line.
+func seed_of(i: int) -> float:
+	var a: Vector3 = _segments[i][0]
+	var b: Vector3 = _segments[i][1]
+	var h: int = hash(Vector2i(int(round((a.x + b.x) * 8.0)), int(round((a.z + b.z) * 8.0))))
+	return float(absi(h) % 1024) / 1024.0
+
+
+## Where along the whole route a bar *starts* — the depth of the cell it leaves,
+## not the one it arrives at. The bar then covers `[g, g + a]`, so consecutive bars
+## tile the span with no gap and no overlap and the wave crosses a joint without
+## stuttering. It used to report the arrival depth, which put every bar one step
+## ahead of itself and started the wave a step in from the beginning.
 func _depth_ratio_of(i: int) -> float:
 	if _depth.size() <= 1 or kind_of(i) != Kind.LINK:
 		return 0.0
-	var to: Vector3i = cell_of(i)
-	return clampf(float(_depth.get(to, 0)) / float(_depth.size() - 1), 0.0, 1.0)
+	var arrives_at: int = int(_depth.get(cell_of(i), 0))
+	return clampf(float(arrives_at - 1) / float(_max_depth()), 0.0, 1.0)
 
 
 ## The cell a bar arrives at, which is the one whose depth it takes.
@@ -432,25 +493,54 @@ static func build_bar_mesh() -> ArrayMesh:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_smooth_group(-1)
 	var h := 0.5
-	# Six faces, each two triangles, wound counter-clockwise seen from outside.
-	var faces: Array = [
+	# The two end caps, unchanged: a bar still starts and stops square.
+	var caps: Array = [
 		[Vector3(h, -h, -h), Vector3(h, h, -h), Vector3(h, h, h), Vector3(h, -h, h)],
 		[Vector3(-h, -h, h), Vector3(-h, h, h), Vector3(-h, h, -h), Vector3(-h, -h, -h)],
-		[Vector3(-h, h, -h), Vector3(-h, h, h), Vector3(h, h, h), Vector3(h, h, -h)],
-		[Vector3(-h, -h, h), Vector3(-h, -h, -h), Vector3(h, -h, -h), Vector3(h, -h, h)],
-		[Vector3(-h, -h, h), Vector3(h, -h, h), Vector3(h, h, h), Vector3(-h, h, h)],
-		[Vector3(h, -h, -h), Vector3(-h, -h, -h), Vector3(-h, h, -h), Vector3(h, h, -h)],
 	]
-	for f: Variant in faces:
-		var q: Array = f
-		# Reversed, because the quads above are listed anticlockwise seen from
-		# outside and Godot's front face is the clockwise one. Every normal came out
-		# pointing into the bar until the test above said so.
-		for tri: Array in [[0, 2, 1], [0, 3, 2]]:
-			for k: int in tri:
-				st.add_vertex(q[k] as Vector3)
+	for f: Variant in caps:
+		_quad(st, f as Array)
+
+	# The four long faces, **sliced along the bar's length** (C-31). A box has two
+	# rings of vertices and a shader can only bend what it has vertices for, so a
+	# hand-drawn stroke needs the run of the bar to be somewhere the vertex shader
+	# can reach. The slices cost geometry and no draw calls — still one MultiMesh,
+	# still one call, which is what §20's budget reserved.
+	for s: int in range(BAR_SEGMENTS):
+		var xa: float = -h + float(s) / float(BAR_SEGMENTS)
+		var xb: float = -h + float(s + 1) / float(BAR_SEGMENTS)
+		_quad(st, [Vector3(xa, h, -h), Vector3(xa, h, h),
+			Vector3(xb, h, h), Vector3(xb, h, -h)])
+		_quad(st, [Vector3(xa, -h, h), Vector3(xa, -h, -h),
+			Vector3(xb, -h, -h), Vector3(xb, -h, h)])
+		_quad(st, [Vector3(xa, -h, h), Vector3(xb, -h, h),
+			Vector3(xb, h, h), Vector3(xa, h, h)])
+		_quad(st, [Vector3(xb, -h, -h), Vector3(xa, -h, -h),
+			Vector3(xa, h, -h), Vector3(xb, h, -h)])
 	st.generate_normals()
 	return st.commit()
+
+
+## One quad, listed anticlockwise seen from outside. Reversed on the way in,
+## because Godot's front face is the clockwise one — every normal came out
+## pointing into the bar until the winding test said so.
+static func _quad(st: SurfaceTool, q: Array) -> void:
+	for tri: Array in [[0, 2, 1], [0, 3, 2]]:
+		for k: int in tri:
+			st.add_vertex(q[k] as Vector3)
+
+
+## §14.5, for the one loop this node owns (C-31). Reduce Motion stops a loop dead
+## rather than slowing it (§14.5), and zero seconds is how the shader is told.
+##
+## Not routed through [method Motion.loops] like the tiles' breathing is, because
+## that reads [constant Motion.TIMINGS] and §14.1's table is asserted row for row
+## against the spec — it may not grow a fifteenth entry for a duration §13.1 asks
+## for and §14.1 never tabulated. The number lives beside the thing it drives.
+func set_motion() -> void:
+	if material_override is ShaderMaterial:
+		var period: float = 0.0 if SettingsService.reduce_motion() else PULSE_SECONDS
+		(material_override as ShaderMaterial).set_shader_parameter("pulse_seconds", period)
 
 
 ## §21's escape hatch (C-24): with [param flat] the board takes no light, so a
