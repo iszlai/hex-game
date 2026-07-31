@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 518 tests / 16,299 asserts green in ~90 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 521 tests / 16,315 asserts green in ~90 s, 60 frozen
 level files re-verified.
 
 ---
@@ -107,6 +107,14 @@ action rows, and it only fits because the key hints were moved into the legend.
 - [x] `hex_layout.gd` — pointy-top cube↔pixel both ways, floats kept out of core (C-13)
 - [x] `board_view.gd` — `_draw` grey-box, geometry prebuilt in `bind()`, nothing allocates per frame (C4)
 - [x] Every modifier readable by glyph **and** shape **and** colour, never colour alone (C5, §21)
+- [x] **C-29** — §6's marks may be illustrated, chosen by the palette. A palette now declares itself
+      `assistive`; §21's four alternates do and the two unconstrained looks do not. An assistive
+      palette keeps C-23's silhouettes untouched, because that is the presentation whose job is to
+      survive colour being taken away; the others may use `assets/art/marks.png`, drawn *instead of*
+      the silhouette and untinted, because finished art carries its own colour. The silhouette is the
+      floor — no file, or an assistive palette, and the board draws what it always drew. **The
+      mechanism is built and the atlas is not**: `make assets ROLE=marks` says what to paint, and
+      until it exists nothing changes on screen
 - [x] Tiles read as **slabs** rather than as a relief cut into one surface — three changes together:
       the grain is sampled per tile and turned by a hash of the tile's own origin (it was one sheet
       the hexes were cut out of, and looked it); the top is **chamfered**, so the rim has its own

@@ -25,6 +25,10 @@ extends MultiMeshInstance3D
 
 const SHADER := "res://src/view/shaders/hex_mark.gdshader"
 
+## C-29's illustrated set: one atlas, four cells in a row, in [enum Mark] order.
+## Optional by design — see [method set_art].
+const ART := "res://assets/art/marks.png"
+
 ## Mark codes, written into `INSTANCE_CUSTOM.r`. The shader draws one silhouette
 ## per code, so this is a wire format: append, never renumber.
 enum Mark { GOAL = 0, PORTAL = 1, GATE = 2, WILD = 3 }
@@ -88,8 +92,40 @@ func bind(state: GameState, layout: HexLayout, tiles: BoardTiles) -> void:
 		mat.set_shader_parameter("outline", palette.board_mark_outline)
 		material_override = mat
 	set_motion()
+	set_art()
 
 	rebuild()
+
+
+## Chooses between C-23's silhouettes and C-29's illustrated set.
+##
+## The art is used only when there **is** art and the palette does not declare
+## itself assistive. Both halves matter and for different reasons: a missing file
+## must fall back rather than draw nothing, and an assistive palette must get the
+## silhouettes because that is the presentation whose whole job is to survive
+## colour being taken away — illustrated art carries its own colour and cannot be
+## tinted, so it would look identical in all four of §21's alternates.
+##
+## The silhouette is the floor. That is the same arrangement as §11.4's controller
+## glyphs, where the text label is the floor under the icon, and for the same
+## reason: an improvement that can go missing must never be the only thing holding
+## a requirement up.
+func set_art() -> void:
+	if not (material_override is ShaderMaterial):
+		return
+	var mat := material_override as ShaderMaterial
+	var art: Texture2D = load(ART) as Texture2D if ResourceLoader.exists(ART) else null
+	var wanted: bool = art != null and not palette.assistive
+	mat.set_shader_parameter("mark_art", art)
+	mat.set_shader_parameter("art_strength", 1.0 if wanted else 0.0)
+
+
+## Whether the illustrated set is what is on screen right now.
+func illustrated() -> bool:
+	if not (material_override is ShaderMaterial):
+		return false
+	return float((material_override as ShaderMaterial)
+		.get_shader_parameter("art_strength")) > 0.0
 
 
 ## §14.1's goal pulse, at §14.5's discretion — the period when it runs and zero

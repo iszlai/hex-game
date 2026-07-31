@@ -69,6 +69,19 @@ extends Resource
 @export var backdrop_tint: Color = Color("FFFFFF")
 @export var backdrop_scrim: Color = Color("0A0E14", 0.72)
 
+## Whether this palette exists for a **vision requirement** rather than for taste.
+##
+## §21's four alternates do; `cairn_warm` and `neon_dark` are the two unconstrained
+## looks. The board reads it to decide how the §6 modifiers are drawn: an assistive
+## palette gets C-23's procedural silhouettes, whose whole job is to stay legible
+## once colour is gone, and the others may use illustrated art that carries its own
+## colour and therefore cannot be tinted (C-29).
+##
+## It lives on the palette rather than in a list somewhere because a palette is the
+## thing that knows what it is for — a new one declares its own nature and nothing
+## else has to be told about it.
+@export var assistive: bool = false
+
 @export_group("Feedback")
 @export var danger: Color = Color("FF5470")
 @export var text_primary: Color = Color("EAF2FF")

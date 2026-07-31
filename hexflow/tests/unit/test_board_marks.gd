@@ -273,3 +273,49 @@ func test_the_quad_is_a_unit_square_with_bounds_the_shader_cannot_outgrow() -> v
 	var aabb: AABB = mesh.custom_aabb
 	assert_true(aabb.has_point(Vector3(0.0, 0.0, 1.0)), "bounds must cover the depth axis")
 	assert_true(aabb.has_point(Vector3(0.0, 0.0, -1.0)))
+
+
+## C-29: two complete presentations of the same four modifiers, and the drawn-in-
+## code silhouette is the **floor**.
+##
+## The illustrated set carries its own colour, so it cannot be tinted — which is
+## precisely why an assistive palette may not have it. §21's four alternates exist
+## so a player who cannot separate two hues gets a board that does not ask them to,
+## and art that looked identical in all four would quietly undo that.
+##
+## Asserted rather than trusted because the failure is invisible: with no art file
+## on disk the board looks correct under every palette, and the bug only appears the
+## day someone drops one in.
+func test_an_assistive_palette_never_takes_the_illustrated_marks() -> void:
+	for name: String in ["deuter", "protan", "tritan", "high_contrast"]:
+		var palette: Palette = load("res://src/data/palettes/%s.tres" % name)
+		assert_true(palette.assistive,
+			"%s exists for a vision requirement and has to say so" % name)
+
+		var marks := BoardMarks.new()
+		marks.palette = palette
+		add_child_autofree(marks)
+		marks.bind(_state, _layout, _tiles)
+		assert_false(marks.illustrated(),
+			"%s must keep C-23's silhouettes, whatever art is on disk" % name)
+
+
+## And the two unconstrained looks are free to take it — they are a matter of taste,
+## not of vision, so nothing is lost by illustrating them.
+func test_the_unconstrained_palettes_are_allowed_the_art() -> void:
+	for name: String in ["cairn_warm", "neon_dark"]:
+		var palette: Palette = load("res://src/data/palettes/%s.tres" % name)
+		assert_false(palette.assistive, "%s is a look, not an accommodation" % name)
+
+
+## With no file there is nothing to choose, and the board draws what it always drew.
+## The art is an improvement layered over something that already works, so its
+## absence has to be silent rather than a hole.
+func test_the_marks_draw_whether_or_not_the_art_is_there() -> void:
+	var marks := BoardMarks.new()
+	marks.palette = load("res://src/data/palettes/cairn_warm.tres")
+	add_child_autofree(marks)
+	marks.bind(_state, _layout, _tiles)
+	assert_eq(marks.illustrated(), ResourceLoader.exists(BoardMarks.ART),
+		"the illustrated set is used exactly when there is one")
+	assert_gt(marks.multimesh.instance_count, 0, "and the marks draw either way")

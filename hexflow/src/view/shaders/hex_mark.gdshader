@@ -174,6 +174,24 @@ void vertex() {
 		+ (quad.x * INV_VIEW_MATRIX[0].xyz + quad.y * INV_VIEW_MATRIX[1].xyz) * radius;
 }
 
+// The illustrated set (C-29), as one atlas of four cells in a row: goal, portal,
+// gate, wild — the `Mark` enum's own order, so the code that writes
+// INSTANCE_CUSTOM.r needs no second table.
+//
+// It is drawn **instead of** the silhouette, never over it. The two are complete
+// presentations of the same four modifiers rather than layers of one, which is why
+// an assistive palette can simply take the other one and lose nothing: C-23's
+// shapes are what stay readable when colour is gone, and illustrated art carries
+// its own colour and cannot be tinted at all.
+//
+// `art_strength` is 0 whenever the art must not be used — no file, or a palette
+// that declares itself assistive — and the whole illustrated branch is skipped.
+// The silhouette is therefore the floor, exactly as the text label is the floor
+// under §11.4's controller glyphs.
+uniform sampler2D mark_art : source_color, filter_linear_mipmap;
+uniform float art_strength = 0.0;
+const float ART_CELLS = 4.0;
+
 void fragment() {
 	// Rotating the sample point backwards draws the glyph forwards. Every cell
 	// modifier passes 0 here; only the rail's direction arrows spin.
@@ -188,11 +206,30 @@ void fragment() {
 		p /= mix(1.0, PULSE_SCALE, phase);
 		glow = mix(PULSE_DIM, 1.0, phase);
 	}
-	float d = mark_sdf(int(mark + 0.5), p, open);
-	// Resolution-independent edge, as §13.3 does it for the cell SDF.
-	float aa = max(fwidth(d), 0.0005);
-	float ink = 1.0 - smoothstep(-aa, aa, d);
-	float shell = 1.0 - smoothstep(-aa, aa, d - OUTLINE);
-	ALBEDO = drain(mix(outline.rgb, tint * glow, ink));
-	ALPHA = shell;
+	// One branch or the other, never both, and no early exit — a `return` in a
+	// fragment processor is a compile error in Godot's shading language.
+	if (art_strength > 0.0) {
+		// The quad is -1..1; the atlas cell is 0..1 of one quarter. Flipped in y
+		// because the quad's +y is up and a texture's is down. Outside the quad's
+		// inscribed square (its corners reach 1.41) there is simply nothing.
+		vec2 cell = vec2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
+		vec4 art = vec4(0.0);
+		if (cell.x >= 0.0 && cell.x <= 1.0 && cell.y >= 0.0 && cell.y <= 1.0) {
+			vec2 uv = vec2((floor(mark + 0.5) + cell.x) / ART_CELLS, cell.y);
+			art = texture(mark_art, uv);
+		}
+		// Art carries its own colour (C-29), so it is *not* tinted — only the
+		// dead-state drain reaches it, because §14.1 says nothing on a dead board
+		// keeps its colour.
+		ALBEDO = drain(art.rgb) * glow;
+		ALPHA = art.a * art_strength;
+	} else {
+		float d = mark_sdf(int(mark + 0.5), p, open);
+		// Resolution-independent edge, as §13.3 does it for the cell SDF.
+		float aa = max(fwidth(d), 0.0005);
+		float ink = 1.0 - smoothstep(-aa, aa, d);
+		float shell = 1.0 - smoothstep(-aa, aa, d - OUTLINE);
+		ALBEDO = drain(mix(outline.rgb, tint * glow, ink));
+		ALPHA = shell;
+	}
 }

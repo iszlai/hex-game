@@ -33,3 +33,4 @@ danger = Color(0.658824, 0.113725, 0.200000, 1)
 text_primary = Color(0.968627, 0.905882, 0.913725, 1)
 text_secondary = Color(0.690196, 0.564706, 0.560784, 1)
 focus = Color(1.000000, 1.000000, 1.000000, 1)
+assistive = true
