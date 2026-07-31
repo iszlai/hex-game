@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 440 tests / 15,598 asserts green in ~79 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 446 tests / 15,690 asserts green in ~79 s, 60 frozen
 level files re-verified.
 
 ---
@@ -573,7 +573,21 @@ Exit: mode `@e2e` scenarios pass, including the Steam-unavailable path.
 
 Exit: accessibility `@e2e` scenarios pass; greyscale playthrough verified; 150% scale shows no clipping.
 
-- [ ] Four alternate palettes as `.tres` swaps, zero code change (§21)
+- [x] Four alternate palettes as `.tres` swaps, zero code change (§21) — `deuter`, `protan`, `tritan`,
+      `high_contrast`, plus `cairn_warm` and `neon_dark`. Surfaced in Settings → Accessibility and
+      applied **live**, because the moment a player picking a colour-blind palette needs to see it
+      work is while they are picking it. `tests/unit/test_palette_vision.gd` is the part that makes
+      the word "safe" mean anything: it *simulates* each deficiency (Viénot's linear dichromacy
+      approximation) and measures the decisions the game forces — path/goal/wild, portal/gate,
+      candidate/empty, focus/surface — **after** the simulation, against WCAG 1.4.11's 3:1 non-text
+      floor. An author cannot check this claim by looking, since the whole point is that they see
+      something the player will not.
+      It immediately found three defects in the two palettes that already shipped: `neon_dark`'s
+      candidate stroke sat at 1.67:1 against an empty one (and the candidate *breathes*, which §14.5
+      stops under Reduce Motion, leaving brightness alone), and §6's wall hatch was under 3:1 against
+      its own wall in both `neon_dark` and `cairn_warm` — the hatch being the one cue a wall has that
+      is neither colour nor height. All three are fixed. **Still owed:** a person who actually has
+      one of these conditions looking at a real board
 - [ ] Text scaling 1.0–1.5× across every font role (§13.4, §21)
 - [ ] Reduce Motion toggle wired to the M7 animation layer
 - [ ] String extraction to `assets/i18n/en.csv`, then **enable the §22 literal check in `ci_gate.sh`**

@@ -51,6 +51,13 @@ const ROWS := {
 			"min": 0, "max": 100, "step": 5, "suffix": "%"},
 	],
 	"Accessibility": [
+		# §21's four alternates plus the default. It was deliberately absent while
+		# only one palette shipped — a picker with one entry is not a picker — and
+		# it is here now that there are six to pick from.
+		{"key": "palette", "label": "Colours", "kind": KIND_CHOICE,
+			"values": ["cairn_warm", "neon_dark", "deuter", "protan", "tritan", "high_contrast"],
+			"names": ["warm", "neon dark", "deuteranopia", "protanopia", "tritanopia",
+				"high contrast"]},
 		{"key": "text_scale", "label": "Text size", "kind": KIND_CHOICE,
 			"values": [1.0, 1.15, 1.25, 1.4, 1.5],
 			"names": ["100%", "115%", "125%", "140%", "150%"]},
@@ -228,6 +235,18 @@ func _apply(row: Dictionary) -> void:
 			)
 		"fps_cap":
 			Engine.max_fps = int(SettingsService.get_value(key))
+		"palette":
+			# §21's swap is a resource change with no code change — but the screens
+			# already on screen read their palette once, in `_ready`. Reloading this
+			# one is what makes the choice visible *while making it*, which is the
+			# moment a player picking a colour-blind palette needs to see it work.
+			_palette = Palette.current()
+			menu.palette = _palette
+			_apply_type_roles()
+			(%Background as ColorRect).color = Color(_palette.bg_deep, 0.0)
+			var backdrop: Backdrop = get_node_or_null("Backdrop") as Backdrop
+			if backdrop != null:
+				backdrop.bind(_palette)
 
 
 func _do_action(action: String) -> void:

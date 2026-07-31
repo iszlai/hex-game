@@ -82,10 +82,10 @@ No files. A palette is a Godot resource of **29 tokens**; the list of tokens is 
 |---|---|---|---|
 | Default (warm) | `cairn_warm.tres` | **Placeholder** | Authored for C-26. Warm timber, dusk, honey goal, pale-cyan path |
 | Neon dark | `neon_dark.tres` | Done | The original direction, kept as an alternate |
-| Deuteranopia-safe | `deuter.tres` | **Missing** | §21 |
-| Protanopia-safe | `protan.tres` | **Missing** | §21 |
-| Tritanopia-safe | `tritan.tres` | **Missing** | §21 |
-| High contrast | `high_contrast.tres` | **Missing** | §21 |
+| Deuteranopia-safe | `deuter.tres` | **Placeholder** | §21 |
+| Protanopia-safe | `protan.tres` | **Placeholder** | §21 |
+| Tritanopia-safe | `tritan.tres` | **Placeholder** | §21 |
+| High contrast | `high_contrast.tres` | **Placeholder** | §21 |
 
 **What a palette has to get right.** These pairs must be distinguishable *in the palette you are
 authoring*, because they are the pairs the game asks a player to tell apart:
@@ -100,8 +100,16 @@ authoring*, because they are the pairs the game asks a player to tell apart:
 Colour is never the *only* channel (§21, C5) — every state also has a glyph, a shape, and on the board
 a height — so a palette that is hard to read is a bug, not a failure of the design.
 
-`tests/unit/test_palette.gd` already fails a palette that forgets a token or tints the art the same as
-another one.
+`tests/unit/test_palette.gd` fails a palette that forgets a token or tints the art the same as another
+one. `tests/unit/test_palette_vision.gd` goes further: it **simulates** the deficiency each palette is
+for (Viénot's linear dichromacy approximation) and measures the pairs above *afterwards*, against
+WCAG 1.4.11's 3:1 non-text floor and §13.7's 4.5:1 for text. "Deuteranopia-safe" is a claim an author
+cannot check by looking — the whole point is that they see something the player will not — so it is
+checked by machine instead.
+
+All six palettes exist and pass. The four alternates are **placeholders in the same sense as the
+art**: correct by measurement, not reviewed by anyone who needs them. A player with the condition
+looking at a real board is still the test that matters.
 
 ---
 
