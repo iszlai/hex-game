@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 536 tests / 16,500 asserts green in ~35 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 539 tests / 16,500 asserts green in ~35 s, 60 frozen
 level files re-verified.
 
 ---
@@ -690,7 +690,14 @@ Exit: mode `@e2e` scenarios pass, including the Steam-unavailable path.
       leaderboard. The default is gone — an argument that cannot be omitted is the only version of
       this that cannot be got wrong again — and `GameDirector.endless_goals()` /
       `endless_placements()` are now the one place the banked stages and the live one are added up.
-      `tests/e2e/test_modes.gd` counts the placements it makes and demands the run agree
+      `tests/e2e/test_modes.gd` counts the placements it makes and demands the run agree.
+      **And the level screen had never been looked at outside the campaign.** Endless and the daily
+      borrow it, and three of §12.3's readouts assumed a campaign level: the title fell through
+      `LevelRepository.locate()` to the raw id (`endless_3`, `daily_2026-07-31`), the counter offered
+      `placements 7 / par 0`, and the star band derived from that par sat at three hollow stars for
+      the length of a run. A run names itself and scores itself by goals now, the daily names the
+      day, a level with no par has no star band, and §5.8's dead banner stops offering the undo §5.9
+      took away — a key that does nothing reads as a stuck game. `tests/unit/test_mode_hud.gd`
 - [x] Daily screen: 7-day streak indicator, timer to reset, restart-only (§7.3) — all three live on
       the main menu's Daily row, which is where §12.2 puts the daily's entry (there is no separate
       Daily screen row in its table; §12.1 sends the daily straight to the board and then to

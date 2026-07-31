@@ -422,6 +422,9 @@ func _on_won(placements: int) -> void:
 	last_result = {
 		"mode": mode,
 		"level_id": level.id,
+		# The date on its own, because the results card wants to name the day and
+		# the id is `daily_2026-07-31` — a prefix the player never needs to read.
+		"daily_date": _daily_date,
 		"chapter": at.x,
 		"index": at.y,
 		"placements": placements,

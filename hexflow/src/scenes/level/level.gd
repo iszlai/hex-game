@@ -808,13 +808,17 @@ const DEAD_REASONS := {
 
 
 func _on_level_dead(reason: int) -> void:
-	# Never a hard fail: undo takes the default focus (§5.8).
+	# Never a hard fail: undo takes the default focus (§5.8). But §5.9 takes undo
+	# away in endless and the daily for leaderboard integrity, and the banner
+	# offered it anyway — naming a key that does nothing is worse than offering one
+	# fewer way out, because the player presses it and concludes the game is stuck.
 	_haptics.play("dead")
 	board_view.play_dead()
-	_flash_banner("%s — %s undo · %s restart" % [
-		DEAD_REASONS.get(reason, "No route left"),
-		InputGlyphs.label_for("board_undo"), InputGlyphs.label_for("board_restart")
-	])
+	var reason_text: String = DEAD_REASONS.get(reason, "No route left")
+	var restart: String = "%s restart" % InputGlyphs.label_for("board_restart")
+	_flash_banner("%s — %s undo · %s" % [
+		reason_text, InputGlyphs.label_for("board_undo"), restart
+	] if GameDirector.undo_available() else "%s — %s" % [reason_text, restart])
 
 
 # --- tutorial (§10) -----------------------------------------------------------
@@ -986,17 +990,39 @@ func _refresh_hud() -> void:
 		return
 
 	# §12.3's top bar reads "← Ch2 · Level 7", not a level id. The id is what the
-	# save and the solver call it; the player never chose it.
-	var at: Vector2i = LevelRepository.locate(level.id)
-	title_label.text = "Chapter %d · Level %d" % [at.x, at.y] if at.x > 0 \
-		else (level.id if level.id != "" else "Hexflow")
-	score_label.text = "placements %d / par %d" % [state.placements, level.par]
+	# save and the solver call it; the player never chose it — and `locate()` has
+	# nothing to find for `endless_3` or `daily_2026-07-31`, so both modes fell
+	# through to printing their id raw. Each says what it is instead.
+	match GameDirector.mode:
+		GameDirector.Mode.ENDLESS:
+			title_label.text = "Endless · %d goals" % GameDirector.endless_goals()
+		GameDirector.Mode.DAILY:
+			title_label.text = "Daily · %s" % GameDirector.daily_date()
+		_:
+			var at: Vector2i = LevelRepository.locate(level.id)
+			title_label.text = "Chapter %d · Level %d" % [at.x, at.y] if at.x > 0 \
+				else (level.id if level.id != "" else "Hexflow")
+
+	# §7.2 scores a run by goals and breaks ties on placements, so a run has no par
+	# and the campaign's counter says nothing about it. It read "placements 7 /
+	# par 0", which is not a smaller number than the player's — it is a category
+	# error dressed as one.
+	score_label.text = "goals %d · placements %d" \
+		% [GameDirector.endless_goals(), GameDirector.endless_placements()] \
+		if GameDirector.mode == GameDirector.Mode.ENDLESS \
+		else "placements %d / par %d" % [state.placements, level.par]
 	# The star band is live and has a label of its own: it shows what the run is
 	# worth *now*, so a player one placement from dropping a star can see it before
 	# they spend it (§5.10). Its own label because it and the counter grow at
 	# different moments, and sharing one string makes the longer of them clip.
-	var earned: int = Scoring.stars(maxi(1, state.placements), level.par)
-	stars_label.text = "★".repeat(earned) + "☆".repeat(Scoring.MAX_STARS - earned)
+	# A level with no par has no star band to be live about. `Scoring.stars` answers
+	# zero for `par <= 0`, so an endless run wore three hollow stars for its whole
+	# length — a score display that never moves, promising a reward the mode does
+	# not have.
+	stars_label.visible = level.par > 0
+	if stars_label.visible:
+		var earned: int = Scoring.stars(maxi(1, state.placements), level.par)
+		stars_label.text = "★".repeat(earned) + "☆".repeat(Scoring.MAX_STARS - earned)
 
 	# The pieces say which directions are coming; the captions say how many are
 	# left. A count only means anything for a level whose tile array is fixed —

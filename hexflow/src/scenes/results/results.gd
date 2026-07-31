@@ -83,7 +83,7 @@ func _refresh() -> void:
 	var par: int = int(_result.get("par", 0))
 
 	if mode == GameDirector.Mode.DAILY:
-		title_label.text = "Daily · %s" % str(_result.get("level_id", ""))
+		title_label.text = "Daily · %s" % str(_result.get("daily_date", ""))
 	elif chapter > 0:
 		title_label.text = "Chapter %d · Level %d" % [chapter, index]
 	else:
