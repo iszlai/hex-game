@@ -44,7 +44,7 @@ files it writes beside them.
 | Chapter backdrops | `menu.png`, `chapter_1…5.png` | 1920×1200 | 6 | `backdrop_tint` | **Placeholder** | Generated dusk sky + four receding ridgelines, one seed per chapter (`make art`) |
 | Panel frame | `panel_frame.png` | 96×96, 9-slice inset **24 px** | 1 | `surface_frame` | **Placeholder** | Generated bevel with a diagonal grain; opaque middle |
 | Panel fill | `panel_fill.png` | 96×96, 9-slice inset **24 px** | 1 | `surface_panel` | **Placeholder** | Generated fibre texture |
-| Board tile material | `tile_top.png`, `tile_side.png` | 256×256, **seamlessly tiling** | 2 | tile colour | **Missing** | Prisms are flat-shaded; §13.6 asks for grain on them |
+| Board material | `tile_grain.png` | 256×256, **seamlessly tiling** | 1 | not tinted — a *value* map | **Placeholder** | Generated grain, sampled in board space so it turns with the board. Off entirely under §21's flat-board setting |
 | Controller glyphs | `assets/glyphs/<family>_<slot>.png` | 24×24 | **52** (13 slots × 4 families) | `text_primary` | **Missing** | Text labels — the Deck's "View", a pad's "A" — from `src/data/input_glyphs.json` |
 | Brand mark | `logo.svg` + `logo.png` | vector; 512×512 raster | 2 | — | **Missing** | The word HEXFLOW set in Space Grotesk |
 

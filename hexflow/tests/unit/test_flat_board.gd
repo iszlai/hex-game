@@ -90,3 +90,28 @@ func test_a_level_opened_flat_stays_flat() -> void:
 	view.bind(GameState.start(Fixtures.fixed_level(Fixtures.shortest_route_tiles())), PLAY)
 	assert_true(bool(_flag_on(view.tiles)), "bound flat")
 	assert_true(bool(_flag_on(view.links)))
+
+
+## C-24 and C-26 together. The board took a material at C-26, and §21's flat path
+## has to take it off again: C-24's promise is that a tile on screen *is* its
+## palette colour, and a value map multiplying it is one more thing standing
+## between the palette and the pixel — which is the thing this setting exists to
+## remove. The grain is the newest way that promise could be quietly broken.
+func test_the_board_material_comes_off_with_the_lighting() -> void:
+	# The tiles the view already built, so the material under test is the shipped
+	# one rather than a second instance configured by the test.
+	var tiles: BoardTiles = _view.tiles
+
+	tiles.set_flat(false)
+	var lit: float = float(_shader(tiles).get_shader_parameter("grain_strength"))
+	tiles.set_flat(true)
+	assert_eq(float(_shader(tiles).get_shader_parameter("grain_strength")), 0.0,
+		"a flat tile is its palette colour and nothing multiplied over it")
+	tiles.set_flat(false)
+	assert_eq(float(_shader(tiles).get_shader_parameter("grain_strength")), lit,
+		"and the material comes back with the light, rather than staying off")
+
+
+func _shader(tiles: BoardTiles) -> ShaderMaterial:
+	return tiles.material_override as ShaderMaterial
+

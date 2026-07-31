@@ -22,6 +22,7 @@ const TINT_BACKDROP := "backdrop_tint"
 const TINT_FRAME := "surface_frame"
 const TINT_FILL := "surface_panel"
 
+const TILE_GRAIN := DIR + "tile_grain.png"
 const PANEL_FRAME := DIR + "panel_frame.png"
 const PANEL_FILL := DIR + "panel_fill.png"
 ## §13.7's 9-slice inset, matching the corner `tools/make_art.gd` draws.
@@ -35,6 +36,12 @@ const PANEL_CORNER := 24
 static func backdrop(chapter: int = 0) -> Texture2D:
 	var key: String = "chapter_%d" % chapter if chapter >= 1 and chapter <= 5 else BACKDROP_MENU
 	return _load(DIR + key + ".png")
+
+
+## §13.6's board material. A *value* map, never tinted — the tile's colour is the
+## palette's and this only says how the light falls on it.
+static func tile_grain() -> Texture2D:
+	return _load(TILE_GRAIN)
 
 
 static func panel_frame() -> Texture2D:

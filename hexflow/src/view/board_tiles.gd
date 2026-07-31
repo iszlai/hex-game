@@ -100,6 +100,7 @@ func bind(state: GameState, layout: HexLayout) -> void:
 		# disagree about what a wall looks like.
 		mat.set_shader_parameter("hatch_ink", palette.wall_stroke)
 		mat.set_shader_parameter("side_ink", palette.board_tile_side)
+		_apply_grain(mat)
 	set_flat(SettingsService.flat_board())
 	set_motion()
 	# Or an unset uniform reads back as 0.0, which is a wave sitting on the origin.
@@ -427,13 +428,36 @@ func _set_ripple_time(value: float) -> void:
 		(material_override as ShaderMaterial).set_shader_parameter("ripple_time", value)
 
 
+## C-26's board material (§13.6), if the build has one. `grain_strength` stays at
+## zero without it, which is exactly how the board rendered before — §13.6's
+## replaceability rule cuts both ways, and `make art` may never have run here.
+##
+## The grain is deliberately *quiet*: it is a material, not a pattern, and the two
+## cues the board cannot afford to blur are §6's wall hatch and C-22's heights.
+const GRAIN_STRENGTH := 0.35
+
+
+func _apply_grain(mat: ShaderMaterial) -> void:
+	var grain: Texture2D = Art.tile_grain()
+	mat.set_shader_parameter("grain_map", grain)
+	mat.set_shader_parameter("grain_strength", GRAIN_STRENGTH if grain != null else 0.0)
+
+
 ## §21's escape hatch (C-24): with [param flat] the board takes no light, so a
 ## tile's colour on screen is its palette colour and a greyscale palette cannot be
 ## undone by a highlight. A uniform rather than a second shader, so there is one
 ## place the geometry and the colours are described.
 func set_flat(flat: bool) -> void:
-	if material_override is ShaderMaterial:
-		(material_override as ShaderMaterial).set_shader_parameter("flat_board", flat)
+	if not material_override is ShaderMaterial:
+		return
+	var mat: ShaderMaterial = material_override
+	mat.set_shader_parameter("flat_board", flat)
+	# The grain comes off with the lighting. C-24's promise is that a tile on screen
+	# *is* its palette colour, and a value map multiplying it is one more thing
+	# between the palette and the pixel — which is the whole thing §21 turned this
+	# setting on to avoid.
+	mat.set_shader_parameter("grain_strength", 0.0 if flat else
+		(GRAIN_STRENGTH if Art.tile_grain() != null else 0.0))
 
 
 ## §14.1's candidate breathing, at §14.5's discretion: the period when it runs, and

@@ -55,6 +55,18 @@ const float BREATHE_LOW = 0.55;
 const float HATCH_PITCH = 0.36;
 const float HATCH_DUTY = 0.24;
 
+/// §13.6's board material (C-26). Sampled in **board space** rather than in UV, so
+/// the grain belongs to the board and turns with it — exactly like the wall hatch
+/// above, and for the same reason: a texture pinned to the screen swims across the
+/// tiles every time the camera moves to a new 60° stop.
+///
+/// It is a *value* map, mid-grey at rest, and it multiplies. That keeps §13.2
+/// intact: the tile's colour is still entirely the palette's, and the material
+/// only says how the light falls on it.
+uniform sampler2D grain_map : source_color, filter_linear_mipmap, repeat_enable;
+uniform float grain_strength = 0.0;
+const float GRAIN_SCALE = 2.2;
+
 uniform bool flat_board = false;
 uniform vec4 hatch_ink : source_color;
 uniform vec4 side_ink : source_color;
@@ -124,6 +136,11 @@ void fragment() {
 	float up = clamp((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, 0.0, 1.0);
 
 	vec3 base = tint;
+	if (grain_strength > 0.0) {
+		// Doubled so 0.5 is neutral: below it darkens, above it lightens.
+		float g = texture(grain_map, world.xz / (tile_width * GRAIN_SCALE)).r * 2.0;
+		base *= mix(1.0, g, grain_strength);
+	}
 	if (int(kind + 0.5) == KIND_CANDIDATE) {
 		// Driven by TIME rather than by a per-instance phase, which is exactly what
 		// makes every candidate breathe **in phase** as §14.1 requires.

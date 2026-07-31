@@ -39,6 +39,12 @@ const SCENES := {
 const PANEL := Vector2i(96, 96)
 const PANEL_CORNER := 24
 
+## The board's own material (§13.6). Sampled in board space and tiled across every
+## prism, so it has to be **seamless**: built from sines at whole-number
+## frequencies over the 0–1 domain, which are periodic by construction rather than
+## by a blend at the edges that would show up as a grid on a board of sixty tiles.
+const GRAIN := Vector2i(256, 256)
+
 
 func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
@@ -47,7 +53,8 @@ func _initialize() -> void:
 		_save(image, name + ".png")
 	_save(_frame(), "panel_frame.png")
 	_save(_fill(), "panel_fill.png")
-	print("wrote ", SCENES.size() + 2, " art files to ", OUT_DIR)
+	_save(_grain(), "tile_grain.png")
+	print("wrote ", SCENES.size() + 3, " art files to ", OUT_DIR)
 	quit()
 
 
@@ -151,6 +158,25 @@ func _frame() -> Image:
 			var grain: float = 0.90 + 0.10 * sin(float(x) * 0.7 + float(y) * 2.3)
 			var v: float = clampf(lit * grain, 0.0, 1.0)
 			image.set_pixel(x, y, Color(v, v, v, 1.0))
+	return image
+
+
+## The board's grain. Mid-grey at rest — the shader multiplies by it, so 0.5 is
+## "no change" and the texture only ever lightens or darkens a tile that already
+## has its palette colour. Never tinted: this one carries value, not hue.
+func _grain() -> Image:
+	var image := Image.create(GRAIN.x, GRAIN.y, false, Image.FORMAT_RGB8)
+	for y: int in range(GRAIN.y):
+		var v: float = float(y) / float(GRAIN.y) * TAU
+		for x: int in range(GRAIN.x):
+			var u: float = float(x) / float(GRAIN.x) * TAU
+			# Three octaves, each an integer number of cycles across the tile.
+			var n: float = 0.5 \
+				+ 0.030 * sin(u * 3.0 + sin(v * 2.0) * 1.7) \
+				+ 0.022 * sin(v * 7.0 + sin(u * 5.0) * 1.1) \
+				+ 0.014 * sin((u + v) * 11.0)
+			var g: float = clampf(n, 0.0, 1.0)
+			image.set_pixel(x, y, Color(g, g, g))
 	return image
 
 
