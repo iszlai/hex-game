@@ -478,34 +478,18 @@ func _row(button: Button, label: String, action: String) -> void:
 		hint.text = InputGlyphs.label_for(action)
 
 
-func _panel_box(palette: Palette) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	# The bands sit *behind* the rows, so they take the deeper surface — otherwise a
-	# row and the panel it stands on are the same colour and §12.3's rail reads as
-	# one slab. This is `bg.vignette` doing the job §13.2 gives it.
-	box.bg_color = palette.bg_vignette
-	box.border_color = palette.cell_empty_stroke
-	box.set_border_width_all(0)
-	box.border_width_bottom = 1
-	return box
+## §13.7: a bar or a rail is timber. One builder for every surface in the game
+## lives in [Surface], so what a panel is made of is decided in one file.
+func _panel_box(palette: Palette) -> StyleBox:
+	return Surface.panel(palette)
 
 
-## A rail row: flat by default, lit when the pointer or the focus is on it. The
+## A rail row: the reading surface, lit when the pointer or the focus is on it. The
 ## disabled state is a *dimmer* row rather than a hidden one, because §12.3 shows
 ## the discard count and the wild charge whether or not either can be spent right
 ## now — "0 left" is information and an absent row is not.
-func _rail_box(palette: Palette, state: String) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = palette.bg_panel if state == "normal" or state == "disabled" \
-		else palette.cell_candidate_stroke
-	box.set_border_width_all(1)
-	box.border_color = palette.focus if state == "focus" else palette.cell_empty_stroke
-	box.set_corner_radius_all(6)
-	box.content_margin_left = 16.0
-	box.content_margin_right = 16.0
-	box.content_margin_top = 8.0
-	box.content_margin_bottom = 8.0
-	return box
+func _rail_box(palette: Palette, state: String) -> StyleBox:
+	return Surface.row(palette, state == "focus", state == "hover" or state == "pressed")
 
 
 func _on_wild_button() -> void:

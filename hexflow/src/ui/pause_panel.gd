@@ -40,11 +40,8 @@ func _ready() -> void:
 
 
 func _build() -> void:
-	var box := StyleBoxFlat.new()
-	box.bg_color = palette.bg_panel
-	box.set_border_width_all(1)
-	box.border_color = palette.cell_empty_stroke
-	box.set_corner_radius_all(8)
+	# §13.7: a modal is a panel, made of the same timber as every other surface.
+	var box: StyleBox = Surface.panel(palette)
 	box.set_content_margin_all(32.0)
 	add_theme_stylebox_override("panel", box)
 

@@ -125,15 +125,24 @@ func _ridge_profile(rng: RandomNumberGenerator, amplitude: float) -> PackedFloat
 	return out
 
 
-## The frame: a bevelled border with a grain, drawn white so the tint decides its
-## colour. The middle is transparent — a frame frames, it does not fill.
+## The frame: a bevelled border with a grain around a plain middle, drawn white so
+## the tint decides its colour.
+##
+## The middle is *opaque* rather than cut out, because a `StyleBoxTexture` takes
+## one texture: a hollow frame would need a second layer behind it and a second
+## node to hold it. One image per surface, one tint per image — the frame texture
+## is the timber of a bar or rail, the fill texture is the paper of a row, and
+## §13.7's "frame carries the material, fill carries the reading surface" is
+## expressed by *which* surface takes which, not by stacking them.
 func _frame() -> Image:
 	var image := Image.create(PANEL.x, PANEL.y, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0, 0, 0, 0))
 	for y: int in range(PANEL.y):
 		for x: int in range(PANEL.x):
 			var edge: int = mini(mini(x, y), mini(PANEL.x - 1 - x, PANEL.y - 1 - y))
 			if edge >= PANEL_CORNER - 6:
+				# The interior: the same grain, without the bevel.
+				var flat: float = 0.72 + 0.05 * sin(float(x) * 0.9 + float(y) * 1.7)
+				image.set_pixel(x, y, Color(flat, flat, flat, 1.0))
 				continue
 			# Bright on the top and left, dark on the bottom and right: a bevel is
 			# the cheapest thing that reads as a material rather than a rectangle.

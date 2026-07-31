@@ -147,6 +147,9 @@ func _paint() -> void:
 		var button: Button = _buttons[i]
 		var focused: bool = i == _index and i < _rows.size()
 		button.add_theme_stylebox_override("normal", _box(focused, false))
+		# §12.5's ring: 3 px, the accent colour, never invisible. It rides on top of
+		# the material as its own layer so the texture underneath is free to change.
+		_ring_of(button).visible = focused
 		button.add_theme_stylebox_override("hover", _box(focused, true))
 		button.add_theme_stylebox_override("pressed", _box(focused, true))
 		button.add_theme_stylebox_override("disabled", _box(false, false))
@@ -161,6 +164,25 @@ func _paint() -> void:
 ## list at §21's 150% text scale — has to bring the focused row with it. §12.5's
 ## "exactly one focused element at all times" and §21's "the focus ring is never
 ## invisible" are both broken by a ring that is simply scrolled off.
+## One ring node per row, built once (C4) and only ever shown or hidden.
+func _ring_of(button: Button) -> Panel:
+	var ring: Panel = button.get_node_or_null("FocusRing") as Panel
+	if ring != null:
+		return ring
+	ring = Panel.new()
+	ring.name = "FocusRing"
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(palette.focus, 0.0)
+	box.set_border_width_all(Motion.FOCUS_RING_PX)
+	box.border_color = palette.focus
+	box.set_corner_radius_all(4)
+	ring.add_theme_stylebox_override("panel", box)
+	button.add_child(ring)
+	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
+	return ring
+
+
 func _keep_focus_on_screen() -> void:
 	if _index < 0 or _index >= _buttons.size():
 		return
@@ -194,14 +216,8 @@ func _want_scale(index: int) -> Vector2:
 	return Vector2.ONE * (Motion.FOCUS_RING_SCALE if index == _index else 1.0)
 
 
-func _box(focused: bool, hovered: bool) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = palette.bg_panel if (focused or hovered) else palette.cell_empty_fill
-	box.set_border_width_all(Motion.FOCUS_RING_PX if focused else 1)
-	box.border_color = palette.focus if focused else palette.cell_empty_stroke
-	box.set_corner_radius_all(6)
-	box.content_margin_left = 20.0
-	box.content_margin_right = 20.0
-	box.content_margin_top = 10.0
-	box.content_margin_bottom = 10.0
-	return box
+## §13.7's reading surface, so a menu row and a rail row are visibly the same
+## material. The focus ring is drawn *over* it rather than as a border, because a
+## `StyleBoxTexture` has none — and §12.5 will not let the ring be optional.
+func _box(focused: bool, hovered: bool) -> StyleBox:
+	return Surface.row(palette, focused, hovered)
