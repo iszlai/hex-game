@@ -270,3 +270,61 @@ func _is_cyclic_rotation(a: Array[Vector3i], b: Array[Vector3i]) -> bool:
 		if same:
 			return true
 	return false
+
+
+## §14.2's last beat: "t=340 goal cell settles, converts to path colour".
+##
+## It was the one beat of the six that had never been built, and the reason it was
+## easy to miss is that nothing *looked* absent — the cell did end up path-coloured.
+## It just did so at t=0, because entering a goal makes it a path cell as far as the
+## rules are concerned and the board followed immediately. So the flourish, the
+## burst and the ripple all played over a tile that had already stopped looking like
+## a goal, and §14.2's whole point is that they play over one that has not.
+func test_a_reached_goal_holds_its_colour_until_the_sequence_converts_it() -> void:
+	var goal: Vector3i = _state.board.goals[0]
+	_view.tiles.hold_goal(goal)
+
+	assert_almost_eq(_view.tiles.settle_ratio(goal), 0.0, 0.001,
+		"a goal that has just been reached has not converted at all")
+	assert_eq(_view.tiles.tint_of(goal), _view.palette.goal_cell,
+		"and is still drawn in the goal's own colour")
+
+	_view.tiles.settle_goal(goal)
+	await wait_seconds(float(Motion.GOAL_SETTLE_MS) / 1000.0 + 0.3)
+
+	assert_almost_eq(_view.tiles.settle_ratio(goal), 1.0, 0.001,
+		"once settled it is a path cell like any other")
+	assert_ne(_view.tiles.tint_of(goal), _view.palette.goal_cell,
+		"and has left the goal colour behind")
+
+
+## The conversion is not optional under §14.5. Reduce Motion shortens a transition
+## rather than dropping it — a goal left permanently in its goal colour would read
+## as a goal still to reach, which is a lie about the state of the board rather than
+## a quieter animation.
+func test_reduce_motion_still_arrives_at_path_colour() -> void:
+	SettingsService.set_value("reduce_motion", true)
+	var goal: Vector3i = _state.board.goals[0]
+	_view.tiles.hold_goal(goal)
+	_view.tiles.settle_goal(goal)
+	await wait_seconds(float(Motion.GOAL_SETTLE_MS) / 1000.0 + 0.3)
+	assert_almost_eq(_view.tiles.settle_ratio(goal), 1.0, 0.001,
+		"§14.5 makes it quick, not absent")
+
+
+## The whole sequence, as one run: every beat fires in §14.2's order and the cell
+## ends where §14.2 leaves it. Driven through the real entry point rather than the
+## pieces, because the ordering is the thing under test.
+func test_the_goal_sequence_ends_with_the_cell_converted() -> void:
+	SettingsService.set_value("reduce_motion", false)
+	var goal: Vector3i = _state.board.goals[0]
+	_view.play_goal_reached(goal)
+
+	assert_almost_eq(_view.tiles.settle_ratio(goal), 0.0, 0.001,
+		"§14.2 spends its first 340 ms on a cell that is still a goal")
+
+	await wait_seconds(Motion.beat_seconds("settle")
+		+ float(Motion.GOAL_SETTLE_MS) / 1000.0 + 0.4)
+	assert_almost_eq(_view.tiles.settle_ratio(goal), 1.0, 0.001,
+		"and hands back an ordinary path cell")
+	SettingsService.set_value("reduce_motion", true)

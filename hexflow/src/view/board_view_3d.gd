@@ -160,10 +160,19 @@ func _set_flow_head(value: float) -> void:
 ## Motion.GOAL_SEQUENCE]: the goal cell flourishes at once, the board ripples out
 ## of it at 120 ms, and the whole path pulses at double speed at 200 ms.
 ##
-## Two of §14.2's six beats are not here and are not silently dropped: the 24-spark
-## burst at t=60 is §14.4's particle work, and the Results card at t=700 is a screen
-## M6 has not built. Everything the board itself can say, it says.
+## All five of the beats the board owns now run. The sixth, the Results card at
+## t=700, belongs to [GameDirector] — a screen is not the board's to raise.
+##
+## The intervals are differences between table entries rather than durations typed
+## here, so the sequence stays diffable against §14.2 line by line: move a beat in
+## the table and it moves on screen, and no two of them can drift apart.
 func play_goal_reached(cell: Vector3i) -> void:
+	# Before the flourish, not after: t=340 converts the cell *from* the goal
+	# colour, so the goal colour has to still be on it to convert from. The rules
+	# made this a path cell the instant it was entered, and the board followed at
+	# once — which meant the whole flourish played on a tile that had already
+	# stopped looking like a goal.
+	tiles.hold_goal(cell)
 	tiles.flourish(cell)
 	var sequence := create_tween()
 	sequence.tween_interval(Motion.beat_seconds("burst"))
@@ -172,6 +181,8 @@ func play_goal_reached(cell: Vector3i) -> void:
 	sequence.tween_callback(func() -> void: tiles.ripple_from(cell))
 	sequence.tween_interval(Motion.beat_seconds("flow") - Motion.beat_seconds("ripple"))
 	sequence.tween_callback(func() -> void: play_flow_pulse(Motion.GOAL_FLOW_SPEEDUP))
+	sequence.tween_interval(Motion.beat_seconds("settle") - Motion.beat_seconds("flow"))
+	sequence.tween_callback(func() -> void: tiles.settle_goal(cell))
 
 
 ## §14.3, on the one event it is budgeted for. Returns whether it actually shook,

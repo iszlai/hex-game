@@ -73,6 +73,15 @@ const GOAL_FLOURISH_MS := 340
 ## §14.2 runs the flow pulse "at 2x speed" over the whole path.
 const GOAL_FLOW_SPEEDUP := 2.0
 
+## How long the goal cell takes to convert to path colour once it starts.
+##
+## §14.2 fixes the *moment* — t=340, as the flourish returns to 1.0 — and not the
+## duration, so this is a chosen number and is written down as one. It is a
+## cross-fade rather than a swap because a hard colour snap on the tile the player
+## is looking at is the exact thing §14.1's table exists to prevent, and it fits
+## inside the 360 ms §14.2 leaves before the Results card.
+const GOAL_SETTLE_MS := 200
+
 ## §14.3's entire allowance for camera motion the player did not ask for.
 const SHAKE_PIXELS := 2.0
 const SHAKE_MS := 120

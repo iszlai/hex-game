@@ -63,6 +63,9 @@ var _state: GameState = null
 var _layout: HexLayout = null
 var _index: Dictionary = {}         # Vector3i -> instance index
 var _candidates: Dictionary = {}    # Vector3i -> true
+## Goal cells part-way through §14.2's conversion to path colour: 0 is still a
+## goal, 1 is fully path, absent is neither.
+var _settling: Dictionary = {}
 var _cursor: Vector3i = Vector3i.ZERO
 var _has_cursor: bool = false
 var _depth: Dictionary = {}
@@ -395,7 +398,58 @@ func _write(cell: Vector3i) -> void:
 func tint_of(cell: Vector3i) -> Color:
 	if is_shaking(cell):
 		return _fill_of(cell).lerp(palette.danger, SHAKE_FLASH)
+	if _settling.has(cell):
+		# §14.2's last beat. Entering a goal makes it a path cell at once as far as
+		# the rules are concerned, and the board used to show that at once too — so
+		# the flourish played on a tile that had *already* stopped being a goal.
+		# Held at the goal's own colour until t=340, then crossed over.
+		return palette.goal_cell.lerp(_fill_of(cell), float(_settling[cell]))
 	return _fill_of(cell)
+
+
+## Holds [param cell] at the goal colour, from the moment it is entered.
+##
+## Called on the way *into* §14.2's sequence rather than at its end, because what
+## the beat converts from has to still be there to convert.
+func hold_goal(cell: Vector3i) -> void:
+	if not _index.has(cell):
+		return
+	_settling[cell] = 0.0
+	if multimesh != null:
+		_write(cell)
+
+
+## §14.2 at t=340: "goal cell settles, converts to path colour".
+func settle_goal(cell: Vector3i) -> void:
+	if not _settling.has(cell) or not _index.has(cell):
+		return
+	var seconds: float = float(Motion.GOAL_SETTLE_MS) / 1000.0
+	if SettingsService.reduce_motion():
+		# §14.5 shortens a transition rather than removing it: the cell still has to
+		# arrive at path colour, or a reached goal would read as unreached.
+		seconds *= Motion.REDUCE_MOTION_SCALE
+	var tween := create_tween()
+	Motion.shape(tween, "placement_pop")
+	tween.tween_method(func(v: float) -> void: _set_settling(cell, v), 0.0, 1.0, seconds)
+	tween.finished.connect(func() -> void: _clear_settling(cell))
+
+
+## How far [param cell] has converted: 0 while it is still a goal, 1 once it is
+## path, and absent when it is neither — worth being able to read rather than infer.
+func settle_ratio(cell: Vector3i) -> float:
+	return float(_settling.get(cell, 1.0))
+
+
+func _set_settling(cell: Vector3i, value: float) -> void:
+	_settling[cell] = value
+	if multimesh != null and _index.has(cell):
+		_write(cell)
+
+
+func _clear_settling(cell: Vector3i) -> void:
+	_settling.erase(cell)
+	if multimesh != null and _index.has(cell):
+		_write(cell)
 
 
 func _fill_of(cell: Vector3i) -> Color:
