@@ -50,7 +50,11 @@ MARGIN = 0.06
 ## this sheet's portal trails a pale smear a long way left of its body, and a box
 ## drawn around the smear would scale the portal down to fit a cell it never
 ## actually filled.
-WHITE = 236
+## How far a pixel may sit from a learned background colour and still be background,
+## and how coarsely colours are bucketed while learning them. Both are sized for
+## compression noise on a flat fill, which is a few levels either way.
+BACKGROUND_TOLERANCE = 16
+BUCKET = 8
 INK_FOR_BOUNDS = 40
 
 
@@ -161,36 +165,138 @@ def already_cut_out(width, height, rows):
     return True
 
 
+def background_colours(width, height, rows):
+    """The one or two flat colours the art is sitting on, learned from the border.
+
+    A generator asked for transparency will often hand back a *picture of*
+    transparency — the grey checkerboard its own preview draws, flattened into the
+    pixels. That is two colours in a regular grid rather than one, so the background
+    cannot be assumed to be white, and it cannot be assumed to be a single value
+    either. Both are read off the border, where the art is not.
+    """
+    # Tallied in coarse buckets, not by exact value. A generated sheet is
+    # compressed, so its flat background is not one number — this one's two greys
+    # arrive spread over #9b9b9b…#9f9f9f and #bdbdbd…#c0c0c0. Counting exact
+    # colours splits each background across half a dozen entries, none of which
+    # then looks common enough to *be* the background, and the fill clears almost
+    # nothing.
+    tally = {}
+    samples = 0
+    def note(x, y):
+        nonlocal samples
+        p = rows[y][x * 4:x * 4 + 3]
+        key = (p[0] // BUCKET, p[1] // BUCKET, p[2] // BUCKET)
+        tally[key] = tally.get(key, 0) + 1
+        samples += 1
+
+    for x in range(0, width, 3):
+        for y in (0, 1, height - 2, height - 1):
+            note(x, y)
+    for y in range(0, height, 3):
+        for x in (0, 1, width - 2, width - 1):
+            note(x, y)
+
+    ranked = sorted(tally.items(), key=lambda kv: -kv[1])
+    picked, covered = [], 0
+    for bucket, count in ranked[:4]:
+        # Keep taking colours until the border is accounted for. A checkerboard
+        # needs two; a plain white sheet needs one; a stray pixel of art touching
+        # the edge needs none of them and never gets that far.
+        if covered >= samples * 0.9:
+            break
+        if count * 8 < samples:
+            break
+        picked.append(tuple(v * BUCKET + BUCKET // 2 for v in bucket))
+        covered += count
+    return picked or [(255, 255, 255)]
+
+
+def is_checkerboard(palette):
+    """Whether the learned background is a transparency *preview* rather than a fill.
+
+    Two or more flat neutral greys is not something art is laid on; it is the
+    checkerboard an image tool draws behind nothing. The distinction earns its keep
+    below — it is what says whether background enclosed by ink may be removed.
+    """
+    if len(palette) < 2:
+        return False
+    for c in palette:
+        if max(c) - min(c) > 6:
+            return False
+    return True
+
+
 def drop_background(width, height, rows):
-    """Clear the white that is connected to the border, and only that."""
-    def whiteish(x, y):
-        p = rows[y][x * 4:x * 4 + 4]
-        return p[0] >= WHITE and p[1] >= WHITE and p[2] >= WHITE
+    """Clear the background, and grade the pixels that are partly it.
 
-    seen = bytearray(width * height)
-    stack = []
-    for x in range(width):
-        stack.append((x, 0))
-        stack.append((x, height - 1))
-    for y in range(height):
-        stack.append((0, y))
-        stack.append((width - 1, y))
+    Two modes, and which applies is not a preference — it is what the picture can be
+    *known* to mean.
 
-    while stack:
-        x, y = stack.pop()
-        if x < 0 or y < 0 or x >= width or y >= height:
-            continue
-        if seen[y * width + x] or not whiteish(x, y):
-            continue
-        seen[y * width + x] = 1
-        stack.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
+      * A **checkerboard** is removed everywhere, enclosed or not. Nothing is drawn
+        on a checkerboard, so grey inside a portal's centre or under a padlock's
+        shackle is the preview showing through and never paint.
+      * A **flat colour** is removed only where it connects to the border. White in
+        the middle of a reticle may well be painted, and this cannot tell; so it
+        keeps it, and the module docstring says so.
 
+    Either way the edge is graded rather than cut: a pixel sitting between the art
+    and the background — the outside of a soft glow — gets partial alpha in
+    proportion to how far it has travelled from the background colour. Without that,
+    the glows come away with a rind of half-erased checkerboard around them.
+
+    Eight-connected, in the flood-fill case. On a checkerboard the squares of one
+    colour meet only at their corners, so a four-connected fill cannot leave the
+    square it starts in.
+    """
+    palette = background_colours(width, height, rows)
+    checker = is_checkerboard(palette)
+    print("  background: %s%s" % (", ".join("#%02x%02x%02x" % c for c in palette),
+                                  " (a transparency checkerboard)" if checker else ""))
+
+    def distance(x, y):
+        p = rows[y][x * 4:x * 4 + 3]
+        best = 255
+        for c in palette:
+            best = min(best, max(abs(p[0] - c[0]), abs(p[1] - c[1]), abs(p[2] - c[2])))
+        return best
+
+    keep = None
+    if not checker:
+        keep = bytearray(b"\x01" * (width * height))
+        stack = []
+        for x in range(width):
+            stack.extend([(x, 0), (x, height - 1)])
+        for y in range(height):
+            stack.extend([(0, y), (width - 1, y)])
+        while stack:
+            x, y = stack.pop()
+            if x < 0 or y < 0 or x >= width or y >= height:
+                continue
+            if keep[y * width + x] == 0 or distance(x, y) > BACKGROUND_TOLERANCE * 2:
+                continue
+            keep[y * width + x] = 0
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1),
+                           (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                stack.append((x + dx, y + dy))
+
+    cleared = 0
     for y in range(height):
         row = rows[y]
         base = y * width
         for x in range(width):
-            if seen[base + x]:
+            if keep is not None and keep[base + x]:
+                continue
+            d = distance(x, y)
+            if d <= BACKGROUND_TOLERANCE:
                 row[x * 4 + 3] = 0
+                cleared += 1
+            elif d < BACKGROUND_TOLERANCE * 3:
+                # Part background, part art: the outside of a glow. Faded rather
+                # than chosen between, or every soft edge keeps a rind of preview.
+                span = BACKGROUND_TOLERANCE * 2
+                row[x * 4 + 3] = min(row[x * 4 + 3],
+                                     int(255 * (d - BACKGROUND_TOLERANCE) / span))
+    print("  cleared %d%% of the sheet" % (cleared * 100 // (width * height)))
     return rows
 
 
@@ -346,8 +452,8 @@ def main():
     boxes = find_icons(width, height, rows)
     print("found %d icons" % len(boxes))
     if len(boxes) != len(CELLS):
-        for i, (x0, y0, x1, y1) in enumerate(boxes):
-            print("  %d  x %d…%d  y %d…%d" % (i, x0, x1, y0, y1))
+        for i, box in enumerate(boxes):
+            print("  %d  %s" % (i, box))
         raise SystemExit(
             "expected %d icons in a row (%s). Re-generate the sheet, or crop it so "
             "there is clear background between each one."
