@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 480 tests / 15,940 asserts green in ~85 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 484 tests / 15,960 asserts green in ~85 s, 60 frozen
 level files re-verified.
 
 ---
@@ -547,11 +547,18 @@ the checklist below.
       §11.3 puts `board_pause` and `board_back` on the same Esc and the pause would otherwise always
       win on a keyboard. It only claims the press while a beat is actually up
 
-**Still owed, beyond the playtest:** §10.2's *Interaction* column. The words and the mechanics are
-built; the **emphasis** mostly is not. T3's preview scaling up 1.15×, T5's undo button glowing, T8's
-discard button glowing, T10's two ghost stubs on a gate and T12's charge slot filling are all
-unbuilt — §10.1 asks for guidance that "renders on the board … not in a modal", and today a beat is
-twelve words in the banner plus whatever the board was already doing. T1's candidate pulse, T6's
+**§10.2's *Interaction* column, in part.** The four beats that point at the rail now light the row
+they are about — T3 the NEXT stack, T5 Undo, T8 Discard, T12 the wild charge. A beat that says "undo
+is free" while nothing indicates *which* thing undo is has stated a fact rather than taught anything;
+the pointing is the lesson. It borrows the board's own breathing rather than inventing a second
+idiom, so the rail and the candidates pulse on one clock, and §14.5 stops the loop and leaves the row
+**held bright** — the emphasis is feedback, and reducing motion is not removing what the player is
+being told. T1's candidate pulse, T6's flyaway and T7's wall shake come free from animations that
+already exist.
+
+**Still owed, beyond the playtest:** T10's two ghost stubs on a gate and T3's preview scaling 1.15×
+specifically (the NEXT stack is lit, not scaled). Both are board-side emphasis and both are worth
+waiting for a playtest to justify — if nobody is confused by gates, the stubs are decoration. T1's candidate pulse, T6's
 flyaway and T7's wall shake come free from animations that already exist.
 
 Two things the wiring turned up. T1's gate cannot simply follow the stored optimum: chapter 1 level

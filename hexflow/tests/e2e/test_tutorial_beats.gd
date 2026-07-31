@@ -163,3 +163,40 @@ func test_no_beat_interrupts_endless_or_the_daily() -> void:
 	await wait_process_frames(2)
 	assert_eq(_beat_id(), "", "endless is not a lesson")
 	assert_false(Tutorial.seen("T1"), "and it did not consume the campaign's first beat")
+
+
+## §10.2's "undo button glows", on the real rail. The row is lit while the beat is
+## up and back to itself the moment it is not — a highlight that outlived its beat
+## would be the game pointing at something it has stopped talking about.
+func test_a_beat_lights_the_rail_row_it_is_about() -> void:
+	Tutorial.mark_seen("T1")
+	Tutorial.mark_seen("T2")
+	await _open(1, 4)
+	var undo: Control = _scene.get_node("%UndoButton")
+	assert_eq(undo.modulate, Color.WHITE, "nothing is lit before the beat")
+
+	EventBus.place_requested.emit(_first_move())
+	await wait_process_frames(2)
+	assert_eq(_beat_id(), "T5", "the beat that says undo is free")
+	assert_ne(undo.modulate, Color.WHITE, "and the row it is about is lit")
+
+	EventBus.undo_requested.emit()
+	await wait_process_frames(1)
+	assert_eq(_beat_id(), "", "the beat is done")
+	assert_eq(undo.modulate, Color.WHITE, "and the rail is itself again")
+
+
+## §14.5 stops the loop and leaves the row **held bright**. The emphasis is
+## feedback, and reducing motion is not removing what the player is being told —
+## the distinction §14.5 draws itself.
+func test_reduce_motion_holds_the_glow_rather_than_dropping_it() -> void:
+	SettingsService.set_value("reduce_motion", true)
+	Tutorial.mark_seen("T1")
+	Tutorial.mark_seen("T2")
+	await _open(1, 4)
+	EventBus.place_requested.emit(_first_move())
+	await wait_process_frames(2)
+	assert_eq(_beat_id(), "T5")
+	assert_ne(_scene.get_node("%UndoButton").modulate, Color.WHITE,
+		"§14.5 stops the pulse; it does not stop the pointing")
+	SettingsService.set_value("reduce_motion", false)

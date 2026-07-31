@@ -8,7 +8,8 @@
       "text": "Your tile points {direction}.",
       "gate": true,
       "done": "place",
-      "seconds": 0
+      "seconds": 0,
+      "highlight": ""
     },
     {
       "id": "T2",
@@ -17,7 +18,8 @@
       "text": "The path grows. Reach the goal.",
       "gate": false,
       "done": "place",
-      "seconds": 0
+      "seconds": 0,
+      "highlight": ""
     },
     {
       "id": "T3",
@@ -26,7 +28,8 @@
       "text": "The tiles to come are shown here.",
       "gate": false,
       "done": "time",
-      "seconds": 2
+      "seconds": 2,
+      "highlight": "next"
     },
     {
       "id": "T4",
@@ -35,7 +38,8 @@
       "text": "Grow from any path cell.",
       "gate": false,
       "done": "place",
-      "seconds": 0
+      "seconds": 0,
+      "highlight": ""
     },
     {
       "id": "T5",
@@ -44,16 +48,18 @@
       "text": "Undo is free. Always.",
       "gate": false,
       "done": "undo",
-      "seconds": 4
+      "seconds": 4,
+      "highlight": "undo"
     },
     {
       "id": "T6",
       "level": "c1_l05",
       "trigger": "auto_skipped",
-      "text": "No legal move — tile skipped, no cost.",
+      "text": "No legal move \u2014 tile skipped, no cost.",
       "gate": false,
       "done": "time",
-      "seconds": 3
+      "seconds": 3,
+      "highlight": ""
     },
     {
       "id": "T7",
@@ -62,7 +68,8 @@
       "text": "Walls never open.",
       "gate": false,
       "done": "time",
-      "seconds": 3
+      "seconds": 3,
+      "highlight": ""
     },
     {
       "id": "T8",
@@ -71,7 +78,8 @@
       "text": "Discard a tile you cannot use.",
       "gate": false,
       "done": "discard",
-      "seconds": 6
+      "seconds": 6,
+      "highlight": "discard"
     },
     {
       "id": "T9",
@@ -80,7 +88,8 @@
       "text": "Two goals. Plan the fork.",
       "gate": false,
       "done": "time",
-      "seconds": 2
+      "seconds": 2,
+      "highlight": ""
     },
     {
       "id": "T10",
@@ -89,7 +98,8 @@
       "text": "Gates need two connections.",
       "gate": false,
       "done": "time",
-      "seconds": 3
+      "seconds": 3,
+      "highlight": ""
     },
     {
       "id": "T11",
@@ -98,7 +108,8 @@
       "text": "Portals link both ends.",
       "gate": false,
       "done": "time",
-      "seconds": 3
+      "seconds": 3,
+      "highlight": ""
     },
     {
       "id": "T12",
@@ -107,7 +118,8 @@
       "text": "Wild: choose any direction once.",
       "gate": false,
       "done": "time",
-      "seconds": 3
+      "seconds": 3,
+      "highlight": "wild"
     }
   ]
 }

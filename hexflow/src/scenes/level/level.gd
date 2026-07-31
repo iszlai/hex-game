@@ -88,6 +88,11 @@ var _flyaway_tween: Tween = null
 ## and how long it has been there.
 var _beat: Dictionary = {}
 var _beat_seconds: float = 0.0
+## §10.2's Interaction column, for the beats that point at the rail. The tween is
+## kept so it can be stopped: a highlight that outlived its beat would be the game
+## pointing at something it is no longer talking about.
+var _glow: Tween = null
+var _glowing: Control = null
 
 
 func _ready() -> void:
@@ -840,6 +845,7 @@ func _try_trigger(trigger: String) -> void:
 	var state: GameState = GameDirector.state
 	var direction: int = state.current_tile() if state != null else Direction.NONE
 	_flash_banner(Tutorial.text_of(spec, direction))
+	_begin_glow(Tutorial.highlight_of(spec))
 	# T1 gates input to the one correct cell, so the candidate set has to shrink
 	# *now* rather than on the next refresh.
 	if Tutorial.gates(spec):
@@ -855,6 +861,7 @@ func _finish_beat() -> void:
 	var was_gate: bool = Tutorial.gates(_beat)
 	_beat = {}
 	banner.visible = false
+	_end_glow()
 	if was_gate:
 		_refresh_candidates()
 
@@ -876,8 +883,58 @@ func _skip_tutorial() -> bool:
 	Tutorial.skip_all()
 	_beat = {}
 	banner.visible = false
+	_end_glow()
 	_refresh_candidates()
 	return true
+
+
+## §10.2's Interaction column for the four beats that point at the rail: "undo
+## button glows", "discard button glows", "HUD charge slot fills", "the tiles to
+## come are shown *here*". A beat that says "undo is free" while nothing indicates
+## which thing undo *is* has stated a fact rather than taught anything — the
+## pointing is the lesson.
+##
+## It borrows the board's own breathing rather than inventing a second idiom, so
+## the rail and the candidates pulse on the same clock and at the same rate. §14.5
+## stops the loop and leaves the row **held bright**, which is what §14.5 does to
+## every other loop in the game: the emphasis is feedback, and reducing motion does
+## not mean removing what the player is being told.
+func _begin_glow(what: String) -> void:
+	_end_glow()
+	_glowing = _rail_element(what)
+	if _glowing == null:
+		return
+	var lit: Color = board_view.palette.goal_cell.lightened(0.35)
+	if not Motion.loops("candidate_breathing"):
+		_glowing.modulate = lit
+		return
+	# Half a period each way, so one breath takes the period §14.1 names.
+	var half: float = Motion.seconds("candidate_breathing") * 0.5
+	_glow = create_tween()
+	_glow.set_loops()
+	Motion.shape(_glow, "candidate_breathing")
+	_glow.tween_property(_glowing, "modulate", lit, half)
+	_glow.tween_property(_glowing, "modulate", Color.WHITE, half)
+
+
+func _end_glow() -> void:
+	if _glow != null and _glow.is_running():
+		_glow.kill()
+	_glow = null
+	if _glowing != null:
+		_glowing.modulate = Color.WHITE
+		_glowing = null
+
+
+## The rail elements a beat can point at. Names rather than nodes in the data, so
+## `tutorial.json` never has to know what the scene tree looks like.
+func _rail_element(what: String) -> Control:
+	match what:
+		"undo": return undo_button
+		"discard": return discard_button
+		"wild": return wild_button
+		"next": return next_stack
+	return null
 
 
 ## §10.2's T4 fires on "the first branch opportunity" — two legal targets that are

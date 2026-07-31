@@ -147,3 +147,26 @@ func test_a_save_with_no_flags_is_simply_a_new_player() -> void:
 	assert_eq(str(Tutorial.next_for("c1_l01", "level_start").get("id", "")), "T1")
 	Tutorial.mark_seen("T1")
 	assert_true(Tutorial.seen("T1"))
+
+
+## §10.2's Interaction column, for the four beats whose emphasis lands in the rail.
+## A beat that says "undo is free" while nothing on screen indicates which thing
+## undo *is* has stated a fact rather than taught anything.
+func test_the_beats_that_point_at_the_rail_name_a_real_element() -> void:
+	for entry: Variant in Tutorial.beats():
+		var spec: Dictionary = entry
+		assert_true(Tutorial.HIGHLIGHTS.has(Tutorial.highlight_of(spec)),
+			"%s points at something the rail does not have: %s"
+				% [spec.get("id", ""), Tutorial.highlight_of(spec)])
+
+
+## And the four §10.2 names are the four that point. This is the column read back:
+## T3 "shown here", T5 "undo button glows", T8 "discard button glows", T12 "HUD
+## charge slot fills".
+func test_the_pointing_beats_are_the_ones_the_spec_says_point() -> void:
+	var pointing: Dictionary = {}
+	for entry: Variant in Tutorial.beats():
+		var spec: Dictionary = entry
+		if Tutorial.highlight_of(spec) != "":
+			pointing[str(spec.get("id", ""))] = Tutorial.highlight_of(spec)
+	assert_eq(pointing, {"T3": "next", "T5": "undo", "T8": "discard", "T12": "wild"})

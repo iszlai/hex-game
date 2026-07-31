@@ -35,6 +35,13 @@ const TRIGGERS: Array[String] = [
 	"wild_gained",       # a charge has just been picked up
 ]
 
+## §10.2's Interaction column, for the beats whose emphasis lands in the rail:
+## "undo button glows", "discard button glows", "HUD charge slot fills", "next two
+## tiles are shown *here*". A beat that says "undo is free" while nothing on screen
+## indicates which thing undo is has told the player a fact and not taught them
+## anything — the pointing is the lesson.
+const HIGHLIGHTS: Array[String] = ["", "undo", "discard", "wild", "next"]
+
 ## What ends one. Every beat also carries `seconds`; where the completion is an
 ## action, that is a *fallback* so a player who never performs it is not left
 ## reading the same twelve words for the rest of the level.
@@ -151,6 +158,12 @@ static func next_for(level_id: String, trigger: String) -> Dictionary:
 		# not two beats' worth.
 		return spec
 	return {}
+
+
+## Which rail element this beat is pointing at, or "" for the ones that point at
+## the board instead.
+static func highlight_of(spec: Dictionary) -> String:
+	return str(spec.get("highlight", ""))
 
 
 ## §10.2's T1 is the only beat that gates input — "Beat 1 gates input to the single
