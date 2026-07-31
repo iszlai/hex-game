@@ -97,7 +97,7 @@ func test_winning_a_level_lands_on_results_but_not_immediately() -> void:
 	_win(1, 1)
 	assert_ne(GameDirector.screen, GameDirector.Screen.RESULTS,
 		"§14.2 puts the card at t=700, not at t=0")
-	await wait_seconds(Motion.beat_seconds("results") + 0.2)
+	await wait_seconds(Motion.results_delay_seconds() + 0.3)
 	assert_eq(GameDirector.screen, GameDirector.Screen.RESULTS)
 
 
@@ -106,7 +106,7 @@ func test_winning_a_level_lands_on_results_but_not_immediately() -> void:
 func test_a_restart_during_the_celebration_cancels_the_card() -> void:
 	_win(1, 1)
 	EventBus.restart_requested.emit()
-	await wait_seconds(Motion.beat_seconds("results") + 0.2)
+	await wait_seconds(Motion.results_delay_seconds() + 0.3)
 	assert_ne(GameDirector.screen, GameDirector.Screen.RESULTS)
 
 
@@ -225,7 +225,7 @@ func _clear_navigated_scenes() -> void:
 func test_the_stars_arrive_one_at_a_time() -> void:
 	SettingsService.set_value("reduce_motion", false)
 	_win(1, 1)
-	await wait_seconds(Motion.beat_seconds("results") + 0.2)
+	await wait_seconds(Motion.results_delay_seconds() + 0.3)
 	await _open()
 
 	var labels: Array = _scene.get("_star_labels")

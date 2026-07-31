@@ -197,3 +197,32 @@ func test_reduce_motion_stops_the_discard_arc_rather_than_hurrying_it() -> void:
 	EventBus.discard_requested.emit()
 	assert_false(flyaway.visible, "§14.5: no arc at all rather than a fast one")
 	SettingsService.set_value("reduce_motion", false)
+
+
+## C-28's trace is the reward for finishing, and §14.2's card must not land on top
+## of it.
+##
+## Both were 700 ms: the route drew itself over `goal_reached` and the card
+## appeared on §14.2's beat, which is the same instant the last bar arrives. The
+## line was drawn and gone in one motion and the player saw nothing.
+func test_the_results_card_waits_for_the_route_to_be_seen() -> void:
+	SettingsService.set_value("reduce_motion", false)
+	assert_gt(Motion.results_delay_seconds(),
+		Motion.seconds("goal_reached"),
+		"the card cannot arrive before the route has finished drawing")
+	assert_gte(Motion.results_delay_seconds(),
+		Motion.beat_seconds("results"),
+		"§14.2's beat is the floor, not something to undercut")
+	assert_almost_eq(Motion.results_delay_seconds(),
+		Motion.seconds("goal_reached") + float(Motion.TRACE_HOLD_MS) / 1000.0, 0.001,
+		"and it is drawn plus held, not merely drawn")
+
+
+## §14.5 shortens the wait with everything else. A player who has asked for less
+## motion has not asked to sit through a longer pause than anyone else.
+func test_reduce_motion_shortens_the_wait_rather_than_keeping_it() -> void:
+	SettingsService.set_value("reduce_motion", false)
+	var full: float = Motion.results_delay_seconds()
+	SettingsService.set_value("reduce_motion", true)
+	assert_lt(Motion.results_delay_seconds(), full, "§14.5 reaches this too")
+	SettingsService.set_value("reduce_motion", false)

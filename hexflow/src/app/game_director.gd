@@ -460,11 +460,16 @@ func _on_dead() -> void:
 ## §14.2 puts the Results card at t=700, after the goal flourish, the burst, the
 ## ripple and the flow pulse have all had their turn. Sending the player away at
 ## t=0 would cut off the only celebration the game has.
+##
+## It waits longer than that now. C-28 draws the route as the reward for finishing
+## and takes the same 700 ms to do it, so a card on §14.2's beat arrived on the
+## frame the last bar landed — the line was drawn and gone in one motion. [Motion]
+## owns the arithmetic; §14.2's beat is the floor rather than the answer.
 func _show_results() -> void:
-	var delay: float = Motion.beat_seconds("results")
+	var delay: float = Motion.results_delay_seconds()
 	await get_tree().create_timer(delay).timeout
-	# The player may have restarted or left during those 700 ms; a results card for
-	# a run they walked away from would be a screen arriving out of nowhere.
+	# The player may have restarted or left while that was running; a results card
+	# for a run they walked away from would be a screen arriving out of nowhere.
 	if state != null and state.status == GameState.Status.WON:
 		go_to(Screen.RESULTS)
 

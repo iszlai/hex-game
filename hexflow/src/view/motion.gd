@@ -66,6 +66,29 @@ const GOAL_SEQUENCE := {
 	"results": 700,
 }
 
+## How long C-28's trace is **held** once it has finished drawing, before the
+## Results card is allowed over it.
+##
+## §14.2 puts the card at t=700 and C-28 draws the route over `goal_reached`,
+## which is also 700 — so the card arrived on the very frame the last bar landed
+## and the player never saw the line they had just finished. C-28 calls the route
+## "the thing the player gets for finishing"; a reward shown for no frames is not
+## one.
+const TRACE_HOLD_MS := 900
+
+
+## When the Results card may appear: the later of §14.2's beat and C-28's trace
+## having drawn *and* been held.
+##
+## A maximum rather than a replacement, so §14.2's number still means something —
+## it is the floor, and it is what governs on a board whose route is a single step.
+static func results_delay_seconds() -> float:
+	var hold: float = float(TRACE_HOLD_MS) / 1000.0
+	if SettingsService.reduce_motion():
+		hold *= REDUCE_MOTION_SCALE
+	return maxf(beat_seconds("results"), seconds("goal_reached") + hold)
+
+
 ## §14.2's own numbers for the goal cell itself: 1.0 → 1.25 → 1.0 over 340 ms.
 const GOAL_FLOURISH_SCALE := 1.25
 const GOAL_FLOURISH_MS := 340
