@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 551 tests / 16,600 asserts green in ~35 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 553 tests / 16,600 asserts green in ~35 s, 60 frozen
 level files re-verified.
 
 ---
@@ -433,9 +433,14 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       a **reprise** — the same line redrawn start to goal, of something the player watched grow.
       Which also gives §2.1's pitch, §13.1's "single continuous line of light" and the game's own
       name something on screen to refer to.
-      **Not built:** §6 also gives a portal a standing "faint tether line to twin", visible before it
-      is used. Only *traversed* jumps are drawn, as in the grey-box. Harmless while every campaign
-      level ships exactly one pair, ambiguous the moment one ships two
+      **§6's standing tether is built now.** Tethers were made from `_state.edges`, so a portal only
+      grew its line at the moment the path jumped through it — and where a portal *goes* is exactly
+      what a player needs before deciding to enter one. Every pair on the board draws its arc now,
+      thinner and dimmer until it is used (`Kind.TETHER_IDLE`): two channels, neither of them colour,
+      because "this portal has been travelled" is a visible state like any other (C5). The shader's
+      `mix(LINK_GLOW, 0.0, kind)` had to become a `step` — it goes *negative* the moment a third kind
+      exists, which would have subtracted light from the board. It also gives §10.2's T11 something
+      to point at: "Portals link both ends" was said over a board with no line between them
 - [x] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
       array only, never for the unbounded endless/daily bag (C-18) — `src/view/tile_stack.gd`, the
       board's own prism seen at the board's own elevation in a viewport of its own, so a piece in the

@@ -398,3 +398,50 @@ func test_a_rebound_board_draws_its_own_route_and_not_the_last_one() -> void:
 	_place_along_the_route(2)
 	assert_eq(_links.multimesh.visible_instance_count, 2,
 		"and then exactly the two steps that were taken on it")
+
+
+## §6 gives a portal "a faint tether line to twin", and the line is information the
+## player needs *before* deciding to enter one: a portal whose far end is unknown
+## is a gamble rather than a route. It was built from `_state.edges`, so it only
+## appeared at the moment it had stopped being useful — harmless while every
+## campaign level ships one pair, and unreadable the moment one ships two.
+func test_a_portal_shows_where_it_goes_before_anyone_uses_it() -> void:
+	var state := _portal_state()
+	_bind(state)
+
+	var idle: Array = _of_kind(BoardLinks.Kind.TETHER_IDLE)
+	assert_eq(idle.size(), BoardLinks.TETHER_DASHES,
+		"the untouched pair draws its tether anyway")
+	assert_eq(_of_kind(BoardLinks.Kind.TETHER).size(), 0, "and nothing has been used")
+	assert_eq(_links.multimesh.visible_instance_count, idle.size(),
+		"it is on screen, not merely in the buffer")
+
+	# C5: the difference between a used portal and an unused one is carried by
+	# width and brightness, so it survives colour being taken away entirely.
+	var used_width: float = _layout.size * BoardLinks.TETHER_WIDTH
+	for i: int in idle:
+		assert_lt(_links.transform_of(i).basis.get_scale().z, used_width,
+			"a standing tether is the thinner of the two")
+		assert_lt(_links.tint_of(i).v, _palette.portal.v, "and the dimmer")
+
+
+## And it becomes the ordinary tether once the path jumps through it — the same
+## arc, at full width, so the change of state is the change the player watches.
+func test_the_standing_tether_becomes_a_used_one_on_the_jump() -> void:
+	var state := _portal_state()
+	_bind(state)
+	for i: int in range(2):
+		assert_true(state.place(state.legal_targets()[0]), "step %d" % i)
+	_view.rebuild()
+
+	assert_eq(_of_kind(BoardLinks.Kind.TETHER_IDLE).size(), 0, "no longer standing")
+	assert_eq(_of_kind(BoardLinks.Kind.TETHER).size(), BoardLinks.TETHER_DASHES,
+		"the one pair, now used — and still exactly one tether, not two")
+
+
+func _of_kind(kind: BoardLinks.Kind) -> Array:
+	var out: Array = []
+	for i: int in range(_links.count()):
+		if _links.kind_of(i) == kind:
+			out.append(i)
+	return out

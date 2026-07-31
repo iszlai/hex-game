@@ -22,7 +22,12 @@ const SHADER := "res://src/view/shaders/path_link.gdshader"
 
 ## Kind codes, written into `INSTANCE_CUSTOM.r`; the shader lights the two
 ## differently. A wire format: append, never renumber.
-enum Kind { LINK = 0, TETHER = 1 }
+## `TETHER_IDLE` is §6's standing tether — the "faint tether line to twin" a portal
+## carries *before* anything travels down it. It had never been drawn: tethers were
+## built from `_state.edges`, so a portal only grew its line at the moment it was
+## used, and until then nothing on the board said where it went. That is exactly
+## the information a player needs to plan a route *through* one.
+enum Kind { LINK = 0, TETHER = 1, TETHER_IDLE = 2 }
 
 ## Ribbon width and thickness as fractions of the cell circumradius.
 ##
@@ -43,6 +48,14 @@ const LINK_LIGHTEN := 0.06
 ## thinner ribbon. Two channels that are not colour (§21) — the grey-box used the
 ## same dashes for the same reason.
 const TETHER_WIDTH := 0.12
+
+## §6's standing tether, as a fraction of a used one's width. Thinner, and dimmed
+## by [constant TETHER_IDLE_DIM] — **two channels, neither of them colour** (C5),
+## because "this portal has been travelled" is a visible state like any other and
+## a player who cannot see the difference in hue still has to see it.
+const TETHER_IDLE_WIDTH := 0.45
+const TETHER_IDLE_DIM := 0.45
+
 const TETHER_DASHES := 7
 ## Fraction of each dash's slot left empty, which is what makes it a dash.
 const TETHER_GAP := 0.45
@@ -143,7 +156,10 @@ func bind(state: GameState, layout: HexLayout, tiles: BoardTiles) -> void:
 ## TETHER_DASHES] instead of one, and a pair can be traversed at most once because
 ## the second entry finds its twin already joined.
 static func capacity_for(board: Board) -> int:
-	return maxi(1, board.size() - 1 + board.portal_pairs().size() * (TETHER_DASHES - 1))
+	# Every pair now draws its tether whether or not the path has used it (§6), so
+	# the reservation is a whole set of dashes per pair rather than the extra ones
+	# a traversal would have added on top of the edge it already owned.
+	return maxi(1, board.size() - 1 + board.portal_pairs().size() * TETHER_DASHES)
 
 
 ## Recomputes the whole ribbon from the live path. Called after each move — and
@@ -183,33 +199,56 @@ func segments() -> Array:
 	return out
 
 
+## One tether per portal **pair on the board**, not per pair the path has used.
+##
+## §6 gives a portal "a faint tether line to twin" and that line is information the
+## player needs *before* deciding to enter one: a portal whose far end is unknown
+## is not a route, it is a gamble. Built from `edges` this only appeared at the
+## moment it stopped being useful. Harmless while every campaign level ships one
+## pair, and unreadable the moment one ships two — which is the case §6 wrote the
+## tether for.
+##
+## A traversed pair keeps the tether it always had. An untraversed one gets the
+## same arc, thinner and dimmer (C5: two channels, neither colour).
 func _tethers() -> Array:
 	var out: Array = []
-	for e: Variant in _state.edges:
-		var edge: Array = e
-		var from: Vector3i = edge[0]
-		var to: Vector3i = edge[2]
+	var used := _traversed_pairs()
+	for pair: Variant in _board.portal_pairs():
+		var from: Vector3i = (pair as Array)[0]
+		var to: Vector3i = (pair as Array)[1]
 		if not _board.has(from) or not _board.has(to):
 			continue
 		var a: Vector3 = _top_of(from)
 		var b: Vector3 = _top_of(to)
-		if int(edge[1]) != Direction.PORTAL:
-			continue
+		var live: bool = used.has(_pair_key(from, to))
+		var kind: Kind = Kind.TETHER if live else Kind.TETHER_IDLE
+		var colour: Color = palette.portal if live \
+			else palette.portal.darkened(1.0 - TETHER_IDLE_DIM)
 		# A tether spans two cells that are not neighbours, so it is cut into
 		# dashes rather than drawn as one long bar — and thrown over the board
 		# rather than dragged across it.
-		#
-		# C-28 removed the lattice connectors from play and kept these: a portal
-		# joins two cells that are *not* neighbours, so with no line at all nothing
-		# on the board says the path jumped. Every other connection is implied by
-		# two filled cells sitting next to each other.
 		var rise: float = a.distance_to(b) * TETHER_RISE
 		for i: int in range(TETHER_DASHES):
 			var t0: float = (float(i) + TETHER_GAP * 0.5) / float(TETHER_DASHES)
 			var t1: float = (float(i) + 1.0 - TETHER_GAP * 0.5) / float(TETHER_DASHES)
 			out.append([arc_point(a, b, rise, t0), arc_point(a, b, rise, t1),
-				Kind.TETHER, palette.portal])
+				kind, colour])
 	return out
+
+
+## The portal pairs the path has actually jumped through, keyed so the lookup does
+## not depend on which end the edge was recorded from.
+func _traversed_pairs() -> Dictionary:
+	var out: Dictionary = {}
+	for e: Variant in _state.edges:
+		var edge: Array = e
+		if int(edge[1]) == Direction.PORTAL:
+			out[_pair_key(edge[0], edge[2])] = true
+	return out
+
+
+static func _pair_key(a: Vector3i, b: Vector3i) -> Array:
+	return Hex.sort_cells([a, b] as Array[Vector3i])
 
 
 ## The lattice connectors, each carrying the depth of the cell it arrives at so
@@ -267,7 +306,7 @@ static func arc_point(a: Vector3, b: Vector3, rise: float, t: float) -> Vector3:
 func _visible_count() -> int:
 	var tethers: int = 0
 	for entry: Variant in _segments:
-		if (entry as Array)[2] == Kind.TETHER:
+		if (entry as Array)[2] != Kind.LINK:
 			tethers += 1
 	var links: int = _segments.size() - tethers
 	var shown: int = tethers + int(round(_traced * float(links)))
@@ -314,7 +353,7 @@ func kind_of(i: int) -> Kind:
 func transform_of(i: int) -> Transform3D:
 	var from: Vector3 = _segments[i][0]
 	var full: Vector3 = _segments[i][1]
-	var tether: bool = kind_of(i) == Kind.TETHER
+	var tether: bool = kind_of(i) != Kind.LINK
 	# Orientation comes from the whole segment and only the *length* is animated,
 	# so a bar one frame into its 160 ms draw still points where it is going. Taking
 	# the direction from the drawn portion instead leaves it undefined at zero.
@@ -328,6 +367,8 @@ func transform_of(i: int) -> Transform3D:
 	var side: Vector3 = dir.cross(Vector3.UP).normalized()
 	var up: Vector3 = side.cross(dir).normalized()
 	var width: float = _layout.size * (TETHER_WIDTH if tether else LINK_WIDTH)
+	if kind_of(i) == Kind.TETHER_IDLE:
+		width *= TETHER_IDLE_WIDTH
 	var height: float = _layout.size * LINK_HEIGHT
 	# The bar mesh is centred on its own origin, so half of it would be sunk into
 	# the tile it lies on — and a ribbon the same colour as the tile under it, half
@@ -351,7 +392,7 @@ func custom_of(i: int) -> Color:
 
 
 func _depth_ratio_of(i: int) -> float:
-	if _depth.size() <= 1 or kind_of(i) == Kind.TETHER:
+	if _depth.size() <= 1 or kind_of(i) != Kind.LINK:
 		return 0.0
 	var to: Vector3i = cell_of(i)
 	return clampf(float(_depth.get(to, 0)) / float(_depth.size() - 1), 0.0, 1.0)

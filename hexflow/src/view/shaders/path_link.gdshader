@@ -13,7 +13,7 @@
 // `flat_board` is §21's escape hatch, exactly as the tiles have it (C-24).
 //
 // INSTANCE_CUSTOM:
-//   r  BoardLinks.Kind — 0 a lattice connector, 1 a portal tether
+//   r  BoardLinks.Kind — 0 a lattice connector, 1 a portal tether, 2 a standing one
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
@@ -57,7 +57,11 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 glow = tint * mix(LINK_GLOW, 0.0, kind);
+	// Only a lattice connector glows. §6 calls a tether faint and it describes
+	// topology rather than route, so both tether kinds are lit and nothing more —
+	// `step` rather than the old `mix`, which went *negative* the moment a third
+	// kind existed and would have subtracted light from the board.
+	vec3 glow = tint * LINK_GLOW * step(kind, 0.5);
 	// A tether is topology rather than route, so the pulse does not run down it.
 	if (flow_head >= 0.0 && kind < 0.5) {
 		float band = 1.0 - smoothstep(0.0, FLOW_WIDTH, abs(depth_along - flow_head));
