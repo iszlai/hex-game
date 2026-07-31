@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 555 tests / 16,600 asserts green in ~35 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 557 tests / 16,700 asserts green in ~35 s, 60 frozen
 level files re-verified.
 
 ---
@@ -524,6 +524,15 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       small to sit beside the others, and no two the same drawing. The four rail icons are live;
       the legend's rows use them too now — they had been text glyphs, and `⬢ ⬡ ◍ ⌸ ▨ ⌾` are in
       none of the three faces §13.4 vendors, so the whole panel drew as empty boxes
+- [x] **§14.1's banner slide**, which had been a bare `visible = true` since M3. §14.1's dead-state
+      row ends "banner slides 56 px up" and §12.4 lists "banner slides in" as required feedback; the
+      band is reserved in the layout whether or not anything is in it (§12.3), so a message simply
+      *appeared* — at the one moment the game most needs the player to look at the bottom of the
+      screen, nothing moved there. Driven through the offsets rather than `position`, because an
+      anchored control recomputes its position from its offsets on every resize and a tween writing
+      `position` is undone the first time the window changes. A second message while the first is up
+      replaces the text and leaves the band still: re-running the slide reads as two banners rather
+      than one that changed its mind
 - [x] Real §12.3 HUD layout: 56 px top bar, 400 px rail, 140 px NOW tile, 72 px NEXT, 56 px banner —
       the last thing on the level screen that was still M3's. The band sizes are constants in
       `level.gd` rather than numbers in the scene, because §12.3's diagram is *dimensioned* and a

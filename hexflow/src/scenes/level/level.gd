@@ -65,6 +65,9 @@ var _haptics: Haptics = null
 ## of the rail button, which §11.3 spells "Wild button, then cell".
 var _wild_held: bool = false
 var _wild_armed: bool = false
+## §14.1's banner slide, mid-flight. Killed rather than left running when a banner
+## is raised again, so two messages in quick succession cannot fight over the band.
+var _banner_slide: Tween = null
 
 ## Select is bound to both legend and restart: a tap toggles, a 1 s hold
 ## restarts. This says a legend tap is still pending, and the restart completing
@@ -978,9 +981,44 @@ func _apply_cursor_mode() -> void:
 	)
 
 
+## §14.1's dead-state row ends "banner slides 56 px up", and §12.4 asks for
+## "banner slides in" as the required feedback for a dead state. It had been a bare
+## `visible = true` since M3 — the band is reserved in the layout whether or not
+## anything is in it (§12.3), so a message simply *appeared*, and the one moment
+## the game most needs the player to look at the bottom of the screen was the one
+## moment nothing moved there.
+##
+## §14.1 gives the slide the dead-state row's own duration and curve, so a banner
+## and the desaturation behind it are one beat rather than two, and §14.5 scales it
+## with everything else. The distance is §14.1's own 56 px, which is [constant
+## BANNER] — the height of the band, so it rises from exactly out of frame.
 func _flash_banner(text: String) -> void:
 	banner_label.text = text
+	var already_up: bool = banner.visible
 	banner.visible = true
+	# A second message while the first is still on screen replaces the text and
+	# leaves the panel where it is. Re-running the slide would throw the banner
+	# back down and bring it up again, which reads as two banners rather than as
+	# one that changed its mind.
+	if already_up:
+		return
+	if _banner_slide != null and _banner_slide.is_running():
+		_banner_slide.kill()
+	# Driven through the *offsets* rather than `position`, because the band is
+	# anchored to the bottom edge (§12.3 reserves it there) and an anchored
+	# control recomputes its position from its offsets on every resize — a tween
+	# writing `position` would be undone the first time the window changed.
+	_set_banner_rise(BANNER)
+	_banner_slide = create_tween()
+	Motion.shape(_banner_slide, "dead_desaturate")
+	_banner_slide.tween_method(_set_banner_rise, BANNER, 0.0,
+		Motion.seconds("dead_desaturate"))
+
+
+## How far below its resting place the banner sits, in pixels. Zero is home.
+func _set_banner_rise(px: float) -> void:
+	banner.offset_top = -BANNER + px
+	banner.offset_bottom = px
 
 
 func _refresh_hud() -> void:

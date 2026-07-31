@@ -96,3 +96,38 @@ func test_legend_and_restart_are_still_reachable_without_a_keyboard() -> void:
 	for row: Dictionary in (pause.get("_menu") as MenuList).rows():
 		ids.append(str(row.get("id", "")))
 	assert_true(ids.has("restart"), "restart is in the pause menu, which a tap reaches")
+
+
+## §14.1's dead-state row ends "banner slides 56 px up" and §12.4 lists "banner
+## slides in" as required feedback. It had been a bare `visible = true` since M3 —
+## the band is reserved whether or not anything is in it (§12.3), so a message
+## appeared without moving, at the one moment the game most needs the player to
+## look at the bottom of the screen.
+func test_the_banner_slides_in_rather_than_appearing() -> void:
+	var banner: Control = _band("Banner")
+	assert_false(banner.visible, "a level opens with nothing to say")
+
+	_scene._flash_banner("No route left")
+	assert_true(banner.visible)
+	assert_almost_eq(banner.offset_top, 0.0, 0.5,
+		"it starts a full band below home — §14.1's 56 px, which is the band")
+
+	await wait_seconds(Motion.seconds("dead_desaturate") + 0.2)
+	assert_almost_eq(banner.offset_top, -_scene.get("BANNER"), 0.5,
+		"and arrives at the place §12.3 reserved for it")
+
+
+## A second message while the first is still up replaces the text and leaves the
+## band where it is. Re-running the slide would throw the banner back down and
+## bring it up again, which reads as two banners rather than as one that changed
+## what it was saying.
+func test_a_second_message_does_not_re_run_the_slide() -> void:
+	var banner: Control = _band("Banner")
+	_scene._flash_banner("Hint: somewhere")
+	await wait_seconds(Motion.seconds("dead_desaturate") + 0.2)
+	var settled: float = banner.offset_top
+
+	_scene._flash_banner("No route left")
+	assert_eq(banner.offset_top, settled, "the band did not move")
+	assert_eq((banner.get_node("BannerLabel") as Label).text, "No route left",
+		"but what it says did")
