@@ -48,7 +48,12 @@ const int KIND_WALL = 4;
 
 // §14.1: stroke alpha 0.55 to 1.0. The 3D board has no stroke, so it is the
 // candidate's own highlight that travels between the two.
-const float BREATHE_LOW = 0.55;
+// How far the candidate breathing dips. Shallow: §14.1 asks candidates to breathe
+// and it never said how deep, and at 0.55 a board offering four moves had four
+// tiles swinging through half their brightness beside a cursor doing the same —
+// two loud signals, and no way to tell which one was the answer. The cursor's glow
+// is the louder cue now and this is a pulse under it.
+const float BREATHE_LOW = 0.88;
 /// Sparse on purpose: the grey-box drew five thin lines across a cell, and §13.1
 /// wants generous negative space. At half the period inked, a wall stops being a
 /// dark quiet block and starts competing with the path for attention.

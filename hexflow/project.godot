@@ -10,6 +10,18 @@ config/version="0.1.0"
 run/main_scene="res://src/scenes/boot/boot.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+; The boot splash. Left at its defaults the engine flashed its own logo for a
+; frame or two on the way to `boot.tscn` — long enough to see, too short to read,
+; which is the worst of both. It shows the game's own mark instead, on the
+; palette's own darkest surface, held long enough to be a beat rather than a
+; blink. `minimum_display_time` is a floor and not a delay: a slower machine that
+; takes longer to load does not add this on top.
+boot_splash/bg_color=Color(0.101961, 0.078431, 0.062745, 1)
+boot_splash/image="res://assets/art/logo.png"
+boot_splash/fullsize=false
+boot_splash/use_filter=true
+boot_splash/minimum_display_time=700
+
 [autoload]
 
 EventBus="*res://src/app/event_bus.gd"

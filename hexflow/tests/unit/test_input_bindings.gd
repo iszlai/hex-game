@@ -164,3 +164,43 @@ func test_the_rotation_actions_exist_ready_for_the_c18_camera() -> void:
 	assert_true(InputMap.has_action("board_rotate_ccw"))
 	assert_eq((InputBindings.ACTIONS["board_rotate_cw"] as Dictionary)["axes"],
 		[[JOY_AXIS_RIGHT_X, 1]])
+
+
+## §11.2 on a real thumb: a stick is not a button.
+##
+## It emits a fresh event on every change in its axis, and a thumb resting past the
+## deadzone changes it constantly — so a single flick landed three or four moves
+## and the cursor shot across the board. The router rate-limits analogue input the
+## way a keyboard rate-limits a held key: immediate, then a pause, then a steady
+## repeat.
+func _router_over_a_row() -> InputRouter:
+	# Four candidates in a line, cursor seeded on the leftmost, so "right" always
+	# has somewhere to go and the geometry is not what is under test.
+	var router := InputRouter.new()
+	var cells: Array[Vector3i] = [
+		Vector3i(0, 0, 0), Vector3i(1, -1, 0), Vector3i(2, -2, 0), Vector3i(3, -3, 0)]
+	var positions: Dictionary = {}
+	for i: int in range(cells.size()):
+		positions[cells[i]] = Vector2(float(i) * 60.0, 0.0)
+	router.set_candidates(cells, positions, Vector2(90.0, 0.0))
+	router.cursor = cells[0]
+	router.has_cursor = true
+	return router
+
+
+func test_a_held_stick_repeats_rather_than_streaming() -> void:
+	var router := _router_over_a_row()
+	assert_true(router.move(Vector2.RIGHT, true), "the first push moves at once")
+	assert_false(router.move(Vector2.RIGHT, true), "and the stream behind it does not")
+	assert_false(router.move(Vector2.RIGHT, true), "however many events arrive")
+
+
+## The gate is for sticks only. A D-pad and a key are discrete: every press is a
+## press, and §11 does not let one device be worse to play on than another.
+func test_a_dpad_or_a_key_is_never_rate_limited() -> void:
+	var router := _router_over_a_row()
+	var moved := 0
+	for _i: int in range(3):
+		if router.move(Vector2.RIGHT):
+			moved += 1
+	assert_eq(moved, 3, "three presses are three moves")

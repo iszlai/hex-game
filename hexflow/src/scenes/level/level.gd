@@ -289,14 +289,21 @@ func _action(event: InputEvent) -> bool:
 		if _skip_tutorial():
 			return true
 	# Movement repeats on a held key, so echo is allowed; nothing else is.
+	#
+	# A stick is told apart from a D-pad or a key here rather than in the router,
+	# because this is where the *event* still exists to ask. A stick emits a fresh
+	# event on every change in its axis and a resting thumb changes it constantly,
+	# so one flick was landing several moves; the router rate-limits that and leaves
+	# discrete presses alone.
+	var stick: bool = event is InputEventJoypadMotion
 	if event.is_action_pressed("board_move_up", true):
-		_router.move(Vector2.UP)
+		_router.move(Vector2.UP, stick)
 	elif event.is_action_pressed("board_move_down", true):
-		_router.move(Vector2.DOWN)
+		_router.move(Vector2.DOWN, stick)
 	elif event.is_action_pressed("board_move_left", true):
-		_router.move(Vector2.LEFT)
+		_router.move(Vector2.LEFT, stick)
 	elif event.is_action_pressed("board_move_right", true):
-		_router.move(Vector2.RIGHT)
+		_router.move(Vector2.RIGHT, stick)
 	elif event.is_action_pressed("board_cycle_prev"):
 		_router.cycle(-1)
 	elif event.is_action_pressed("board_cycle_next"):

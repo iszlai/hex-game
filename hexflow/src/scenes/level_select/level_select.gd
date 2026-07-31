@@ -92,14 +92,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	var handled := true
+	# A stick is rate-limited and a D-pad or key is not — the map navigates on the
+	# same router as the board, so it has the same problem and takes the same fix.
+	var stick: bool = event is InputEventJoypadMotion
 	if event.is_action_pressed("menu_up", true):
-		_move(Vector2.UP)
+		_move(Vector2.UP, stick)
 	elif event.is_action_pressed("menu_down", true):
-		_move(Vector2.DOWN)
+		_move(Vector2.DOWN, stick)
 	elif event.is_action_pressed("menu_left", true):
-		_move(Vector2.LEFT)
+		_move(Vector2.LEFT, stick)
 	elif event.is_action_pressed("menu_right", true):
-		_move(Vector2.RIGHT)
+		_move(Vector2.RIGHT, stick)
 	elif event.is_action_pressed("menu_cycle_prev"):
 		_page_chapter(-1)
 	elif event.is_action_pressed("menu_cycle_next"):
@@ -135,9 +138,13 @@ func _pointer(event: InputEvent) -> bool:
 	return true
 
 
-func _move(direction: Vector2) -> void:
-	if not _router.move(direction):
-		AudioDirector.play_sfx("ui.reject")
+func _move(direction: Vector2, stick: bool = false) -> void:
+	if not _router.move(direction, stick):
+		# A stick that is merely waiting out its repeat has not been *refused*, and
+		# a rejection tick on every frame of a held push would be a stutter rather
+		# than a cue.
+		if not stick:
+			AudioDirector.play_sfx("ui.reject")
 
 
 func _on_cursor_moved(cell: Vector3i) -> void:

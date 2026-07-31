@@ -18,6 +18,29 @@ const ACCEPTANCE_CONE_DEG := 75.0
 ## Three cone rejections in a row surfaces the bumper-cycling hint (§11.2).
 const REJECTIONS_BEFORE_HINT := 3
 
+## Auto-repeat for a **held analogue stick**, in milliseconds: how long it must be
+## held before it starts repeating, and how fast it repeats after that.
+##
+## A stick is not a button. It emits a fresh event on every change in its axis, and
+## a thumb resting past the deadzone changes it constantly — so one flick was
+## landing three or four moves and the cursor shot across the board. A D-pad press
+## and a key press are discrete and are left alone; this applies only where the
+## input is continuous, which is why [method move] has to be told which it was.
+##
+## The shape is a keyboard's, because that is the behaviour a thumb already
+## expects: the first move is immediate, then a pause, then a steady rate.
+const STICK_REPEAT_FIRST_MS := 340
+const STICK_REPEAT_MS := 130
+
+## How closely a new direction must match the last for it to count as the *same*
+## hold rather than a fresh push. A thumb on a stick wanders; a cone stops that
+## wander restarting the repeat clock and firing early.
+const STICK_SAME_DIRECTION := 0.87
+
+var _stick_last_ms: int = 0
+var _stick_last_dir: Vector2 = Vector2.ZERO
+var _stick_repeating: bool = false
+
 signal cursor_moved(cell: Vector3i)
 signal cursor_rejected()
 signal cycling_hint_wanted()
@@ -52,10 +75,37 @@ func candidates() -> Array[Vector3i]:
 	return _candidates
 
 
+## Whether a held stick has waited long enough to move again.
+func _stick_may_move(input: Vector2) -> bool:
+	var now: int = Time.get_ticks_msec()
+	var dir: Vector2 = input.normalized()
+	var elapsed: int = now - _stick_last_ms
+	# Let go for longer than the first delay and it is a new push, whichever way it
+	# points — otherwise a player who pauses and pushes again waits twice.
+	var fresh: bool = elapsed > STICK_REPEAT_FIRST_MS \
+		or dir.dot(_stick_last_dir) < STICK_SAME_DIRECTION
+	if not fresh:
+		if elapsed < (STICK_REPEAT_MS if _stick_repeating else STICK_REPEAT_FIRST_MS):
+			return false
+		_stick_repeating = true
+	else:
+		_stick_repeating = false
+	_stick_last_ms = now
+	_stick_last_dir = dir
+	return true
+
+
 ## Directional input. Picks the candidate whose screen bearing from the cursor
 ## best matches [param input], preferring the nearest on ties.
-func move(input: Vector2) -> bool:
+##
+## [param analogue] says the input came from a stick rather than from a D-pad or a
+## key. Only then is it rate-limited — see [constant STICK_REPEAT_FIRST_MS]. It
+## defaults to false so that a caller which does not care, and every test that
+## drives this directly, behaves exactly as it always did.
+func move(input: Vector2, analogue: bool = false) -> bool:
 	if _candidates.is_empty() or input.length() < 0.01:
+		return false
+	if analogue and not _stick_may_move(input):
 		return false
 	if mode == Mode.FREE:
 		return _move_free(input)

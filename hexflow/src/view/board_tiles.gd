@@ -465,7 +465,15 @@ func _fill_of(cell: Vector3i) -> Color:
 		Kind.PATH:
 			return palette.path_at_depth(int(_depth.get(cell, 0)), maxi(1, _depth.size()))
 		Kind.CANDIDATE:
-			return palette.cell_empty_fill.lerp(palette.cell_candidate_stroke, 0.35)
+			# Barely lifted off an empty cell, and deliberately so. A candidate says
+			# "this is reachable" and the cursor says "this is the one" — and when
+			# both were loud, and both breathing, the board offered five answers and
+			# marked none of them. The cursor keeps its glow; this steps back.
+			#
+			# What carries the candidate in greyscale is no longer this blend: the
+			# seam wash lights the edge it would be entered across, which is a shape
+			# and survives colour being taken away (§21).
+			return palette.cell_empty_fill.lerp(palette.cell_candidate_stroke, 0.14)
 		_:
 			return palette.cell_empty_fill
 
