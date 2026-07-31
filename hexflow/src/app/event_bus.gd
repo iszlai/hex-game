@@ -11,6 +11,10 @@ signal state_reset(state: GameState)
 signal cell_joined(target: Vector3i, anchor: Vector3i, dir: int)
 signal portal_linked(from: Vector3i, to: Vector3i)
 signal goal_reached(cell: Vector3i)
+## §6's lock opening — the placement that gave a gate its second path neighbour.
+## Distinct from "this gate is open", which the marks already read live off
+## [method Rules.gate_satisfied]; this is the moment it changed.
+signal gate_opened(cell: Vector3i)
 signal tile_advanced(current: int, preview: Array)
 signal tile_auto_skipped(dir: int)
 signal tile_discarded(dir: int, left: int)

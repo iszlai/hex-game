@@ -379,6 +379,8 @@ func _publish(events: Array) -> void:
 				EventBus.portal_linked.emit(ev["from"], ev["to"])
 			GameState.EV_GOAL_REACHED:
 				EventBus.goal_reached.emit(ev["cell"])
+			GameState.EV_GATE_OPENED:
+				EventBus.gate_opened.emit(ev["cell"])
 			GameState.EV_WILD_GAINED, GameState.EV_WILD_SPENT:
 				EventBus.wild_charges_changed.emit(state.wild_charges)
 			GameState.EV_DISCARDED:

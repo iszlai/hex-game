@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 532 tests / 16,400 asserts green in ~35 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 535 tests / 16,500 asserts green in ~35 s, 60 frozen
 level files re-verified.
 
 ---
@@ -582,7 +582,18 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       sample *pitched* rather than sixteen recorded notes, so the scale lives in code as ratios:
       major pentatonic, capped at three octaves so a long path cannot climb out of hearing.
       **Unverified:** I cannot hear them. The table is the point — replacing any effect with a
-      recorded one changes no code
+      recorded one changes no code.
+      **This box was ticked wrongly and is re-earned now.** "All 16 SFX" was read as sixteen files
+      that load, and ten of them — `goal.reach`, `level.win`, `level.dead`, `tile.advance`,
+      `tile.discard`, `tile.autoskip`, `wild.pickup`, `portal.link`, `gate.open` — were played by
+      nothing at all. The game won, died and picked up a wild in silence for four milestones, with
+      the WAV loaded and the bus assigned the whole time. Each is wired to the [EventBus] fact that
+      *is* §15.2's named event, and `gate.open` needed the one that did not exist: the marks already
+      drew the lock open off `Rules.gate_satisfied`, but a condition read every frame cannot say
+      *when* it changed, so `GameState` now emits `EV_GATE_OPENED` for the placement that gives a
+      gate its second neighbour. `AudioDirector.history` records every effect the way `Haptics`
+      records its patterns, because CI has no speakers and that is exactly how ten dead wires
+      survived a suite of 532 tests
 - [ ] Buses and sliders, −16 LUFS / −1 dBTP, `place.*` voice cap 4 (§15.3) — **buses, sliders and the
       voice cap are built**: Master → Music / SFX / UI, each effect naming its own bus so the two
       sliders move different sounds, and `place.*` capped at four voices with the oldest stolen. The

@@ -305,3 +305,38 @@ func test_anchor_of_names_the_cell_the_move_really_comes_from() -> void:
 		assert_eq(edge[0], predicted,
 			"%s was promised an entry from %s and took one from %s"
 				% [target, predicted, edge[0]])
+
+
+## §6 gives a gate a lock that "opens when the condition becomes satisfiable", and
+## §15.2 gives that moment its own two-stage click. The lock was already drawn open
+## by the marks, which read [method Rules.gate_satisfied] live — but a state read
+## every frame cannot say *when* it changed, and a sound needs the moment rather
+## than the condition. So the change is an event.
+func test_a_gate_getting_its_second_neighbour_is_an_event() -> void:
+	var gate := Vector3i(0, 0, 0)
+	var board := Board.build(
+		3, Fixtures.START, [Fixtures.GOAL] as Array[Vector3i],
+		[] as Array[Vector3i], [], [gate] as Array[Vector3i]
+	)
+	var lv := Level.build(board, Fixtures.dirs(["NE", "NE", "E", "E"] as Array[String]))
+	lv.id = "fixture_gate"
+	var state := GameState.start(lv)
+
+	# Two NE steps put exactly one path cell beside the gate: still shut.
+	assert_true(state.place(Vector3i(-2, 0, 2)))
+	assert_eq(_count_events(state.drain_events(), GameState.EV_GATE_OPENED), 0)
+	assert_true(state.place(Vector3i(-1, 0, 1)))
+	assert_eq(_count_events(state.drain_events(), GameState.EV_GATE_OPENED), 0,
+		"one neighbour is not two")
+	assert_false(Rules.gate_satisfied(board, state.path, gate))
+
+	# E onto the gate's other neighbour is the placement that opens it.
+	assert_true(state.place(Vector3i(0, -1, 1)))
+	var opened: Array = state.drain_events()
+	assert_eq(_count_events(opened, GameState.EV_GATE_OPENED), 1)
+	assert_true(Rules.gate_satisfied(board, state.path, gate))
+
+	# And it opens once, not once per subsequent move — the event is the change.
+	assert_true(state.place(Vector3i(1, -2, 1)))
+	assert_eq(_count_events(state.drain_events(), GameState.EV_GATE_OPENED), 0,
+		"a gate that is already open does not keep opening")

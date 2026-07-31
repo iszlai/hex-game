@@ -67,7 +67,15 @@ const MAX_OCTAVES := 3
 ## number of non-placement sounds that can overlap.
 const GENERAL_VOICES := 6
 
+## Every effect played, in order. Test-facing, and never read by the game.
+var history: Array[String] = []
+
 var _scale_index: int = 0
+
+## Last wild total seen, so a gain can be told from a spend (§15.2's bell is for
+## the gain). Rewound by an undo the same way the charges themselves are, because
+## the signal reports the total after the rewind.
+var _wild_charges: int = 0
 ## Two players so a bed can cross-fade into another one; `_playing` is which of
 ## them currently holds the live track, and `_music_key` is what it is.
 var _music: Array[AudioStreamPlayer] = []
@@ -90,7 +98,26 @@ func _ready() -> void:
 	_build_music()
 	# §15.1's duck belongs to the goal beat, so it rides the same fact the flourish,
 	# the burst and the ripple all ride.
-	EventBus.goal_reached.connect(func(_cell: Vector3i) -> void: duck())
+	EventBus.goal_reached.connect(func(_cell: Vector3i) -> void:
+		play_sfx("goal.reach")
+		duck())
+
+	# §15.2 names an event for each of its sixteen effects. Ten of them had a WAV,
+	# a bus and an entry in [constant SFX] and were played by nothing — the game
+	# won, died, picked up a wild and opened a gate in silence. Each one is wired
+	# to the [EventBus] fact that *is* the event §15.2 names, so a sound cannot
+	# drift away from the moment it reports.
+	EventBus.level_won.connect(func(_p: int, _par: int, _s: int) -> void:
+		play_sfx("level.win"))
+	EventBus.level_dead.connect(func(_reason: int) -> void: play_sfx("level.dead"))
+	EventBus.portal_linked.connect(func(_from: Vector3i, _to: Vector3i) -> void:
+		play_sfx("portal.link"))
+	EventBus.gate_opened.connect(func(_cell: Vector3i) -> void: play_sfx("gate.open"))
+	EventBus.tile_discarded.connect(func(_dir: int, _left: int) -> void:
+		play_sfx("tile.discard"))
+	EventBus.tile_auto_skipped.connect(func(_dir: int) -> void: play_sfx("tile.autoskip"))
+	EventBus.tile_advanced.connect(_on_tile_advanced)
+	EventBus.wild_charges_changed.connect(_on_wild_charges_changed)
 
 
 # --- music (§15.1) -------------------------------------------------------------
@@ -212,6 +239,11 @@ func note_pitch(index: int) -> float:
 func play_sfx(id: String) -> void:
 	if not _streams.has(id):
 		return
+	# Recorded the way [Haptics] records its patterns, and for the same reason: CI
+	# has no speakers, so "did the win make a sound" is otherwise a question only a
+	# person with headphones can answer — which is how ten of §15.2's sixteen came
+	# to be wired to nothing without a test noticing.
+	history.append(id)
 	var player: AudioStreamPlayer = _claim_voice(id)
 	if player == null:
 		return
@@ -317,5 +349,23 @@ func _on_move_undone() -> void:
 	play_sfx("place.note")
 
 
+## §15.2's "light paper/glass slide", under the queue-advance animation of §14.1.
+## [signal EventBus.tile_advanced] is only ever emitted from a publish, so it
+## already means "the player did something and the queue moved" and never fires on
+## a level opening.
+func _on_tile_advanced(_current: int, _preview: Array) -> void:
+	play_sfx("tile.advance")
+
+
+## §15.2 gives the bell to a wild being *gained*. The signal carries the running
+## total and is emitted for a spend as well, which sounds identical from here — so
+## the direction is what decides, not the fact.
+func _on_wild_charges_changed(charges: int) -> void:
+	if charges > _wild_charges:
+		play_sfx("wild.pickup")
+	_wild_charges = charges
+
+
 func _on_state_reset(_state: GameState) -> void:
 	_scale_index = 0
+	_wild_charges = 0

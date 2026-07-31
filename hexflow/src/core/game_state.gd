@@ -20,6 +20,7 @@ const EV_WILD_SPENT := "wild_spent"
 const EV_DISCARDED := "discarded"
 const EV_AUTO_SKIPPED := "auto_skipped"
 const EV_GOAL_REACHED := "goal_reached"
+const EV_GATE_OPENED := "gate_opened"
 const EV_WON := "won"
 const EV_DEAD := "dead"
 
@@ -188,11 +189,27 @@ func _begin_move(kind: Move.Kind) -> Move:
 	return m
 
 
+## The gates that are still shut: on the board, not yet joined, and short of §5.4's
+## two path neighbours. Diffed across a commit to find the ones that just opened.
+func _shut_gates() -> Array[Vector3i]:
+	var out: Array[Vector3i] = []
+	for c: Vector3i in board.cells_with_flag(Board.F_GATE):
+		if not path.has(c) and not Rules.gate_satisfied(board, path, c):
+			out.append(c)
+	return out
+
+
 func _commit(kind: Move.Kind, target: Vector3i, anchor: Vector3i, dir: int) -> void:
 	var m := _begin_move(kind)
 	m.target = target
 	m.anchor = anchor
 	m.dir = dir
+
+	# §6: a gate's lock opens the moment its two-neighbour condition becomes
+	# satisfiable. Which gates were still shut has to be read *before* the path
+	# grows, because that is the only difference between "this gate is open" and
+	# "this gate just opened" — and only the second one is an event.
+	var shut_before := _shut_gates()
 
 	path[target] = true
 	edges.append([anchor, dir, target])
@@ -221,6 +238,10 @@ func _commit(kind: Move.Kind, target: Vector3i, anchor: Vector3i, dir: int) -> v
 			events.append({"type": EV_WILD_GAINED, "cell": c, "charges": wild_charges})
 		if board.is_goal(c):
 			events.append({"type": EV_GOAL_REACHED, "cell": c})
+
+	for c: Vector3i in shut_before:
+		if not path.has(c) and Rules.gate_satisfied(board, path, c):
+			events.append({"type": EV_GATE_OPENED, "cell": c})
 
 	history.append(m)
 	stream.advance()

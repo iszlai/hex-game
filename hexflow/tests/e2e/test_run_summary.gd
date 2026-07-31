@@ -89,7 +89,7 @@ func test_a_dead_endless_board_ends_the_run() -> void:
 func test_a_dead_campaign_board_is_still_only_a_banner() -> void:
 	GameDirector.start_level(LevelRepository.load_level(1, 1))
 	GameDirector.screen = GameDirector.Screen.LEVEL
-	EventBus.level_dead.emit()
+	EventBus.level_dead.emit(GameState.Dead.PATH_FROZEN)
 	await wait_seconds(Motion.seconds("dead_desaturate") + 0.3)
 	assert_eq(GameDirector.screen, GameDirector.Screen.LEVEL)
 

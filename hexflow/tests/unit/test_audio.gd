@@ -179,3 +179,44 @@ func test_the_goal_ducks_the_music_and_gives_it_back() -> void:
 	await wait_seconds(AudioDirector.DUCK_SECONDS + AudioDirector.MUSIC_CROSSFADE)
 	assert_almost_eq(AudioServer.get_bus_volume_db(bus), level, 0.5, "and it comes back")
 	SettingsService.set_value("music_volume", was)
+
+
+## §15.2 names an event for each of its sixteen effects, and ten of them were wired
+## to nothing: the game won, died, reached a goal, opened a gate, linked a portal
+## and picked up a wild in silence, with the WAV loaded and the bus assigned the
+## whole time. Nothing failed, because a sound nobody plays looks exactly like a
+## sound nobody hears — which is why this asserts the *wiring*, one row of §15.2's
+## table at a time, rather than the files.
+func test_every_event_the_spec_names_actually_makes_its_sound() -> void:
+	var cases: Array = [
+		["goal.reach", func() -> void: EventBus.goal_reached.emit(Vector3i.ZERO)],
+		["gate.open", func() -> void: EventBus.gate_opened.emit(Vector3i.ZERO)],
+		["level.win", func() -> void: EventBus.level_won.emit(6, 6, 3)],
+		["level.dead", func() -> void: EventBus.level_dead.emit(0)],
+		["portal.link", func() -> void:
+			EventBus.portal_linked.emit(Vector3i.ZERO, Vector3i.ONE)],
+		["tile.discard", func() -> void: EventBus.tile_discarded.emit(0, 2)],
+		["tile.autoskip", func() -> void: EventBus.tile_auto_skipped.emit(0)],
+		["tile.advance", func() -> void: EventBus.tile_advanced.emit(0, [])],
+	]
+	for case: Variant in cases:
+		var id: String = str((case as Array)[0])
+		AudioDirector.history.clear()
+		((case as Array)[1] as Callable).call()
+		assert_true(AudioDirector.history.has(id),
+			"§15.2's %s event played %s" % [id, AudioDirector.history])
+
+
+## The bell belongs to a wild being *gained*. The signal carries the running total
+## and is emitted for a spend too, so a handler that simply plays on every change
+## would ring while the charge is being used up.
+func test_the_wild_bell_rings_on_a_gain_and_not_on_a_spend() -> void:
+	EventBus.state_reset.emit(null)
+
+	AudioDirector.history.clear()
+	EventBus.wild_charges_changed.emit(1)
+	assert_true(AudioDirector.history.has("wild.pickup"), "gaining a charge rings")
+
+	AudioDirector.history.clear()
+	EventBus.wild_charges_changed.emit(0)
+	assert_false(AudioDirector.history.has("wild.pickup"), "spending it does not")
