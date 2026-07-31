@@ -12,6 +12,21 @@ extends Node
 ## sixteen recorded notes, so retuning it re-renders nothing.
 
 const SFX_DIR := "res://assets/sfx/"
+const MUSIC_DIR := "res://assets/music/"
+
+## §15.1's beds: one per chapter plus a menu track. Keyed by role, like §13.6's
+## art manifest and for the same reason — a screen asks for "chapter 3", never for
+## a filename, so the tracks can be replaced without a script changing.
+const MUSIC_MENU := "menu"
+
+## §15.1: "1.5 s cross-fade". One bed replaces another by fading, never by cutting,
+## which is the same rule §14.1 applies to screens.
+const MUSIC_CROSSFADE := 1.5
+
+## §15.1: "Music ducks −6 dB for 600 ms on the goal-reached sequence." The goal is
+## the loudest thing the game does and the bed has to get out of its way.
+const DUCK_DB := -6.0
+const DUCK_SECONDS := 0.6
 
 ## §15.2's sixteen, and the §15.3 bus each belongs on.
 const SFX := {
@@ -53,6 +68,13 @@ const MAX_OCTAVES := 3
 const GENERAL_VOICES := 6
 
 var _scale_index: int = 0
+## Two players so a bed can cross-fade into another one; `_playing` is which of
+## them currently holds the live track, and `_music_key` is what it is.
+var _music: Array[AudioStreamPlayer] = []
+var _playing: int = 0
+var _music_key: String = ""
+var _music_tween: Tween = null
+var _duck_tween: Tween = null
 var _streams: Dictionary = {}                    # id -> AudioStream
 var _general: Array[AudioStreamPlayer] = []
 var _place_voices: Array[AudioStreamPlayer] = []
@@ -65,6 +87,109 @@ func _ready() -> void:
 	EventBus.cell_joined.connect(_on_cell_joined)
 	EventBus.move_undone.connect(_on_move_undone)
 	EventBus.state_reset.connect(_on_state_reset)
+	_build_music()
+	# §15.1's duck belongs to the goal beat, so it rides the same fact the flourish,
+	# the burst and the ripple all ride.
+	EventBus.goal_reached.connect(func(_cell: Vector3i) -> void: duck())
+
+
+# --- music (§15.1) -------------------------------------------------------------
+
+## Two players, so a bed can cross-fade into the next one rather than cutting.
+## Built once at boot: a music player created when a screen changes is a player
+## created during a fade, which is the worst moment to allocate one.
+func _build_music() -> void:
+	for i: int in range(2):
+		var player := AudioStreamPlayer.new()
+		player.name = "Music%d" % i
+		player.bus = "Music"
+		player.volume_db = -80.0
+		add_child(player)
+		_music.append(player)
+
+
+## Plays the bed for [param key] — "menu", "chapter_3" — cross-fading over §15.1's
+## 1.5 s. Asking for the bed that is already playing does nothing, which is what
+## lets every screen call this in `_ready` without the music restarting each time
+## the player opens the settings and comes back.
+func play_music(key: String) -> void:
+	if key == _music_key:
+		return
+	var stream: AudioStream = _music_stream(key)
+	_music_key = key if stream != null else ""
+	if _music.size() < 2:
+		return
+
+	var next: int = 1 - _playing
+	var incoming: AudioStreamPlayer = _music[next]
+	var outgoing: AudioStreamPlayer = _music[_playing]
+	if _music_tween != null and _music_tween.is_running():
+		_music_tween.kill()
+	if stream != null:
+		incoming.stream = stream
+		incoming.volume_db = -80.0
+		incoming.play()
+	_playing = next
+
+	_music_tween = create_tween()
+	_music_tween.set_parallel(true)
+	if stream != null:
+		_music_tween.tween_property(incoming, "volume_db", 0.0, MUSIC_CROSSFADE)
+	_music_tween.tween_property(outgoing, "volume_db", -80.0, MUSIC_CROSSFADE)
+	_music_tween.chain().tween_callback(outgoing.stop)
+
+
+## Stops the bed, fading rather than cutting.
+func stop_music() -> void:
+	play_music("")
+
+
+func music_key() -> String:
+	return _music_key
+
+
+## §15.1: −6 dB for 600 ms on the goal-reached sequence, then back. On the *bus*
+## rather than on the players, so it survives a cross-fade landing mid-duck.
+func duck() -> void:
+	var bus: int = AudioServer.get_bus_index("Music")
+	if bus < 0:
+		return
+	if _duck_tween != null and _duck_tween.is_running():
+		_duck_tween.kill()
+	# The slider's own level is where the duck returns to, so a player who has the
+	# music at 40% does not get it handed back at 100%.
+	var level: float = _slider_db("Music")
+	var set_db := func(db: float) -> void: AudioServer.set_bus_volume_db(bus, db)
+	AudioServer.set_bus_volume_db(bus, level + DUCK_DB)
+	_duck_tween = create_tween()
+	# Held down for §15.1's 600 ms, then let back up. `AudioServer` is not a `Node`,
+	# so the bus is driven by a method tween rather than a property one.
+	_duck_tween.tween_interval(DUCK_SECONDS)
+	_duck_tween.tween_method(set_db, level + DUCK_DB, level, MUSIC_CROSSFADE * 0.5)
+
+
+## The bed for a key, or `null` when the build has no music for it. §13.6's
+## replaceability rule applies to audio too: a missing track costs the player the
+## music and never the game.
+func _music_stream(key: String) -> AudioStream:
+	if key == "":
+		return null
+	var path: String = MUSIC_DIR + key + ".ogg"
+	if not ResourceLoader.exists(path):
+		return null
+	var stream: AudioStream = load(path)
+	if stream is AudioStreamOggVorbis:
+		# A bed that stopped at the end of its 48 seconds would be worse than none.
+		(stream as AudioStreamOggVorbis).loop = true
+	return stream
+
+
+## Where a bus *should* sit, from the player's own slider — not where it currently
+## sits, which may be mid-duck. Ducking twice in 600 ms would otherwise ratchet the
+## music down six decibels at a time and never bring it back.
+func _slider_db(name: String) -> float:
+	var percent: int = int(SettingsService.get_value(name.to_lower() + "_volume"))
+	return linear_to_db(clampf(float(percent) / 100.0, 0.0, 1.0))
 
 
 ## The rising pentatonic ascent. Resets per level, steps down on undo.

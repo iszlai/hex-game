@@ -109,3 +109,73 @@ func test_placement_voices_are_capped_at_four() -> void:
 func test_an_unknown_effect_is_ignored_rather_than_fatal() -> void:
 	AudioDirector.play_sfx("does.not.exist")
 	assert_true(true, "and we are still here")
+
+
+## §15.1's beds. Six tracks, one per chapter plus the menu, each a seamless loop —
+## a bed that stopped at the end of its window would be worse than silence.
+func test_every_chapter_has_a_bed_and_every_bed_loops() -> void:
+	var keys: Array[String] = [AudioDirector.MUSIC_MENU]
+	for chapter: int in range(1, LevelRepository.CHAPTERS + 1):
+		keys.append("chapter_%d" % chapter)
+	for key: String in keys:
+		var stream: AudioStream = AudioDirector.call("_music_stream", key)
+		assert_not_null(stream, "§15.1 has no bed for %s" % key)
+		if stream is AudioStreamOggVorbis:
+			assert_true((stream as AudioStreamOggVorbis).loop, "%s does not loop" % key)
+		assert_gt(stream.get_length(), 30.0, "%s is too short to sit under a level" % key)
+
+
+## §15.1: one bed replaces another by cross-fading, never by cutting — the same
+## rule §14.1 applies to screens. And asking for the bed already playing does
+## nothing, which is what lets every screen call this in `_ready` without the music
+## restarting each time the player opens the settings and comes back.
+func test_a_bed_changes_by_fading_and_never_restarts_itself() -> void:
+	AudioDirector.play_music("chapter_1")
+	assert_eq(AudioDirector.music_key(), "chapter_1")
+	var players: Array = AudioDirector.get("_music")
+	var live: int = int(AudioDirector.get("_playing"))
+
+	AudioDirector.play_music("chapter_1")
+	assert_eq(int(AudioDirector.get("_playing")), live, "the same bed is not restarted")
+
+	AudioDirector.play_music("chapter_2")
+	assert_eq(AudioDirector.music_key(), "chapter_2")
+	assert_ne(int(AudioDirector.get("_playing")), live, "the next bed comes up on the other player")
+	assert_true((players[live] as AudioStreamPlayer).playing,
+		"and the outgoing one is still sounding while it fades")
+	AudioDirector.stop_music()
+
+
+## A key with no track costs the player the music and never the game (§13.6's
+## replaceability rule, applied to audio).
+func test_a_missing_bed_is_silence_rather_than_an_error() -> void:
+	AudioDirector.play_music("chapter_1")
+	AudioDirector.play_music("a_chapter_that_does_not_exist")
+	assert_eq(AudioDirector.music_key(), "", "nothing is claimed to be playing")
+	AudioDirector.stop_music()
+
+
+## §15.1: "Music ducks −6 dB for 600 ms on the goal-reached sequence." It returns
+## to the *slider's* level rather than to whatever the bus was at, so ducking twice
+## in quick succession cannot ratchet the music down and leave it there.
+func test_the_goal_ducks_the_music_and_gives_it_back() -> void:
+	var bus: int = AudioServer.get_bus_index("Music")
+	# The *setting*, not the bus. `duck` returns the music to where the player's own
+	# slider says it belongs — pushing the bus directly and expecting the duck to
+	# honour it would be testing a design the setting deliberately does not have.
+	var was: Variant = SettingsService.get_value("music_volume")
+	SettingsService.set_value("music_volume", 100)
+	AudioDirector.set_bus_volume("Music", 100)
+	var level: float = AudioServer.get_bus_volume_db(bus)
+
+	AudioDirector.duck()
+	assert_almost_eq(AudioServer.get_bus_volume_db(bus), level + AudioDirector.DUCK_DB, 0.01,
+		"the bed steps out of the goal's way")
+
+	AudioDirector.duck()
+	assert_almost_eq(AudioServer.get_bus_volume_db(bus), level + AudioDirector.DUCK_DB, 0.01,
+		"a second duck does not stack on the first")
+
+	await wait_seconds(AudioDirector.DUCK_SECONDS + AudioDirector.MUSIC_CROSSFADE)
+	assert_almost_eq(AudioServer.get_bus_volume_db(bus), level, 0.5, "and it comes back")
+	SettingsService.set_value("music_volume", was)

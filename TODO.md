@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 484 tests / 15,960 asserts green in ~85 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 488 tests / 15,987 asserts green in ~90 s, 60 frozen
 level files re-verified.
 
 ---
@@ -495,7 +495,17 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       shorten. `Motion` gets all three right and the test names the two traps. Verified on screen for
       the loops: two captures 0.9 s apart are byte-identical with it on and differ with it off.
       Outstanding until the animations that do not exist yet do — shake, parallax, particles
-- [ ] Audio: 5 chapter beds + menu track, two stems, ducking (§15.1)
+- [🟨] Audio: 5 chapter beds + menu track, two stems, ducking (§15.1) — **beds and ducking are in;
+      the second stem is not.** Six 48-second loops cut from one supplied 2:45 track, made seamless
+      by mixing each window's last three seconds over its first three, so the end already contains
+      the beginning and the seam has nothing to click on. 3 MB for the set. Beds cross-fade over
+      §15.1's 1.5 s and never cut, a bed already playing is not restarted (so every screen can ask in
+      `_ready`), and a key with no track is silence rather than an error. The goal-reached duck is
+      −6 dB for 600 ms **on the bus**, returning to the *slider's* level rather than to wherever the
+      bus happened to be — otherwise two goals in quick succession ratchet the music down and leave
+      it there. **Still owed:** §15.1's `base`/`layer` stems, which are two separately rendered parts
+      and cannot be cut out of one mixed track; that needs the composer. And §15.3's −16 LUFS / −1
+      dBTP, which needs a meter over a real mix
 - [x] All 16 SFX (§15.2); `place.note` pentatonic ascent, resets per level, steps **down** on undo —
       `assets/sfx/`, 16 mono WAVs, 328 KB, **synthesised** by `tools/make_sfx.gd` from a table of a
       few numbers per effect (`make sfx`, output committed like `make levels`). No external artist,

@@ -77,6 +77,19 @@ func _ready() -> void:
 	EventBus.discard_requested.connect(_on_discard_requested)
 	EventBus.undo_requested.connect(_on_undo_requested)
 	EventBus.restart_requested.connect(_on_restart_requested)
+	# §15.1's beds follow the screen, and the screen is this file's business. A
+	# level takes its chapter's bed; everything else takes the menu track — endless
+	# and the daily included, since neither belongs to a chapter.
+	screen_changed.connect(_on_screen_music)
+
+
+func _on_screen_music(next: Screen) -> void:
+	if next == Screen.LEVEL and mode == Mode.CAMPAIGN and level != null:
+		var at: Vector2i = LevelRepository.locate(level.id)
+		if at.x > 0:
+			AudioDirector.play_music("chapter_%d" % at.x)
+			return
+	AudioDirector.play_music(AudioDirector.MUSIC_MENU)
 
 
 ## Rebuilds §13.4's theme at the current §21 text scale and puts it on the window,
