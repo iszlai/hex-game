@@ -1,10 +1,10 @@
 # hex-game
 
-This repository holds two things: a 2016 libGDX prototype, and the Godot rebuild that replaces it.
+Hexflow — a hex-lattice puzzle game for Steam Deck and desktop, built in Godot.
 
-## `hexflow/` — the current game
+## `hexflow/` — the game
 
-The active project. Godot 4.7.1, GDScript, targeting Steam Deck and desktop.
+Godot 4.7.1, GDScript, targeting Steam Deck and desktop. It is the whole of this branch.
 
 ```sh
 make godot     # fetch the pinned engine into .tools/ — no system install needed
@@ -22,22 +22,21 @@ make           # list every target
 | [`CLAUDE.md`](CLAUDE.md) | Working rules for agents, including the `TODO.md` sync obligation |
 | [`hexflow/README.md`](hexflow/README.md) | Pinned versions and the raw commands behind the Makefile |
 
-## The 2016 prototype — being retired
+## The 2016 prototype — removed
 
-Everything else at the top level (`core/`, `desktop/`, `android/`, `ios/`, `html/`, the Gradle
-build) is the original `com.hexgame` libGDX prototype: Java, machine-translated to Scala,
-never playable. It is kept only until the rebuild no longer needs it as a reference.
-
-**Migration plan.** The prototype is preserved on the `legacy/libgdx-2016` branch, which is pinned
-at the last commit that contains it. Once `hexflow/` no longer needs the old sources for reference,
-the legacy tree is deleted from `master` and lives on only in that branch and in history.
+The repository began as `com.hexgame`, a ~770-line libGDX 1.9.2 prototype: Java, machine-translated
+to Scala 2.11, targeting desktop/Android/iOS/GWT. It never became playable. It is no longer in this
+branch — `master` holds the Godot game and nothing else.
 
 ```sh
-git checkout legacy/libgdx-2016    # the 2016 prototype, exactly as it was
+git checkout libgdx-2016    # the prototype, exactly as it was
 ```
 
-Its art (`android/assets/hex_A.png` … `hex_F.png`) is the authority for the direction table in
-Appendix A of the specification, and its defects are catalogued in Appendix B — each one is a trap
-the rebuild is explicitly designed to avoid.
+It is preserved at the **`libgdx-2016` tag** and on the `legacy/libgdx-2016` branch. Nothing here
+depends on it:
 
-![The 2016 prototype](game.png?raw=true "The 2016 prototype")
+- Its tile art (`android/assets/hex_A.png` … `hex_F.png`) was the *provenance* of the direction
+  table in Appendix A of the specification. That table is now written out in full there and asserted
+  row by row by `tests/unit/test_direction.gd`, which is what makes it the authority.
+- Its defects are catalogued in Appendix B — each one a trap the rebuild is explicitly designed to
+  avoid. They are described in prose, not by reference to the sources.

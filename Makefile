@@ -1,8 +1,8 @@
 # Hexflow — developer entry point.
 #
-# Everything here operates on the hexflow/ Godot project. The 2016 libGDX
-# prototype at the top level is retired and is not built by any target; see
-# README.md for the migration plan.
+# Everything here operates on the hexflow/ Godot project, which is now the only
+# code in the tree. The 2016 libGDX prototype was removed from master and lives
+# at the libgdx-2016 tag.
 #
 #   make            list the targets
 #   make godot      fetch the pinned engine into .tools/ (no system install)
@@ -164,10 +164,12 @@ playtest-restore: check ## Put your own save back after a playtest
 
 ## ---------------------------------------------------------------- misc
 
-legacy-branch: ## Re-pin legacy/libgdx-2016 at the last commit holding the prototype
-	@git rev-parse --verify legacy/libgdx-2016 >/dev/null 2>&1 \
-	  && echo "legacy/libgdx-2016 already exists at $$(git rev-parse --short legacy/libgdx-2016)" \
-	  || git branch legacy/libgdx-2016 master
+legacy-branch: ## Where the retired 2016 libGDX prototype went
+	@echo "the prototype is at the libgdx-2016 tag; master holds the Godot game only"
+	@git rev-parse --verify libgdx-2016 >/dev/null 2>&1 \
+	  && echo "  tag    libgdx-2016  $$(git rev-parse --short libgdx-2016^{commit})" \
+	  || echo "  WARNING: the libgdx-2016 tag is not in this clone"
+	@echo "  check it out with: git checkout libgdx-2016"
 
 clean: ## Drop the Godot import cache
 	@rm -rf $(PROJECT)/.godot

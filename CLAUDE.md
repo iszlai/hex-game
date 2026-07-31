@@ -47,8 +47,8 @@ is wrong, log it in Appendix C and fix it there — do not silently diverge (con
 
 ## Where the work happens
 
-`hexflow/` is the game. Everything else at the top level (`core/`, `desktop/`, `android/`, `ios/`,
-`html/`, Gradle) is the retired 2016 libGDX prototype — reference only, never built, never edited.
+`hexflow/` is the game, and now the only code in the tree. The 2016 libGDX prototype that used to
+sit beside it was removed from `master`; it lives at the `libgdx-2016` tag if you ever need to look.
 
 ```sh
 make godot   # fetch the pinned engine into .tools/

@@ -1717,8 +1717,12 @@ Do not build these. Each was considered and cut.
 
 ## Appendix A — direction table
 
-The single source of truth. Any implementation must reproduce this table exactly; it is verified against
-the original 2016 tile art (`hex_A.png` … `hex_F.png`, each a hexagon with one lit edge).
+The single source of truth. Any implementation must reproduce this table exactly.
+
+It was *derived* from the original 2016 tile art (`hex_A.png` … `hex_F.png`, each a hexagon with one
+lit edge), which is no longer in this branch — it is at the `libgdx-2016` tag. The table below is the
+authority now, and `tests/unit/test_direction.gd` asserts it row by row: the index order is baked
+into the bag, the solver and every save file, so it may not be permuted.
 
 | Index | Enum | Original name | Original texture | Cube delta | Axial delta (q, r) | Lit edge | Screen bearing (y-down, CW from +x) | Opposite |
 |---|---|---|---|---|---|---|---|---|

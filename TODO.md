@@ -689,8 +689,13 @@ chapter 1 without incident.
       `GameDirector.SCENES` names all seven screens and `go_to()` silently no-ops on the five that
       do not resolve — harmless now, a silent dead end once something calls them.
 - [ ] UI strings are literals pending the M10 extraction, which is why the §22 gate check skips.
-- [ ] Legacy 2016 libGDX tree still occupies the repo root. Delete from `master` once the tile art
-      is no longer needed as the Appendix A reference; it lives on in `legacy/libgdx-2016`.
+- [x] Legacy 2016 libGDX tree **removed from `master`** — 83 files, preserved at the `libgdx-2016`
+      tag and on `legacy/libgdx-2016`. The condition was the tile art no longer being needed as the
+      Appendix A reference, and it is not: the direction table is written out in full in the spec and
+      asserted row by row by `tests/unit/test_direction.gd`, which is what makes the *table* the
+      authority and the art merely its provenance. Appendix B describes the prototype's defects in
+      prose and never by reference to its sources. The root `.gitignore` shrank with it — it was
+      almost entirely Java, GWT, Gradle and Eclipse rules for a build that is gone.
 - [ ] Music licensing route still undecided (C-6); daily scoring model still defaulted (C-7).
 
 ## Open spec questions
