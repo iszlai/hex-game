@@ -45,7 +45,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels sfx art glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
+        test-file gate levels sfx art icon glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
         playtest playtest-restore \
         clean clean-levels legacy-branch status
 
@@ -144,6 +144,11 @@ glyphs: check ## Re-render §11.4's 52 controller glyphs into assets/glyphs/. FR
 	@$(RUN_CMD) --headless -s res://tools/make_glyphs.gd -- $(if $(FRESH),fresh,)
 	@echo
 	@echo "glyphs are committed assets — commit the .png files (placeholders until a licensed pack)"
+
+icon: check ## Re-cut the window and dock icon out of assets/art/logo.png (commit the output)
+	@$(RUN_CMD) --headless -s res://tools/make_icon.gd
+	@echo
+	@echo "the icon is a committed asset — commit assets/icons/icon.png"
 
 marks: check ## Re-render C-29's modifier atlas into assets/art/marks.png. FRESH=1 overwrites
 	@$(RUN_CMD) --headless -s res://tools/make_marks.gd -- $(if $(FRESH),fresh,)

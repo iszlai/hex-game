@@ -10,6 +10,12 @@ config/version="0.1.0"
 run/main_scene="res://src/scenes/boot/boot.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+; The window and dock icon. Unset, this was the Godot logo — the project had a
+; logo and no icon, which are not the same file: one is read at 1024 px and the
+; other is recognised at 32. `make icon` cuts this out of `assets/art/logo.png`
+; and it is committed like the rest of the generated art (C-31).
+config/icon="res://assets/icons/icon.png"
+
 ; No engine splash at all — `boot.tscn` is the game's title screen, and two title
 ; screens in a row is one too many. The mark held for 700 ms and then the *same
 ; name* faded up again over the backdrop, which read as a stutter rather than as
