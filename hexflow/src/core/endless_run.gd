@@ -45,7 +45,13 @@ func current_level() -> Level:
 
 ## Advances the run after a goal is reached. Called by the director once the
 ## stage reports WON.
-func advance(placements_this_stage: int = 0) -> void:
+##
+## [param placements_this_stage] has no default on purpose. It used to default to
+## zero, and the one production call site took the default — so §7.2's tie-break
+## counted nothing but the stage the run died on, and did it silently for as long
+## as the mode has existed. A required argument is the only version of this that
+## cannot be got wrong by omission.
+func advance(placements_this_stage: int) -> void:
 	goals_reached += 1
 	total_placements += placements_this_stage
 	_start = _goal

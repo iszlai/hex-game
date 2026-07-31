@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 535 tests / 16,500 asserts green in ~35 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 536 tests / 16,500 asserts green in ~35 s, 60 frozen
 level files re-verified.
 
 ---
@@ -682,7 +682,15 @@ Exit: mode `@e2e` scenarios pass, including the Steam-unavailable path.
       was structurally zero. **Not done:** §12.2's leaderboard slice (top 3 + friends + self) needs
       a leaderboard *read* and `SteamService` has only `submit_leaderboard` until GodotSteam links.
       The card says it is waiting for Steam rather than showing three invented names, which is the
-      version that would survive into a store build unnoticed
+      version that would survive into a store build unnoticed.
+      **The tie-break was structurally zero too**, found the same way `best_goals` was: §7.2 scores a
+      run by goals and breaks ties on fewer placements, `EndlessRun.advance()` carried a default of
+      `0` for the finished stage's placements, and the one production call site took the default. So
+      a nine-goal run reported however many moves the ninth stage cost, and posted that to the
+      leaderboard. The default is gone — an argument that cannot be omitted is the only version of
+      this that cannot be got wrong again — and `GameDirector.endless_goals()` /
+      `endless_placements()` are now the one place the banked stages and the live one are added up.
+      `tests/e2e/test_modes.gd` counts the placements it makes and demands the run agree
 - [x] Daily screen: 7-day streak indicator, timer to reset, restart-only (§7.3) — all three live on
       the main menu's Daily row, which is where §12.2 puts the daily's entry (there is no separate
       Daily screen row in its table; §12.1 sends the daily straight to the board and then to

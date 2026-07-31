@@ -138,3 +138,32 @@ func test_a_leaderboard_submission_without_steam_is_harmless() -> void:
 	SteamService.submit_leaderboard("endless_best_goals", 12)
 	SteamService.sync_pending()
 	assert_false(SteamService.available, "still nothing to talk to, and nothing broke")
+
+
+## §7.2 scores a run by goals reached and breaks ties on fewer placements, so the
+## tie-break has to count the whole run. It counted one stage: `advance()` carried
+## a default of zero for the stage's placements and the director took it, so a run
+## of nine goals reported however many moves the *ninth* stage cost. Played through
+## the director rather than against `EndlessRun` directly, because the run object
+## was always able to add up — it was never told the numbers.
+func test_the_run_tally_counts_every_stage_and_not_just_the_last() -> void:
+	GameDirector.start_endless(4242)
+	var stages: int = 0
+	var placed_by_hand: int = 0
+
+	while stages < 3 and GameDirector.state != null \
+			and GameDirector.state.status == GameState.Status.PLAYING:
+		var goals_before: int = GameDirector.endless_goals()
+		var targets: Array[Vector3i] = GameDirector.state.legal_targets()
+		if targets.is_empty():
+			break
+		EventBus.place_requested.emit(targets[0])
+		placed_by_hand += 1
+		if GameDirector.endless_goals() > goals_before:
+			stages += 1
+
+	assert_gt(stages, 0, "the run reached at least one goal")
+	assert_gt(GameDirector.endless_placements(), 0,
+		"a completed stage's placements survive the stage")
+	assert_eq(GameDirector.endless_placements(), placed_by_hand,
+		"every placement of the run is counted exactly once")

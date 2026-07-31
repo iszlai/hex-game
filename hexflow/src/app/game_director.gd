@@ -290,6 +290,21 @@ func start_endless(p_seed: int) -> void:
 	_begin(_endless.current_level())
 
 
+## §7.2's score, live. Zero outside Endless.
+func endless_goals() -> int:
+	return _endless.goals_reached if _endless != null else 0
+
+
+## §7.2's tie-break, live: the stages already banked plus the one being played. The
+## sum lives here rather than at each place that wants it, because the two halves
+## are held by different objects and adding them up in two places is how one of
+## them came to be left out.
+func endless_placements() -> int:
+	if _endless == null:
+		return 0
+	return _endless.total_placements + (state.placements if state != null else 0)
+
+
 func start_daily(utc_date: String) -> void:
 	var daily: Level = Generator.daily(utc_date)
 	if daily == null:
@@ -425,7 +440,10 @@ func _on_won(placements: int) -> void:
 			# stage, and the run only ends on a dead board (§12.1, Endless →
 			# RunSummary).
 			if _endless != null:
-				_endless.advance()
+				# The stage's own placements have to be handed over *before*
+				# `_begin` replaces the state that holds them, or §7.2's tie-break
+				# only ever counts the stage the run died on.
+				_endless.advance(placements)
 				_begin(_endless.current_level())
 		Mode.DAILY:
 			# §12.1: Daily → Results : WON. Not recorded against the campaign —
@@ -443,8 +461,8 @@ func _on_won(placements: int) -> void:
 func _on_dead() -> void:
 	if mode != Mode.ENDLESS or _endless == null:
 		return
-	var goals: int = _endless.goals_reached
-	var placements: int = _endless.total_placements + state.placements
+	var goals: int = endless_goals()
+	var placements: int = endless_placements()
 	last_result = {
 		"mode": mode,
 		"goals": goals,
