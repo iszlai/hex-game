@@ -65,10 +65,10 @@
       "path": "assets/art/panel_frame.png",
       "kind": "image",
       "want": [
-        96,
-        96
+        192,
+        192
       ],
-      "note": "9-slice timber",
+      "note": "9-slice timber, 24 px inset — the drawn border must land on it",
       "material": true
     },
     {
@@ -79,7 +79,7 @@
         96,
         96
       ],
-      "note": "9-slice reading surface",
+      "note": "9-slice reading surface, 24 px inset",
       "material": true
     },
     {

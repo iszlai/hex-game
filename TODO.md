@@ -107,6 +107,11 @@ action rows, and it only fits because the key hints were moved into the legend.
 - [x] `hex_layout.gd` — pointy-top cube↔pixel both ways, floats kept out of core (C-13)
 - [x] `board_view.gd` — `_draw` grey-box, geometry prebuilt in `bind()`, nothing allocates per frame (C4)
 - [x] Every modifier readable by glyph **and** shape **and** colour, never colour alone (C5, §21)
+- [x] Painted **panel surfaces** — carved timber with scrolled corners, and a quiet reading surface
+      under it. Cut to a correct nine-slice by `tools/cut_panel.py`, which is where the two rules a
+      stretched texture imposes are enforced rather than hoped for: the drawn border is measured and
+      the output sized so the 24 px slice line falls exactly where the wood ends, and each edge strip
+      is collapsed along the axis it stretches on so a knot cannot smear across a whole rail
 - [x] **C-29** — §6's marks may be illustrated, chosen by the palette. A palette now declares itself
       `assistive`; §21's four alternates do and the two unconstrained looks do not. An assistive
       palette keeps C-23's silhouettes untouched, because that is the presentation whose job is to

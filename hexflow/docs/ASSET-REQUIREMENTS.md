@@ -72,6 +72,23 @@ hue comes from the token.
 
 Rule of thumb: **a picture carries its own colour; a material does not.**
 
+### Nine-slice panels — the two rules a drawing has to obey
+
+A panel is *stretched* to whatever it has to hold, and 24 px is sliced off each side.
+That constrains the art in a way no image generator manages unprompted:
+
+- **The drawn border has to land on the slice line.** A frame whose timber is a tenth
+  of its width gets cut through the middle of the wood. `make panels-cut` measures the
+  border and sizes the output so the two agree — which is why `panel_frame.png` is
+  192×192 and `panel_fill.png` is 96×96 rather than both being one size.
+- **The strips between the corners may not vary along their length.** They stretch, so
+  a knot in the top rail is drawn as a smear across the whole rail. The cutter
+  *collapses* each strip along the direction it stretches, keeping the bevel's
+  cross-section and discarding the rest.
+
+The four corners are the only part kept as drawn, because they are the only part never
+stretched. Ask for ornament there and nowhere else.
+
 The second rule: **filenames are the contract.** Nothing in the code names an image except
 [`src/view/art.gd`](../src/view/art.gd). Match the names below and no script changes.
 
@@ -85,8 +102,8 @@ files it writes beside them.
 | Asset | File | Size | Count | Tinted by | Status | What exists now |
 |---|---|---|---|---|---|---|
 | Chapter backdrops | `menu.png`, `chapter_1…5.png` | 1920×1200 preferred | 6 | `backdrop_tint` | **Provided** | Painted illustrations, 1312×816. `make art` will never overwrite a backdrop that exists |
-| Panel frame | `panel_frame.png` | 96×96, 9-slice inset **24 px** | 1 | `surface_frame` | **Placeholder** | Generated bevel with a diagonal grain; opaque middle |
-| Panel fill | `panel_fill.png` | 96×96, 9-slice inset **24 px** | 1 | `surface_panel` | **Placeholder** | Generated fibre texture |
+| Panel frame | `panel_frame.png` | 9-slice inset **24 px**; size follows the drawn border | 1 | `surface_frame` | **Provided** | Carved timber with scrolled corners, 192×192. Cut by `make panels-cut` |
+| Panel fill | `panel_fill.png` | 9-slice inset **24 px** | 1 | `surface_panel` | **Provided** | Quiet reading surface, 96×96 |
 | Board material | `tile_grain.png` | 256×256, **seamlessly tiling** | 1 | not tinted — a *value* map | **Placeholder** | Generated grain, sampled in board space so it turns with the board. Off entirely under §21's flat-board setting |
 | Controller glyphs | `assets/glyphs/<family>_<slot>.png` | 48×48 | **52** (13 slots × 4 families) | `text_primary` | **Placeholder** | Drawn by `make glyphs`: the outline a thumb looks for, plus 1–4 letters taken from `src/data/input_glyphs.json`. **Nothing loads them yet** — the HUD still shows the text label |
 | Brand mark | `logo.png` | 512×512 raster preferred | 1 | — | **Provided** | A painted title card, 1024×1024. A vector `logo.svg` is still worth having for the store page |
