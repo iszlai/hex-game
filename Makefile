@@ -92,9 +92,20 @@ run: check ## Play the game at the 1280x800 Deck reference resolution
 editor: check ## Open the project in the Godot editor
 	@$(RUN_CMD) --editor
 
-shot: check ## Screenshot a screen. PRESSES=cceccc OUT=board.png LEVEL=5.1 SCREEN=level_select
-	@$(RUN_CMD) --resolution 1280x800 -s res://tools/screenshot.gd -- \
-	  "$(abspath $(or $(OUT),board.png))" "$(or $(PRESSES),)" "$(or $(LEVEL),)" "$(or $(SCREEN),)"
+# A capture gets its own `user://`, the same way each test script does. The tool
+# boots the real game, and the real game writes its save on the way out — so every
+# screenshot used to overwrite the player's progress, and a capture that needed
+# progress in it meant editing that save by hand first and remembering to put it
+# back. Isolation rather than `playtest`'s move-aside-and-restore: nothing to
+# restore is better than something to restore, and a capture that crashes leaves
+# no state behind at all. Godot resolves `user://` under $HOME.
+shot: check ## Screenshot a screen. PRESSES=cceccc OUT=board.png LEVEL=5.1 SCREEN=level_select PROGRESS=5
+	@home=$$(mktemp -d); trap 'rm -rf "$$home"' EXIT; \
+	  cd $(PROJECT) && HOME="$$home" XDG_DATA_HOME="$$home/data" \
+	    XDG_CONFIG_HOME="$$home/config" XDG_CACHE_HOME="$$home/cache" \
+	    "$(GODOT_CMD)" --resolution 1280x800 -s res://tools/screenshot.gd -- \
+	    "$(abspath $(or $(OUT),board.png))" "$(or $(PRESSES),)" "$(or $(LEVEL),)" \
+	    "$(or $(SCREEN),)" "$(or $(PROGRESS),)"
 	@echo "wrote $(or $(OUT),board.png)"
 
 measure: check ## Frame cost per renderer (C-3). METHOD=forward_plus|mobile|gl_compatibility

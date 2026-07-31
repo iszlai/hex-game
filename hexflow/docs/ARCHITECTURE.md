@@ -315,6 +315,15 @@ the pure core and the static `LevelRepository` API.
 **Godot drops a whitespace-only command-line argument.** `-- "   "` arrives as nothing. This is why
 `tools/screenshot.gd` takes `c` for confirm rather than a space.
 
+**A tool that boots the game writes the player's save.** `SaveService` persists on
+`NOTIFICATION_WM_CLOSE_REQUEST`, so anything that starts the real tree — a capture, a smoke run —
+overwrites `user://save.json` on its way out, with whatever state the tool happened to leave behind.
+There is no command-line override for `user://`; Godot resolves it under `$HOME`, so isolation means
+running with a throwaway one (`HOME`, plus the three `XDG_*` variables on Linux). `make shot` and
+`tools/run_tests.sh` both do this — the first so a screenshot cannot cost someone their progress, the
+second so eight test processes are not writing one save file between them. `make playtest` is the
+deliberate exception: it is *about* the real profile, so it moves the save aside and puts it back.
+
 **A full-rect `Control` eats every pointer event.** `Control.mouse_filter` defaults to
 `MOUSE_FILTER_STOP`, so a screen-sized `Control` consumes mouse *and* touch input in the GUI pass and
 `_unhandled_input` never sees it. The symptom is maddeningly specific: the keyboard works perfectly

@@ -17,6 +17,17 @@ extends SceneTree
 ## A screen that cannot be looked at is a screen nobody checks, and §21's greyscale
 ## and 150%-text audits are both things you have to see.
 ##
+## The fifth marks the first N levels of the chapter complete before the screen is
+## built, because several screens say nothing at all against an empty save: the map
+## is twelve locked cells, the main menu is 0%, and neither is the state anyone
+## needs a picture of. Stars are derived from the level number rather than picked,
+## so the same command gives the same picture twice.
+##
+## `make shot` runs this with its own `user://` and the seeding writes there, so a
+## capture can never see or touch the player's real save. That is deliberate and it
+## is the reason the argument exists: the alternative was editing a live save by
+## hand before every map capture, and then remembering to put it back.
+##
 ## Not part of the shipped game.
 
 ## Frames to let the last press finish animating before the capture. Must outlast
@@ -29,6 +40,7 @@ var _out: String = "user://shot.png"
 var _presses: String = ""
 var _screen: String = "level"
 var _at: PackedStringArray = PackedStringArray()
+var _progress: int = 0
 var _level: Node = null
 
 
@@ -46,6 +58,8 @@ func _initialize() -> void:
 		_at = args[2].split(".")
 	if args.size() > 3 and args[3] != "":
 		_screen = args[3]
+	if args.size() > 4 and args[4] != "":
+		_progress = int(args[4])
 
 
 ## The scene is built on the first frame, once the autoloads are live. The level is
@@ -53,6 +67,7 @@ func _initialize() -> void:
 ## leaves its own standalone default alone.
 func _setup() -> void:
 	var director: Node = root.get_node_or_null("GameDirector")
+	_seed_progress()
 	if _at.size() == 2 and director != null:
 		director.call("start_level", LevelRepository.load_level(int(_at[0]), int(_at[1])))
 	if _screen == "results":
@@ -89,6 +104,31 @@ func _process(_delta: float) -> bool:
 	var state: Variant = director.get("state") if director != null else null
 	print("wrote ", _out, " placements=", state.placements if state != null else -1)
 	return true
+
+
+## Marks the first `_progress` levels of the chapter complete, so a screen that
+## reads a save has something to read.
+##
+## Written through [SaveService] rather than into a dictionary, so what the capture
+## shows is what the game would show — an entry shaped by hand is a picture of the
+## fixture rather than of the screen. Stars run 3, 2, 1, 3, … off the level number
+## and level three carries §12.6's hint flag, so a map capture exercises a full
+## pip row, a partial one and the hint dot without anyone choosing them.
+func _seed_progress() -> void:
+	if _progress <= 0:
+		return
+	var save: Node = root.get_node_or_null("SaveService")
+	if save == null:
+		return
+	var chapter: int = int(_at[0]) if _at.size() == 2 else 1
+	var levels: int = mini(_progress, LevelRepository.LEVELS_PER_CHAPTER)
+	for index: int in range(1, levels + 1):
+		var level := LevelRepository.load_level(chapter, index)
+		var stars: int = Scoring.MAX_STARS - ((index - 1) % Scoring.MAX_STARS)
+		save.call(
+			"record_completion", LevelRepository.id_for(chapter, index),
+			level.par if level != null else 0, stars, index == 3
+		)
 
 
 ## The results card only says anything if there is a run behind it, so capturing
