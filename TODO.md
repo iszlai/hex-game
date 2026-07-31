@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 539 tests / 16,500 asserts green in ~35 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 550 tests / 16,600 asserts green in ~35 s, 60 frozen
 level files re-verified.
 
 ---
@@ -719,7 +719,21 @@ Exit: mode `@e2e` scenarios pass, including the Steam-unavailable path.
       the epoch so month ends and leap years are the calendar's problem. Restart-only was already
       true — `GameDirector.undo_available` has been campaign-only since M1
 - [ ] GodotSteam GDExtension linked, matched to the pinned engine (§16.1, C-2)
-- [ ] Achievements; `endless_best_goals` and rolling daily leaderboards
+- [🟨] Achievements; `endless_best_goals` and rolling daily leaderboards — **the twenty of §23.1 are
+      detected now**, which nineteen of them were not: the spec listed them, the mirror and the local
+      queue worked, and the only `unlock_achievement` call in the build was `first_flow`. Nothing
+      failed, because an achievement nobody can earn is indistinguishable from one nobody has earned.
+      `src/app/achievements.gd` holds §23.1's table and its conditions — not in `src/core/` because
+      every condition is a question about the *save file*, not an autoload because §16.5 fixes the
+      list at six and it keeps no state. One condition needed the save to grow: §23.1's `undo_free`
+      asks for 12 **consecutive** levels without an undo, and `stats.undos` is a lifetime total that
+      cannot answer that, so `stats.undo_free_streak` is written through on every completion.
+      `no_discard` counts *voluntary* charges only — §5.7's free auto-discard is not a choice and
+      must not cost the player an award. `tests/unit/test_achievements.gd` holds the api names to
+      §23.1's table the way `test_direction.gd` holds Appendix A, because a name that drifts from
+      what is registered on the partner site is an achievement that silently never fires.
+      **Still open:** the leaderboards, which need GodotSteam, and a UI — nothing in the game
+      *displays* an achievement, so `achievements_mirror` is still write-only from the player's side
 - [ ] Steam Auto-Cloud for saves (no code)
 - [x] `@e2e`: Endless escalates and ends on a dead board; two clients generate an identical daily;
       **Steam unavailable never blocks play** and achievements queue locally — `tests/e2e/test_modes.gd`.

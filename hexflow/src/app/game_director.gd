@@ -26,6 +26,10 @@ var mode: Mode = Mode.CAMPAIGN
 var state: GameState = null
 var level: Level = null
 var hints_used: int = 0
+## Undos taken in *this* run, as against `stats.undos`, which is a lifetime total.
+## §23.1's `undo_free` is a claim about consecutive levels and a lifetime counter
+## cannot answer it.
+var undos_used: int = 0
 
 ## What the run that just finished was worth. Kept here rather than read off the
 ## live state, because the Results screen is a scene of its own: by the time it is
@@ -329,6 +333,7 @@ func daily_date() -> String:
 func _begin(p_level: Level) -> void:
 	level = p_level
 	hints_used = 0
+	undos_used = 0
 	state = GameState.start(level)
 	EventBus.level_loaded.emit(level)
 	EventBus.state_reset.emit(state)
@@ -371,6 +376,7 @@ func _on_undo_requested() -> void:
 		return
 	if state.undo():
 		SaveService.data["stats"]["undos"] = int(SaveService.data["stats"]["undos"]) + 1
+		undos_used += 1
 		_publish(state.drain_events())
 
 
@@ -436,7 +442,12 @@ func _on_won(placements: int) -> void:
 	match mode:
 		Mode.CAMPAIGN:
 			SaveService.record_completion(level.id, placements, stars, hints_used > 0)
-			SteamService.unlock_achievement("first_flow")
+			# The save is written first, because §23.1's chapter conditions are
+			# claims about all twelve levels and this is one of them. Reading them
+			# before the completion is recorded asks the question one level early.
+			Achievements.record_undo_use(undos_used > 0)
+			_unlock(Achievements.for_campaign_completion(
+				at.x, placements, level.par, _discards_used(), undos_used > 0))
 			_show_results()
 		Mode.ENDLESS:
 			# §7.2 has no results card between stages: reaching a goal *is* the next
@@ -454,6 +465,7 @@ func _on_won(placements: int) -> void:
 			# what feeds the seven-day streak the main menu shows.
 			SaveService.record_daily(_daily_date, placements, stars)
 			SteamService.submit_leaderboard("daily_" + _daily_date, placements)
+			_unlock(Achievements.for_daily())
 			_show_results()
 
 
@@ -461,6 +473,23 @@ func _on_won(placements: int) -> void:
 ## endless — §5.8 makes it a recoverable banner everywhere else, and the campaign
 ## and the daily both have a way back out of it. §7.2's run has no undo, so this
 ## is where it stops.
+## §5.7's free auto-discard is not a choice and must not cost the player §23.1's
+## `no_discard`, so this counts the charges actually spent rather than the tiles
+## that went past.
+func _discards_used() -> int:
+	if level == null or state == null:
+		return 0
+	return maxi(0, level.discards - state.discards_left)
+
+
+## Unlocks each of [param names]. [method SteamService.unlock_achievement] is
+## idempotent, so re-earning one on a replay costs nothing and the conditions above
+## never have to remember what they have already awarded.
+func _unlock(names: Array[String]) -> void:
+	for api_name: String in names:
+		SteamService.unlock_achievement(api_name)
+
+
 func _on_dead() -> void:
 	if mode != Mode.ENDLESS or _endless == null:
 		return
@@ -475,6 +504,7 @@ func _on_dead() -> void:
 	# §7.2 posts the run whether or not anyone is listening; §23's Steam-absent
 	# path makes a submission with no client a no-op rather than an error.
 	SteamService.submit_leaderboard("endless_best_goals", goals, [placements])
+	_unlock(Achievements.for_endless_run(goals))
 	await get_tree().create_timer(Motion.seconds("dead_desaturate")).timeout
 	if state != null and state.status == GameState.Status.DEAD:
 		go_to(Screen.RUN_SUMMARY)

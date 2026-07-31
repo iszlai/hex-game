@@ -30,7 +30,11 @@ static func _defaults() -> Dictionary:
 		"daily": {"history": {}, "streak": 0},
 		"tutorial_flags": {},
 		"in_progress": null,
-		"stats": {"playtime_seconds": 0, "total_placements": 0, "undos": 0},
+		# `undo_free_streak` is §23.1's `undo_free`, which asks for 12 *consecutive*
+		# levels without an undo — a question `undos`, a lifetime total, cannot
+		# answer no matter how it is read.
+		"stats": {"playtime_seconds": 0, "total_placements": 0, "undos": 0,
+			"undo_free_streak": 0},
 		"achievements_mirror": [],
 	}
 
