@@ -800,19 +800,43 @@ counted; using ≥1 hint on a level marks its star display with a small dot and 
 
 ### 13.1 Direction statement
 
-Modern minimalist, neon on near-black. Flat geometry, thin bright strokes, soft additive glow, generous
-negative space. The board is a dark honeycomb of empty sockets; the path is a single continuous line of
-light that grows and pulses. Nothing is textured, nothing is skeuomorphic, nothing is a photograph. The
-2016 prototype's identity — thin outline, pale fill, one saturated accent edge — is inverted into light-on-dark
-and kept.
+> **Rewritten by C-26 on 2026-07-31.** The original direction was "modern minimalist, neon on
+> near-black … nothing is textured, nothing is skeuomorphic", drawn entirely with SDF shaders. It is
+> superseded. The paragraphs below are the direction; the old one survives as one of §21's alternate
+> palettes, because a high-contrast dark scheme is a thing some players need and it was already built.
 
-**Everything is drawn procedurally** with signed-distance-field shaders and vector primitives. There are
-no hex sprites, no pre-rendered PNGs for gameplay elements. This keeps the game crisp at any resolution,
-makes glow and state transitions free, and means no external artist is required.
+**Illustrated, warm and made of materials.** The game is a hand-drawn scene the player is looking into,
+not a diagram they are reading. Each chapter has a painted backdrop; the interface is built from
+surfaces that have a grain — timber, stone, waxed paper — with ink drawn on top of them. Colour is warm
+and lit rather than emissive: the light in a scene comes from somewhere in it.
+
+The board keeps everything C-18, C-22 and C-23 gave it. It is still orthographic-3D hex prisms whose
+**height carries the cell's kind**, still one draw call, still billboarded procedural marks. What
+changes is the surface: prisms take a material and a warm tint instead of reading as lit slabs of flat
+colour, and the path is a line of *warm* light rather than neon.
+
+Three properties of the old direction are kept, because the architecture depends on them and because
+losing them would cost players the game:
+
+1. **Every visible state is distinguishable without colour** (§21, C5) — glyph *and* shape *and*
+   stroke weight, and on the board, height. An illustration behind the board does not relax this; it
+   makes it harder, which is why §13.7 gives the backdrop a contrast floor to sit under.
+2. **No colour is written in a script or a scene.** §13.2's tokens stay exactly as they are, and every
+   texture is *tinted* through one, so §21's four alternate palettes remain a `.tres` swap with no
+   code change. A texture that carried its own final colour would look identical in all four.
+3. **Art is data, not code.** Every surface is a file the game loads, never a shader that draws it.
+   That is what lets an illustrator replace the whole look without a line of code changing — which is
+   the property this direction has to have, because it now needs an illustrator and the old one did
+   not (C-27).
 
 ### 13.2 Palette tokens
 
-Define once in `src/data/palettes/neon_dark.tres`; never hardcode a colour in a script or scene.
+Define once in a palette resource; never hardcode a colour in a script or scene. The default is
+`src/data/palettes/cairn_warm.tres` (C-26); `neon_dark.tres` is retained as a §21 alternate.
+
+The hex column below is the **neon** set, which is the one that shipped first and is still a valid
+palette. A palette swap replaces every value in it; what may never change is the *list*, because the
+list is what every script indexes into.
 
 | Token | Hex | Use |
 |---|---|---|
@@ -840,6 +864,11 @@ Define once in `src/data/palettes/neon_dark.tres`; never hardcode a colour in a 
 | `board.ambient` | `#2A3A55` | The ambient it sits in |
 | `board.tile.side` | `#1B2331` | What a prism's side face is pulled toward — the 3D board's inheritance of `cell.empty.stroke` |
 | `board.mark.outline` | `#070B12` | Ring around every §6 modifier mark, so the glyph reads on any tile (C-23) |
+| `surface.frame` | — | Tint on the timber/stone frame of every panel and bar (§13.7) |
+| `surface.panel` | — | Tint on the waxed-paper fill inside a frame |
+| `surface.ink` | — | Drawn line and rule on a panel surface — the ink, not the text |
+| `backdrop.tint` | — | What a chapter's painted backdrop is multiplied by |
+| `backdrop.scrim` | — | The dim laid over the backdrop behind a panel, so §13.7's contrast floor holds |
 
 ### 13.3 Hex cell rendering
 
@@ -900,17 +929,47 @@ hatch square (wall), hexagon (brand mark).
 
 Every modifier is identified by **glyph + shape + colour**, never colour alone (§C5).
 
+Under C-26 the icons are drawn in `surface.ink` on a panel and in `text.primary` over the board. They
+stay vector paths on the 24 grid rather than becoming painted: an icon is read at a glance at 24 px,
+which is the one size where illustration loses to a clean line.
+
 ### 13.6 Asset list
 
 | Asset | Format | Notes |
 |---|---|---|
-| Hex cell, connectors, cursor, rings, glow | Shader | No image files |
-| Icons | SVG → single atlas | 9 icons, §13.5 |
+| Chapter backdrops | PNG, 1920×1200 | One per chapter + one for the menus, §13.7. Six files |
+| Panel surfaces | PNG, 9-slice | Frame and fill, tiled/stretched by `StyleBoxTexture`, tinted by token |
+| Board tile material | PNG, tiling | Grain on the prism top and sides; the *shape* stays C-22's geometry |
+| Hex cell, connectors, cursor, rings, glow | Shader | Geometry and light; the colour comes from a token, the grain from the material |
+| Icons | Vector paths, 24 grid | 9 icons, §13.5 — deliberately not painted |
 | Controller glyphs | Atlas | Deck, Xbox, PlayStation, Switch sets |
 | Fonts | TTF | 3 families, subset to Latin-Extended |
 | Particles | Shader-driven `GPUParticles2D` | 4 emitters, §14.4 |
 | Steam capsules | PNG | 6 sizes per Steamworks spec — verify current requirements at store-page setup |
 | Logo / brand mark | SVG | Hexagon with an internal light path |
+
+**Every art file is replaceable without a code change.** Paths, sizes and the tint token are declared
+in one manifest; nothing indexes an image by anything but its role. This is the requirement that makes
+C-27's sourcing question answerable *later* rather than blocking the build now.
+
+### 13.7 Backdrop and surfaces (C-26)
+
+**Backdrop.** One painted image sits behind everything, chosen by chapter, and it never moves under
+Reduce Motion (§14.5). It is drawn at `backdrop.tint` and covered by a `backdrop.scrim` wherever a
+panel or the board sits over it. It carries no information: a player who cannot see it at all loses
+nothing, which is what keeps it compatible with §21.
+
+**Contrast floor.** Any text or icon over the backdrop must hold a **4.5:1** luminance contrast
+against the brightest pixel it covers, at every one of §21's palettes. The scrim exists to make that
+true by construction rather than by choosing a lucky illustration — so the floor is a property of the
+scrim's opacity, and it is testable without looking at the art.
+
+**Surfaces.** Panels, bars and rails are a 9-slice frame plus a fill, both tinted. The frame carries
+the material; the fill carries the reading surface. Corners are drawn, not rounded by a `StyleBoxFlat`.
+
+**What the backdrop may not do.** It may not animate on its own, may not parallax (§14.5 forbids
+parallax outright and §21 lists no time pressure anywhere), and may not be the only thing telling the
+player which chapter they are in — the top bar already says so in words.
 
 ---
 
@@ -1252,8 +1311,8 @@ Reference target: Steam Deck at 1280×800, 60 fps cap, on battery.
 | Draw calls per frame | ≤ 40 | One MultiMesh for cells, one for connectors, batched UI |
 | Live particles | ≤ 120 | §14.4 |
 | Per-frame heap allocations in play | 0 | Preallocate arrays; reuse `Move` objects; no `new` in `_process` |
-| Texture memory | ≤ 100 MB | Shader-driven art makes this easy |
-| Build size | ≤ 250 MB per platform | Fast download, fast patching |
+| Texture memory | ≤ 100 MB | **No longer free (C-26).** Six 1920×1200 backdrops in a compressed format plus the surface set is the whole budget's worth of headroom; one uncompressed backdrop is ~9 MB and six are not affordable raw |
+| Build size | ≤ 250 MB per platform | Fast download, fast patching. C-26's art is the first thing in this project with a real size; it is measured at M11, not assumed |
 | Cold start to main menu | ≤ 3 s | |
 | Level load | ≤ 250 ms | Levels are ~2 KB JSON |
 | Solver (hint) | ≤ 250 ms on a background thread, then give up gracefully | Never stall a frame |
@@ -1743,6 +1802,8 @@ option was taken and recorded here rather than invented silently.
 | C-23 | §13.5 draws the nine icons as an SVG-imported atlas, and §6 gives each modifier a glyph. Neither says how a glyph gets onto a **3D** board that the player rotates: a texture lying on the tile top turns with it and is upside down at three of the six stops, and the obvious fix — a `Label3D` per marked cell — costs a node and a draw call each and needs a font, which §13.4 has not vendored yet | The four modifiers are drawn by `BoardMarks`: a **second multimesh**, one instance per mark, **billboarded in the vertex shader** from the camera's own basis. The billboard is what makes "legible at every stop" true by construction rather than by inspection — a mark is a screen-aligned square, so it never rotates, shears or foreshortens, at the six stops *or* during C-21's 260 ms tween, and none of that costs a per-frame recompute. The silhouettes are procedural SDFs rather than atlas sprites, which is what §13.1 asks for anyway ("everything is drawn procedurally… no pre-rendered PNGs for gameplay elements") and which keeps them crisp at every §4.4 board size; §13.5's atlas remains the plan for the **UI** icons, which do not rotate. Each modifier is a different shape before it is a different colour (§21): goal a reticle, portal two concentric rings, gate a padlock, wild a five-pointed star — ring-and-dot was tried for the goal first and reads as "concentric circles" in greyscale, which is what a portal is, so the goal gained its four ticks. Every glyph is ringed in a new `board.mark.outline` token so the shape survives being drawn over a tile of similar luminance. Marks do not depth-test and sit on the tile top, so a nearer wall can never half-swallow one; a cell carrying two modifiers (legal — §5.1's flags are a bitmask) nests them concentrically. §6's "lock opens when the condition becomes satisfiable" is live, from `Rules.gate_satisfied`. Two things §6 asks for are **not** in it: the portal's id numeral, which needs M7's fonts, and the goal's 2 s pulse, which is §14's animation layer |
 | C-24 | C-18 lit the board and said §21's greyscale requirement "now has to survive lighting, so the accessibility palettes need an unshaded material path" — without saying what unshaded *means* for a board whose colour-independent channel is geometry (C-22). Fully flat is not the answer: a prism whose top and sides are one colour is a silhouette, not a shape, and the height cue goes with it | A **`flat_board` setting**, off by default, carried as a `uniform bool` in `hex_prism.gdshader` and `path_link.gdshader` rather than as a second pair of shaders — one place describes the geometry and the colours. With it on, `ALBEDO` goes to zero and the tile is *emitted* at its own colour, so every lit term — diffuse, specular, ambient, shadow — multiplies out and a tile on screen is its palette colour and nothing else. The side faces still step down by a fixed 0.45, chosen because it depends on the face's own normal rather than on where a light happens to be: C-22's heights survive, deterministically. The key light stops casting shadows while it is on, since a shadow pass over a board that takes no light renders nothing anyone can see and still costs what it costs (§20). It applies live rather than on the next level load, because a player turning it on is usually doing so *because* they cannot read the board in front of them. Off by default is deliberate: the lighting is what gives the heights something to cast, and this is an opt-out for §21, not the house style |
 | C-25 | §9 says the level select "uses the same board renderer — no separate UI system", and neither renderer can be taken at its word: [BoardView] and [BoardView3D] both bind a `GameState`, in which a cell is empty, walled, on the path or a goal. None of those is what a map cell is. Rendering "level 7, two stars, locked" through a game state means encoding progression as walls and path — which works for exactly as long as nobody changes the path gradient or C-22's tile heights underneath it | A dedicated `src/ui/hex_flower.gd`, which reuses the part of the renderer that actually makes this a hex map: `HexLayout`'s §4.3 conversion, its corner geometry, its `from_pixel` rounding for hit-testing (B7) and a fit rule written against the flower's own span, plus every colour from `Palette`. There is still exactly one hexagon formula in the codebase, which is the thing §9's sentence protects. The three map states get three silhouettes rather than three colours (§21): a locked level is hatched like a wall, an open one is an outline, a completed one is filled with the path colour as §9 asks. Navigation is `InputRouter`'s unchanged — the same ±75° cone over the same lattice, so left means the same thing on the map as on the board |
+| C-26 | §13.1's original direction — "modern minimalist, neon on near-black … nothing is textured, nothing is skeuomorphic", everything drawn with SDF shaders — was chosen partly because it "means no external artist is required". That is a build constraint wearing an art direction's clothes, and the game it produces reads as a diagram rather than a place | **Direction changed to illustrated, warm and material** (decided 2026-07-31): painted chapter backdrops, panels built from timber/stone/waxed-paper surfaces with ink drawn on them, warm lit colour instead of emissive neon. §13.1, §13.6, §13.7 and §20's texture row are rewritten for it. Three things are deliberately *kept*, because the architecture rests on them: §21's colour-independence (glyph and shape and stroke weight, and on the board, height — C-22), §13.2's palette indirection (every texture is **tinted** through a token, so §21's four palettes stay a `.tres` swap), and one new rule of its own — **art is data, never code**, so an illustrator can replace the entire look without touching a script. The board keeps C-18's prisms, C-22's heights, C-23's marks and C-24's flat path unchanged; only its surface changes. The neon set is not thrown away: it becomes one of §21's alternate palettes, where a high-contrast dark scheme is something some players actually need |
+| C-27 | Where the art comes from. The old direction needed no artist by construction; this one does, and the project has no illustrator and no budget line for one — the same shape of question as C-6's music | Open. Unblocked in the meantime by §13.6's rule that every art file is replaceable without a code change: the game ships **generated placeholder art**, committed like `make sfx`'s effects and `make levels`'s level files, so the direction is visible and testable now. Decide before the store page (§25): commission, licence, or keep the generated set if it stands up. Whichever it is, it is a file swap |
 
 ---
 
