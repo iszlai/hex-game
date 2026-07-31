@@ -62,43 +62,116 @@ func _save(image: Image, file: String) -> void:
 	image.save_png(ProjectSettings.globalize_path(OUT_DIR + file))
 
 
-## A dusk sky with a low sun and receding ridges. Rendered in greys and warm
-## neutrals only: the palette tints it, so a hue baked in here would survive all
-## four of §21's swaps (§13.2).
+## A dusk sky with a low sun and receding ridges.
+##
+## Everything here is **value**. The palette supplies the hue (§13.2), so a dusk
+## has to be built out of brightness alone: a sky that darkens upward, a sun low
+## enough to rake the ridges, haze pooling where each ridge meets the one behind
+## it, stars where the sky is dark enough to hold them, and a vignette that pulls
+## the corners down. Those are the same cues a painter uses; none of them needs a
+## colour to work.
+##
+## The vignette is not only atmosphere. §13.7 puts a contrast floor over this
+## picture and the scrim holds it — but the corners are where the title block and
+## the rail sit, so darkening them means the scrim has less to do and more of the
+## painting survives underneath the interface.
 func _backdrop(scene_seed: int) -> Image:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = scene_seed * 7919
 	var image := Image.create(BACKDROP.x, BACKDROP.y, false, Image.FORMAT_RGB8)
 
-	# Sky: a vertical ramp from deep at the top to bright at the horizon, with the
-	# sun's glow added radially so the light in the scene comes from somewhere in it.
 	var horizon: float = BACKDROP.y * 0.62
 	var sun := Vector2(BACKDROP.x * (0.18 + 0.64 * rng.randf()), horizon - 40.0)
+	var centre := Vector2(BACKDROP.x, BACKDROP.y) * 0.5
+	var radius: float = centre.length()
+
 	for y: int in range(BACKDROP.y):
 		var t: float = clampf(float(y) / horizon, 0.0, 1.0)
-		var sky: float = lerpf(0.06, 0.52, pow(t, 1.6))
+		var sky: float = lerpf(0.05, 0.55, pow(t, 1.7))
 		for x: int in range(BACKDROP.x):
-			var d: float = Vector2(float(x), float(y)).distance_to(sun)
-			var glow: float = exp(-d / 420.0) * 0.55
+			var here := Vector2(float(x), float(y))
+			var glow: float = exp(-here.distance_to(sun) / 430.0) * 0.60
 			var v: float = clampf(sky + glow, 0.0, 1.0)
 			image.set_pixel(x, y, Color(v, v * 0.94, v * 0.86))
 
-	# Ridges: each is a 1-D value-noise silhouette, darker and sharper as it comes
-	# forward, so depth reads without any colour doing the work.
-	var ridges: int = 4
+	_stars(image, rng, horizon)
+	_moon(image, rng, horizon)
+
+	# Ridges, back to front. Each lays a band of haze along its own crest before it
+	# is filled, which is what separates one ridge from the next without an outline.
+	var ridges: int = 5
 	for r: int in range(ridges):
 		var depth: float = float(r) / float(ridges - 1)
-		var base: float = horizon - 190.0 * (1.0 - depth) - 40.0
-		var amplitude: float = 90.0 * (1.0 - depth) + 30.0
-		var value: float = lerpf(0.30, 0.045, depth)
+		var base: float = horizon - 210.0 * (1.0 - depth) - 30.0
+		var amplitude: float = 100.0 * (1.0 - depth) + 26.0
+		var value: float = lerpf(0.34, 0.035, depth)
+		var haze: float = lerpf(0.16, 0.02, depth)
 		var profile := _ridge_profile(rng, amplitude)
 		for x: int in range(BACKDROP.x):
 			var top: int = int(base + profile[x])
+			# Haze sits *above* the crest, brightest at it, fading upward.
+			for hy: int in range(maxi(0, top - 90), maxi(0, top)):
+				var lift: float = haze * (1.0 - float(top - hy) / 90.0)
+				var c: Color = image.get_pixel(x, hy)
+				image.set_pixel(x, hy, Color(
+					clampf(c.r + lift, 0.0, 1.0),
+					clampf(c.g + lift * 0.95, 0.0, 1.0),
+					clampf(c.b + lift * 0.88, 0.0, 1.0)))
 			for y: int in range(maxi(0, top), BACKDROP.y):
-				# A little vertical falloff keeps the near ridges from reading flat.
-				var shade: float = value * (1.0 - 0.25 * float(y - top) / float(BACKDROP.y))
+				var shade: float = value * (1.0 - 0.28 * float(y - top) / float(BACKDROP.y))
 				image.set_pixel(x, y, Color(shade, shade * 0.95, shade * 0.9))
+
+	# The vignette, last, over everything.
+	for y: int in range(BACKDROP.y):
+		for x: int in range(BACKDROP.x):
+			var d: float = Vector2(float(x), float(y)).distance_to(centre) / radius
+			var fall: float = 1.0 - 0.55 * pow(clampf(d, 0.0, 1.0), 2.2)
+			var c: Color = image.get_pixel(x, y)
+			image.set_pixel(x, y, Color(c.r * fall, c.g * fall, c.b * fall))
 	return image
+
+
+## Stars, only where the sky is dark enough to keep them. Sized in whole pixels
+## because a star is one or two pixels or it is a smudge.
+func _stars(image: Image, rng: RandomNumberGenerator, horizon: float) -> void:
+	var count: int = 140
+	for _i: int in range(count):
+		var x: int = rng.randi_range(0, BACKDROP.x - 1)
+		var y: int = rng.randi_range(0, int(horizon * 0.72))
+		var here: Color = image.get_pixel(x, y)
+		if here.r > 0.32:
+			continue
+		var bright: float = clampf(here.r + rng.randf_range(0.18, 0.55), 0.0, 1.0)
+		image.set_pixel(x, y, Color(bright, bright, bright))
+		if rng.randf() > 0.75 and x + 1 < BACKDROP.x:
+			image.set_pixel(x + 1, y, Color(bright * 0.6, bright * 0.6, bright * 0.6))
+
+
+## A crescent: one disc of light with a second, offset disc cut back out of it.
+## The offset decides which way it faces, and the seed decides the offset, so the
+## six backdrops do not all show the same night.
+func _moon(image: Image, rng: RandomNumberGenerator, horizon: float) -> void:
+	var r: float = rng.randf_range(34.0, 52.0)
+	var at := Vector2(
+		rng.randf_range(r * 3.0, float(BACKDROP.x) - r * 3.0),
+		rng.randf_range(r * 2.5, horizon * 0.5))
+	var shift := Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.6, 0.6)).normalized() * r * 0.62
+	for y: int in range(int(at.y - r - 2.0), int(at.y + r + 2.0)):
+		if y < 0 or y >= BACKDROP.y:
+			continue
+		for x: int in range(int(at.x - r - 2.0), int(at.x + r + 2.0)):
+			if x < 0 or x >= BACKDROP.x:
+				continue
+			var p := Vector2(float(x), float(y))
+			var inside: float = r - p.distance_to(at)
+			if inside <= 0.0:
+				continue
+			if p.distance_to(at + shift) < r * 0.94:
+				continue
+			var edge: float = clampf(inside, 0.0, 1.5) / 1.5
+			var c: Color = image.get_pixel(x, y)
+			var lit: float = lerpf(c.r, 0.96, edge)
+			image.set_pixel(x, y, Color(lit, lit * 0.98, lit * 0.94))
 
 
 ## Value noise over the width, summed at three octaves. Deterministic from the

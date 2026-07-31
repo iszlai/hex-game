@@ -46,7 +46,11 @@ func _ready() -> void:
 
 func _apply_type_roles() -> void:
 	title_label.theme_type_variation = Typography.variation_for(Typography.Role.DISPLAY)
-	title_label.add_theme_color_override("font_color", _palette.path_core)
+	# The brand takes the type colour, not the path's. `path_core` is the colour of
+	# the *line of light the player draws* — spending it on a word that is never
+	# part of the puzzle both weakens it and, under C-26's warm palette, drops a
+	# cold accent into a dusk scene.
+	title_label.add_theme_color_override("font_color", _palette.text_primary)
 	subtitle_label.theme_type_variation = Typography.variation_for(Typography.Role.CAPTION)
 	subtitle_label.add_theme_color_override("font_color", _palette.text_secondary)
 	footer_label.theme_type_variation = Typography.variation_for(Typography.Role.CAPTION)

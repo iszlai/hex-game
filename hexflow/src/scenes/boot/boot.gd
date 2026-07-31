@@ -19,7 +19,7 @@ func _ready() -> void:
 	Backdrop.install(self)
 	(%Background as ColorRect).color = Color(palette.bg_deep, 0.0)
 	var title := %Title as Label
-	title.add_theme_color_override("font_color", palette.path_core)
+	title.add_theme_color_override("font_color", palette.text_primary)
 	title.theme_type_variation = Typography.variation_for(Typography.Role.DISPLAY)
 
 
