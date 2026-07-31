@@ -113,8 +113,11 @@ action rows, and it only fits because the key hints were moved into the legend.
       survive colour being taken away; the others may use `assets/art/marks.png`, drawn *instead of*
       the silhouette and untinted, because finished art carries its own colour. The silhouette is the
       floor — no file, or an assistive palette, and the board draws what it always drew. **The
-      mechanism is built and the atlas is not**: `make assets ROLE=marks` says what to paint, and
-      until it exists nothing changes on screen
+      atlas is a **generated stand-in** (`make marks`, committed like `make sfx`'s effects): the same
+      four shapes the shader draws, in colour and outlined. It exists to prove the slot rather than to
+      look good — four cells in the right order, alpha that composites, colour that survives not
+      being tinted — so the day painted art arrives it is a file swap and not a debugging session.
+      `make assets ROLE=marks` says what to paint
 - [x] Tiles read as **slabs** rather than as a relief cut into one surface — three changes together:
       the grain is sampled per tile and turned by a hash of the tile's own origin (it was one sheet
       the hexes were cut out of, and looked it); the top is **chamfered**, so the rim has its own
