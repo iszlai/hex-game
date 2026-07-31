@@ -49,8 +49,14 @@ const GRAIN := Vector2i(256, 256)
 func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	for name: String in SCENES:
-		var image := _backdrop(int(SCENES[name]))
-		_save(image, name + ".png")
+		# **Never overwrite a backdrop that already exists.** C-27's whole shape is
+		# that real art replaces the generated set by dropping files in, and a
+		# generator that clobbered them would make `make art` — a command someone
+		# runs to refresh the panel textures — destroy an illustrator's work.
+		if FileAccess.file_exists(OUT_DIR + name + ".png"):
+			print("kept ", name, ".png (already provided)")
+			continue
+		_save(_backdrop(int(SCENES[name])), name + ".png")
 	_save(_frame(), "panel_frame.png")
 	_save(_fill(), "panel_fill.png")
 	_save(_grain(), "tile_grain.png")

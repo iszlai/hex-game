@@ -19,15 +19,20 @@ stale. Progress lives in [`TODO.md`](../../TODO.md), not here.
 
 ## The one rule that governs every image
 
-**Deliver art neutral — greyscale or near-greyscale — never in its final colour.**
+**The tint is a multiplier, so what you paint is what the default palette shows.**
 
-Every image in the game is *tinted at runtime* by a palette token (spec §13.2, §13.1's second kept
-property). This is what lets the four accessibility palettes of §21 be a resource swap with no code
-change. An image that arrives already coloured will look **identical in all five palettes**, which
-silently breaks colour-blind support — and it will not look wrong to you, which is why it is stated
-first.
+Every image is multiplied by a palette token at runtime (§13.2). The default palette's
+`backdrop_tint` is white, so a *painted* backdrop appears exactly as delivered — paint it in colour.
+The accessibility palettes then use that token to pull it down: high contrast tints it grey and
+raises the scrim, which is the correct behaviour, because a player on that palette wants the
+backdrop out of the way rather than faithfully reproduced.
 
-Practically: paint value, contrast and texture. The hue comes from the palette.
+**The panel and board textures are the exception and must stay neutral.** Those are *surfaces*, and
+their colour is the palette's job — a timber frame that arrived already brown would be brown in all
+five palettes, which is the thing §13.2 exists to prevent. Paint value, contrast and grain there; the
+hue comes from the token.
+
+Rule of thumb: **a picture carries its own colour; a material does not.**
 
 The second rule: **filenames are the contract.** Nothing in the code names an image except
 [`src/view/art.gd`](../src/view/art.gd). Match the names below and no script changes.
@@ -41,7 +46,7 @@ files it writes beside them.
 
 | Asset | File | Size | Count | Tinted by | Status | What exists now |
 |---|---|---|---|---|---|---|
-| Chapter backdrops | `menu.png`, `chapter_1…5.png` | 1920×1200 | 6 | `backdrop_tint` | **Placeholder** | Generated dusk sky + four receding ridgelines, one seed per chapter (`make art`) |
+| Chapter backdrops | `menu.png`, `chapter_1…5.png` | 1920×1200 preferred | 6 | `backdrop_tint` | **Provided** | Painted illustrations, 1312×816. `make art` will never overwrite a backdrop that exists |
 | Panel frame | `panel_frame.png` | 96×96, 9-slice inset **24 px** | 1 | `surface_frame` | **Placeholder** | Generated bevel with a diagonal grain; opaque middle |
 | Panel fill | `panel_fill.png` | 96×96, 9-slice inset **24 px** | 1 | `surface_panel` | **Placeholder** | Generated fibre texture |
 | Board material | `tile_grain.png` | 256×256, **seamlessly tiling** | 1 | not tinted — a *value* map | **Placeholder** | Generated grain, sampled in board space so it turns with the board. Off entirely under §21's flat-board setting |
@@ -50,8 +55,9 @@ files it writes beside them.
 
 ### Backdrops — the detail that matters
 
-- **1920×1200, not 1280×800.** The game runs at 1280×800 on a Deck and crops to fill anything wider;
-  the extra height is headroom, not a different composition.
+- **1920×1200 is what to aim for.** The game runs at 1280×800 on a Deck and crops to fill anything
+  wider. The six provided are 1312×816 — enough to cover the reference resolution with a little to
+  spare, and they get scaled up on a larger window. Not a problem today; worth more pixels next time.
 - Keep the **top-left quadrant and the right 400 px quiet**. The menu's title block sits in one and
   §12.3's rail sits over the other. A busy area behind either is dimmed by the scrim anyway, so the
   detail is simply lost.

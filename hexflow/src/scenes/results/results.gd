@@ -27,6 +27,7 @@ func _ready() -> void:
 	(%Background as ColorRect).color = Color(_palette.bg_deep, 0.0)
 	_result = GameDirector.last_result.duplicate()
 
+	Surface.apply_to(self, _palette)
 	_apply_type_roles()
 	_build_stars()
 	menu.activated.connect(_on_activated)

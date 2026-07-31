@@ -36,6 +36,32 @@ static func row(palette: Palette, focused: bool = false, lit: bool = false) -> S
 	return box
 
 
+## Gives every panel on a screen the material, in one call.
+##
+## In this game a `PanelContainer` **is** a panel — a bar, a rail, a card or a
+## modal — so walking for them is not magic, it is the type doing what it says.
+## The alternative is each screen listing its own bars by unique name, which is
+## four lines per screen that exist only to be forgotten on the fifth: the level
+## screen had the treatment and the other five did not, and the seam between a
+## timber top bar and a default-grey card is exactly what makes a game read as
+## several games.
+##
+## Anything that has already been styled by hand keeps what it was given: a screen
+## with an opinion about one of its panels states it *after* this call.
+static func apply_to(root: Node, palette: Palette) -> void:
+	for node: Node in _panels(root):
+		(node as PanelContainer).add_theme_stylebox_override("panel", panel(palette))
+
+
+static func _panels(root: Node) -> Array[Node]:
+	var out: Array[Node] = []
+	for child: Node in root.get_children():
+		if child is PanelContainer:
+			out.append(child)
+		out.append_array(_panels(child))
+	return out
+
+
 ## The fallback, and the shape every builder above returns when the art is absent:
 ## a flat box in the same tokens. §13.6's replaceability rule cuts both ways — art
 ## can be swapped in, and it can be missing.

@@ -43,6 +43,7 @@ func _ready() -> void:
 	flower.palette = _palette
 	_backdrop = Backdrop.install(self, _chapter)
 	(%Background as ColorRect).color = Color(_palette.bg_deep, 0.0)
+	Surface.apply_to(self, _palette)
 	_apply_type_roles()
 
 	# §12.2's default focus: the last played level, which is the run in progress if

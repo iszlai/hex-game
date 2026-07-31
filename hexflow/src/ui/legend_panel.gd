@@ -61,6 +61,8 @@ func toggle() -> void:
 
 
 func _build() -> void:
+	# §13.7: the legend is a panel like every other, made of the same timber.
+	add_theme_stylebox_override("panel", Surface.panel(palette))
 	if _rows != null:
 		return
 	var margin := MarginContainer.new()

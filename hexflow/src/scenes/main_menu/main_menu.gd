@@ -24,6 +24,7 @@ func _ready() -> void:
 	menu.palette = _palette
 	Backdrop.install(self)
 	(%Background as ColorRect).color = Color(_palette.bg_deep, 0.0)
+	Surface.apply_to(self, _palette)
 	_apply_type_roles()
 
 	menu.activated.connect(_on_activated)
