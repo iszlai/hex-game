@@ -10,17 +10,14 @@ config/version="0.1.0"
 run/main_scene="res://src/scenes/boot/boot.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
-; The boot splash. Left at its defaults the engine flashed its own logo for a
-; frame or two on the way to `boot.tscn` — long enough to see, too short to read,
-; which is the worst of both. It shows the game's own mark instead, on the
-; palette's own darkest surface, held long enough to be a beat rather than a
-; blink. `minimum_display_time` is a floor and not a delay: a slower machine that
-; takes longer to load does not add this on top.
+; No engine splash at all — `boot.tscn` is the game's title screen, and two title
+; screens in a row is one too many. The mark held for 700 ms and then the *same
+; name* faded up again over the backdrop, which read as a stutter rather than as
+; an opening. What is left is the palette's darkest surface, so the window that
+; exists while the engine loads is the colour the game is about to be rather than
+; a flash of grey. `assets/art/logo.png` is still the store and window icon.
+boot_splash/show_image=false
 boot_splash/bg_color=Color(0.101961, 0.078431, 0.062745, 1)
-boot_splash/image="res://assets/art/logo.png"
-boot_splash/fullsize=false
-boot_splash/use_filter=true
-boot_splash/minimum_display_time=700
 
 [autoload]
 

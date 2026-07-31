@@ -1,11 +1,18 @@
 extends Control
-## Boot screen (§12.2): brand mark, 1.2 s max, skippable by any input.
+## Boot screen (§12.2): the title over the chapter-less backdrop, [constant
+## MAX_SECONDS] at most, skippable by any input.
 ##
-## M3 grey-box: boot hands straight to a generated level so the core loop is
-## reachable from a cold start. M6 replaces this with the main menu and the
-## hex-flower level select.
+## This is the **only** splash the game has (C-31). The engine one is switched off
+## in `project.godot`, so nothing shows the name twice.
 
-const MAX_SECONDS := 1.2
+## §12.2's hold. Long enough to be an opening rather than a flicker, short enough
+## that a player who has launched the game a hundred times is not waiting on it —
+## and they never are, because any press leaves immediately.
+const MAX_SECONDS := 3.0
+
+## How long the title takes to arrive. Under §14.5 it does not travel at all: a
+## reduced-motion title is simply already there, for the whole of the hold.
+const TITLE_FADE_MS := 700
 
 var _elapsed: float = 0.0
 var _left: bool = false
@@ -21,6 +28,19 @@ func _ready() -> void:
 	var title := %Title as Label
 	title.add_theme_color_override("font_color", palette.text_primary)
 	title.theme_type_variation = Typography.variation_for(Typography.Role.DISPLAY)
+	_fade_in(title)
+
+
+## Three seconds of a picture that never changes reads as a screen that has hung.
+## The title arriving out of the backdrop is what makes the hold a beat, so the
+## duration and the motion are one decision and belong together.
+func _fade_in(title: Label) -> void:
+	if SettingsService.reduce_motion():
+		return
+	title.modulate.a = 0.0
+	var tween := create_tween()
+	Motion.shape(tween, "screen_transition")
+	tween.tween_property(title, "modulate:a", 1.0, float(TITLE_FADE_MS) / 1000.0)
 
 
 func _process(delta: float) -> void:
