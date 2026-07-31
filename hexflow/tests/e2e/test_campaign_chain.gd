@@ -136,7 +136,7 @@ func test_finishing_a_level_records_it_and_advances_the_campaign() -> void:
 	assert_true(Campaign.level_unlocked(1, 2), "and the next level opened")
 	assert_eq(Campaign.next_unplayed(), Vector2i(1, 2))
 
-	await wait_seconds(Motion.beat_seconds("results") + 0.2)
+	await wait_seconds(Motion.results_delay_seconds() + 0.3)
 	assert_eq(GameDirector.screen, GameDirector.Screen.RESULTS)
 	await _follow()
 	await _press("menu_accept")
