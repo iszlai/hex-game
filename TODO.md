@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 550 tests / 16,600 asserts green in ~35 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 551 tests / 16,600 asserts green in ~35 s, 60 frozen
 level files re-verified.
 
 ---
@@ -734,7 +734,15 @@ Exit: mode `@e2e` scenarios pass, including the Steam-unavailable path.
       what is registered on the partner site is an achievement that silently never fires.
       **Still open:** the leaderboards, which need GodotSteam, and a UI — nothing in the game
       *displays* an achievement, so `achievements_mirror` is still write-only from the player's side
-- [ ] Steam Auto-Cloud for saves (no code)
+- [ ] Steam Auto-Cloud for saves (no code) — but §23.3's **conflict policy has code**, and it was
+      broken: "newest `stats.playtime_seconds` wins", and that field had been in the schema since M0
+      with nothing writing it. A tie-break of 0 against 0 does not pick the newer save, it picks
+      whichever the comparison reaches first, so a player with a Deck and a desktop would have lost
+      progress at random and only after release. `GameDirector.bank_playtime()` banks wall clock at
+      each suspend and each completion rather than ticking per frame (C4). `stats.total_placements`
+      was the same kind of dead field and now rises on every commit — deliberately not lowered by an
+      undo, since `stats.undos` is the record of those and a lifetime total that goes backwards is
+      not one. Both are asserted in `tests/e2e/test_persistence.gd`
 - [x] `@e2e`: Endless escalates and ends on a dead board; two clients generate an identical daily;
       **Steam unavailable never blocks play** and achievements queue locally — `tests/e2e/test_modes.gd`.
       All three were logic that had existed since M9's first commit and had never been played end to

@@ -30,6 +30,9 @@ var hints_used: int = 0
 ## §23.1's `undo_free` is a claim about consecutive levels and a lifetime counter
 ## cannot answer it.
 var undos_used: int = 0
+## Seconds-since-boot at the last [method bank_playtime]. See it for why §23.3
+## makes this the one stat that has to be right.
+var _playtime_marker: int = 0
 
 ## What the run that just finished was worth. Kept here rather than read off the
 ## live state, because the Results screen is a scene of its own: by the time it is
@@ -395,6 +398,13 @@ func _publish(events: Array) -> void:
 		var ev: Dictionary = e
 		match str(ev["type"]):
 			GameState.EV_PLACED:
+				# Declared in the schema since M0 and incremented by nothing. It
+				# counts placements the player *made*, so it rises on a commit and
+				# is deliberately not decremented by an undo — `stats.undos` is
+				# the record of those, and a lifetime total that can go backwards
+				# is not a lifetime total.
+				var stats: Dictionary = SaveService.data.get("stats", {})
+				stats["total_placements"] = int(stats.get("total_placements", 0)) + 1
 				EventBus.cell_joined.emit(ev["target"], ev["anchor"], ev["dir"])
 			GameState.EV_PORTAL:
 				EventBus.portal_linked.emit(ev["from"], ev["to"])
@@ -445,6 +455,7 @@ func _on_won(placements: int) -> void:
 			# The save is written first, because §23.1's chapter conditions are
 			# claims about all twelve levels and this is one of them. Reading them
 			# before the completion is recorded asks the question one level early.
+			bank_playtime()
 			Achievements.record_undo_use(undos_used > 0)
 			_unlock(Achievements.for_campaign_completion(
 				at.x, placements, level.par, _discards_used(), undos_used > 0))
@@ -545,8 +556,29 @@ func _notification(what: int) -> void:
 ## Writes the run down now. Public because §18.3 is a scenario worth being able to
 ## trigger in a test rather than only by taking focus away from a window.
 func suspend() -> void:
+	bank_playtime()
 	_autosave()
 	SaveService.save_to_disk()
+
+
+## Moves the time since the last banking into `stats.playtime_seconds`.
+##
+## §23.3 makes this load-bearing rather than decorative: Steam Auto-Cloud resolves
+## a conflict between two machines' saves by "newest `stats.playtime_seconds`
+## wins", and the field had been declared in the schema since M0 and written by
+## nothing. A tie-break that is always 0 against 0 does not pick the newer save,
+## it picks whichever one the comparison happens to see first — so a player with a
+## Deck and a desktop would lose progress at random, and only after release.
+##
+## Wall clock rather than a per-level timer, because §23.3 wants "which of these
+## two saves has more of the player's life in it", not a score. Banked at each
+## suspend and at each completion rather than ticked per frame (C4).
+func bank_playtime() -> void:
+	var now: int = int(Time.get_ticks_msec() / 1000)
+	var stats: Dictionary = SaveService.data.get("stats", {})
+	stats["playtime_seconds"] = int(stats.get("playtime_seconds", 0)) \
+		+ maxi(0, now - _playtime_marker)
+	_playtime_marker = now
 
 
 ## §18.1 — autosave on every commit, discard and undo. The payload is ~2 KB, so

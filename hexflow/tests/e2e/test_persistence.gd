@@ -170,3 +170,38 @@ func test_the_overlay_wiring_is_harmless_with_no_steam_at_all() -> void:
 	await wait_process_frames(1)
 	assert_eq(GameDirector.screen, GameDirector.Screen.MAIN_MENU,
 		"nothing to pause on a menu, and nothing that errors either")
+
+
+## §23.3 resolves an Auto-Cloud conflict by "newest `stats.playtime_seconds` wins",
+## which makes this the one stat that has to be right — and it was declared in the
+## schema at M0 and written by nothing, so the tie-break was 0 against 0 on every
+## machine. A player with a Deck and a desktop would have lost progress at random,
+## and only after release, which is the worst place to find it.
+func test_the_stat_the_cloud_breaks_ties_on_is_actually_written() -> void:
+	GameDirector.start_level(LevelRepository.load_level(1, 1))
+
+	# Placements are the other schema field nothing ever incremented.
+	var placed: int = 0
+	for _i: int in range(3):
+		var targets: Array[Vector3i] = GameDirector.state.legal_targets()
+		if targets.is_empty():
+			break
+		EventBus.place_requested.emit(targets[0])
+		placed += 1
+	assert_gt(placed, 0, "the fixture must be playable")
+	assert_eq(int(SaveService.data["stats"]["total_placements"]), placed)
+
+	# Playtime is banked rather than ticked, so it moves at a suspend — which is
+	# also §18.3's moment, and the moment a cloud sync would read it.
+	SaveService.data["stats"]["playtime_seconds"] = 0
+	GameDirector._playtime_marker = int(Time.get_ticks_msec() / 1000) - 5
+	GameDirector.suspend()
+	assert_gte(int(SaveService.data["stats"]["playtime_seconds"]), 5,
+		"the five seconds that passed are in the save")
+
+	# And it accumulates rather than being overwritten by the next banking.
+	var banked: int = int(SaveService.data["stats"]["playtime_seconds"])
+	GameDirector._playtime_marker = int(Time.get_ticks_msec() / 1000) - 2
+	GameDirector.bank_playtime()
+	assert_gte(int(SaveService.data["stats"]["playtime_seconds"]), banked + 2,
+		"a lifetime total only ever goes up")
