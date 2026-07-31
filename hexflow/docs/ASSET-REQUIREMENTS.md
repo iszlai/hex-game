@@ -89,6 +89,20 @@ That constrains the art in a way no image generator manages unprompted:
 The four corners are the only part kept as drawn, because they are the only part never
 stretched. Ask for ornament there and nowhere else.
 
+### The board material — why mid-grey is the whole brief
+
+`tile_grain.png` is not a picture. The shader reads its red channel, doubles it and
+*multiplies* the tile's colour by the result, so **128 grey means "leave this tile
+alone"**. An image that averages brighter lightens every tile on the board; darker
+darkens them. The sheet this was written for came back at 149 — a 17% lightening
+applied everywhere, fighting the palette in all six variants.
+
+`make grain-cut` re-centres it on 128, holds the swing inside ±32, removes the
+generator's signature from the bright tail, and cross-fades the borders into their
+mirrors so it wraps. Ask for **an even all-over field** with no composition: one tile
+samples about 90% of the texture, so anything large enough to be a feature appears on
+every tile at once.
+
 The second rule: **filenames are the contract.** Nothing in the code names an image except
 [`src/view/art.gd`](../src/view/art.gd). Match the names below and no script changes.
 
@@ -104,7 +118,7 @@ files it writes beside them.
 | Chapter backdrops | `menu.png`, `chapter_1…5.png` | 1920×1200 preferred | 6 | `backdrop_tint` | **Provided** | Painted illustrations, 1312×816. `make art` will never overwrite a backdrop that exists |
 | Panel frame | `panel_frame.png` | 9-slice inset **24 px**; size follows the drawn border | 1 | `surface_frame` | **Provided** | Carved timber with scrolled corners, 192×192. Cut by `make panels-cut` |
 | Panel fill | `panel_fill.png` | 9-slice inset **24 px** | 1 | `surface_panel` | **Provided** | Quiet reading surface, 96×96 |
-| Board material | `tile_grain.png` | 256×256, **seamlessly tiling** | 1 | not tinted — a *value* map | **Placeholder** | Generated grain, sampled in board space so it turns with the board. Off entirely under §21's flat-board setting |
+| Board material | `tile_grain.png` | 256×256, **seamlessly tiling**, mid-grey average | 1 | not tinted — a *value* map | **Provided** | Halftone-screened stone, cut by `make grain-cut`. Sampled **per tile**, turned by a hash of the tile's own position, so every slab is its own piece of stone. Off entirely under §21's flat-board setting |
 | Controller glyphs | `assets/glyphs/<family>_<slot>.png` | 48×48 | **52** (13 slots × 4 families) | `text_primary` | **Placeholder** | Drawn by `make glyphs`: the outline a thumb looks for, plus 1–4 letters taken from `src/data/input_glyphs.json`. **Nothing loads them yet** — the HUD still shows the text label |
 | Brand mark | `logo.png` | 512×512 raster preferred | 1 | — | **Provided** | A painted title card, 1024×1024. A vector `logo.svg` is still worth having for the store page |
 
