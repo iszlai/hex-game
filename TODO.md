@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 496 tests / 16,054 asserts green in ~90 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 507 tests / 16,170 asserts green in ~90 s, 60 frozen
 level files re-verified.
 
 ---
@@ -33,9 +33,10 @@ level files re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** M7's remaining art — §12.3's real HUD proportions, §13.5's icon atlas, and the §14.1
-rows that were waiting for a layout to sit in (queue advance, auto-discard arc, results stars). Then
-M8's tutorial, which is the last thing standing between the game and a first-time player.
+**Next up:** the §14.1 rows that were waiting for §12.3's real layout to sit in — queue advance,
+auto-discard arc, results stars — and the last two beats of §14.2's goal sequence. Then M8's
+tutorial, whose exit criterion is a **naive playtest nobody has run**; everything for it is built,
+and it is the last thing standing between the game and a first-time player.
 
 **Every screen §12.1 draws now exists**, and the map is walkable end to end: boot → main menu →
 level select → level → results → next level, with pause over the board and settings reachable from
@@ -144,10 +145,14 @@ at all.
       GodotSteam in M9 — there is no Steam API in the build yet
 - [x] Touch-only path; every on-screen button ≥44 px at 1280×800, asserted on the rendered rect (§11.4)
 - [x] Controller glyph atlas, data-driven by `Input.get_joy_name`, Deck names for View/Menu (§11.4) —
-      **labels**, not icons. The 52 icon textures now *exist* — `assets/glyphs/`, 48×48, drawn by
-      `tools/make_glyphs.gd` from this same atlas, so a glyph cannot disagree with the label it will
-      replace — but **nothing loads them yet**: `InputGlyphs.label_for()` still returns a string and
-      every HUD asks for a string. The swap is M7's §13.5 work and is not done
+      labels **and** icons. `assets/glyphs/`, 52 files at 48×48, drawn by `tools/make_glyphs.gd` from
+      this same atlas so a glyph cannot disagree with the label it replaces, and read through
+      `InputGlyphs.texture_for()`. `src/ui/glyph_hint.gd` owns the choice between the two, and the
+      text is the **floor**: no pad, no binding, or no file for that family all fall back to the word,
+      because a rail that went blank over a missing PNG would be worse than the bug it fixed. Wired
+      into §12.3's rail rows and the legend's CONTROLS block. **Unverified on hardware** — CI has no
+      controller, so what the tests can assert is that every slot in use has a file in every family
+      and that nothing ever reads as nothing
 - [x] Haptics table and the 0–100% slider, default 70% (§11.5) — pattern table and slider scaling
       verified headlessly. **Rumble on real hardware is unverified**: CI has no controller
 - [x] Surface `cycling_hint_wanted` as the toast after 3 cone rejections (§11.2)

@@ -92,10 +92,7 @@ func _build() -> void:
 	_rows.add_child(controls)
 	for entry: Variant in CONTROLS:
 		var row: Array = entry
-		var keys: Array[String] = []
-		for i: int in range(1, row.size()):
-			keys.append(InputGlyphs.label_for(str(row[i])))
-		_rows.add_child(_row(["", str(row[0]), " + ".join(keys), "text_primary"]))
+		_rows.add_child(_control_row(str(row[0]), row.slice(1)))
 
 
 func _row(row: Array) -> HBoxContainer:
@@ -119,6 +116,42 @@ func _row(row: Array) -> HBoxContainer:
 	cue.text = str(row[2])
 	cue.add_theme_color_override("font_color", palette.text_secondary)
 	box.add_child(cue)
+	return box
+
+
+## A CONTROLS row: the same three columns as a legend row, but the cue is built out
+## of [GlyphHint]s rather than out of a joined string.
+##
+## The join is why this cannot be one hint with a longer label — §11.3's wild
+## modifier is `L2` *and* `A`, two buttons, and two buttons are two pictures with a
+## `+` between them. The first column is an empty spacer rather than a glyph:
+## a control has no board mark to show, and the names still have to line up with the
+## modifier rows above.
+func _control_row(name: String, actions: Array) -> HBoxContainer:
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(28.0, 0.0)
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(spacer)
+
+	var name_label := Label.new()
+	name_label.text = name
+	name_label.custom_minimum_size = Vector2(76.0, 0.0)
+	name_label.add_theme_color_override("font_color", palette.text_primary)
+	box.add_child(name_label)
+
+	for i: int in range(actions.size()):
+		if i > 0:
+			var plus := Label.new()
+			plus.text = "+"
+			plus.add_theme_color_override("font_color", palette.text_secondary)
+			box.add_child(plus)
+		var hint := GlyphHint.new()
+		hint.palette = palette
+		box.add_child(hint)
+		hint.show_action(str(actions[i]))
 	return box
 
 

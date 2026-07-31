@@ -491,18 +491,17 @@ func _build_hints(palette: Palette) -> void:
 		icon.offset_bottom = Icon.GRID * 0.5
 		_icons[button] = icon
 
-		var hint := Label.new()
+		# §11.4's controller glyph when a pad is connected, the key name otherwise —
+		# [GlyphHint] owns that choice so the rail does not have to know which of the
+		# two it is showing.
+		var hint := GlyphHint.new()
 		hint.name = "Hint"
-		hint.theme_type_variation = Typography.variation_for(Typography.Role.CAPTION)
-		hint.add_theme_color_override("font_color", palette.text_secondary)
-		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hint.palette = palette
 		# Parented *before* the anchors are set: `set_anchors_preset` computes its
 		# offsets against the parent's rect, and a node that has no parent yet has
 		# no rect to compute against.
 		button.add_child(hint)
-		# A centred strip on the row's right edge rather than a full rect: a `Label`
+		# A centred strip on the row's right edge rather than a full rect: a label
 		# filling the button reports the button's height but lays its text out at the
 		# top of it, which puts the binding above the action it belongs to.
 		hint.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
@@ -519,9 +518,9 @@ func _build_hints(palette: Palette) -> void:
 ## nothing about the icon standing in front of it.
 func _row(button: Button, label: String, action: String) -> void:
 	button.text = "     " + label if _icons.has(button) else label
-	var hint: Label = _hints.get(button)
+	var hint: GlyphHint = _hints.get(button)
 	if hint != null:
-		hint.text = InputGlyphs.label_for(action)
+		hint.show_action(action)
 
 
 ## §13.7: a bar or a rail is timber. One builder for every surface in the game

@@ -13,7 +13,13 @@ class_name InputGlyphs
 
 const PATH := "res://src/data/input_glyphs.json"
 
+## Where §11.4's icon textures live, named `<family>_<slot>.png` — the same two
+## words the label lookup below is keyed by, so the icon for an action and the word
+## it replaces can never come from different rows.
+const GLYPH_DIR := "res://assets/glyphs/"
+
 static var _atlas: Dictionary = {}
+static var _textures: Dictionary = {}
 
 
 ## The family name matched for the connected controller ("deck", "playstation",
@@ -41,6 +47,34 @@ static func label_for(action: String) -> String:
 	return label
 
 
+## The icon for [param action] on the connected controller, or `null`.
+##
+## `null` is the normal answer, not an error, and there are three ways to get it: no
+## controller (the keyboard's answer is a key name, and a picture of a key is worse
+## than the word), an action with no controller binding at all, or a family whose
+## file has not been drawn. Every caller therefore has to keep the text path — which
+## is the point. §11.4 asks for the glyph a player's own hardware uses; it does not
+## ask for a HUD that goes blank when one file is missing.
+##
+## The textures are white on transparent and tinted by the caller through
+## `text_primary` (§13.2), like every other image in the game.
+static func texture_for(action: String) -> Texture2D:
+	var fam := family()
+	if fam == "":
+		return null
+	var slot := InputBindings.glyph_slot(action)
+	if slot == "":
+		return null
+	var path: String = "%s%s_%s.png" % [GLYPH_DIR, fam, slot]
+	if _textures.has(path):
+		return _textures[path]
+	# Cached including the misses: this is called from `_ready` on every screen and
+	# from the rail on every move, and `ResourceLoader.exists` hits the filesystem.
+	var texture: Texture2D = load(path) as Texture2D if ResourceLoader.exists(path) else null
+	_textures[path] = texture
+	return texture
+
+
 static func _bare_label(action: String) -> String:
 	var fam := family()
 	if fam != "":
@@ -64,6 +98,7 @@ static func _labels_of(fam: String) -> Dictionary:
 
 static func clear_cache() -> void:
 	_atlas = {}
+	_textures = {}
 
 
 static func _load() -> Dictionary:

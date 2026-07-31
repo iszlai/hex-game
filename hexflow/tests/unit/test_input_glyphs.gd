@@ -96,6 +96,42 @@ func test_an_unknown_action_yields_an_empty_label() -> void:
 	assert_eq(InputGlyphs.label_for("board_teleport"), "")
 
 
+## The icon half of §11.4. CI has no controller, so what can be checked here is not
+## "does the right glyph appear" but the thing that would actually break it: a slot
+## a binding asks for, in a family the atlas ships, with no file behind it.
+##
+## Derived from the bindings and the atlas rather than from a count, so adding an
+## action or a family fails here instead of silently showing a word to a player
+## holding a pad.
+func test_every_family_has_a_texture_for_every_slot_in_use() -> void:
+	var missing: Array[String] = []
+	for entry: Variant in (_atlas()["families"] as Array):
+		var family: Dictionary = entry
+		for slot: String in _slots_in_use():
+			var path: String = "%s%s_%s.png" % [
+				InputGlyphs.GLYPH_DIR, family["name"], slot]
+			if not ResourceLoader.exists(path):
+				missing.append(path.get_file())
+			else:
+				assert_true(load(path) is Texture2D, "%s does not load as a texture" % path)
+	assert_eq(missing, [] as Array[String],
+		"§11.4 wants a glyph per slot per family; run `make glyphs`")
+
+
+## With no pad attached the answer is the key name, and a picture of a key is worse
+## than the word — so there is deliberately no texture to find.
+func test_no_controller_means_no_texture() -> void:
+	assert_eq(InputGlyphs.family(), "", "CI has no controller attached")
+	assert_null(InputGlyphs.texture_for("board_undo"))
+
+
+## An action with no controller binding has no slot, so it can never have an icon
+## whatever is plugged in.
+func test_an_action_with_no_pad_binding_has_no_texture() -> void:
+	assert_eq(InputBindings.glyph_slot("board_teleport"), "")
+	assert_null(InputGlyphs.texture_for("board_teleport"))
+
+
 func _labels_of(family_name: String) -> Dictionary:
 	for entry: Variant in (_atlas()["families"] as Array):
 		var family: Dictionary = entry
