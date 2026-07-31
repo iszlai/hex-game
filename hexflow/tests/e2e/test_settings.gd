@@ -321,3 +321,40 @@ func _key(code: Key) -> void:
 	ev.pressed = true
 	_scene.get_viewport().push_input(ev)
 	await wait_process_frames(1)
+
+
+## §21: "a reset-to-default is always one press away." The Controls tab has had one
+## since rebinding landed; it belongs on every tab that can be changed — a player
+## who has moved four sliders and can no longer hear the game needs a way back that
+## does not involve remembering what 85 was.
+func test_every_changeable_tab_offers_a_reset() -> void:
+	await _open()
+	for tab: String in ["Gameplay", "Video", "Audio", "Accessibility"]:
+		var found: bool = false
+		for row: Variant in _scene.call("rows_of", tab):
+			if str((row as Dictionary).get("action", "")).begins_with("reset"):
+				found = true
+		assert_true(found, "%s cannot be put back" % tab)
+
+
+## Per tab, not per screen. Resetting the volumes must not also take away the
+## palette and the text size — the two settings a player is least likely to have
+## changed by accident, and the two it would hurt most to lose.
+func test_a_reset_puts_back_its_own_tab_and_nothing_else() -> void:
+	SettingsService.set_value("music_volume", 5)
+	SettingsService.set_value("sfx_volume", 10)
+	SettingsService.set_value("text_scale", 1.5)
+	SettingsService.set_value("palette", "high_contrast")
+
+	await _open()
+	await _to_tab("Audio")
+	await _focus("reset_tab")
+	await _press("menu_accept")
+
+	assert_eq(int(SettingsService.get_value("music_volume")),
+		int(SettingsService.DEFAULTS["music_volume"]), "the tab is back")
+	assert_eq(int(SettingsService.get_value("sfx_volume")),
+		int(SettingsService.DEFAULTS["sfx_volume"]))
+	assert_eq(float(SettingsService.get_value("text_scale")), 1.5,
+		"and the accessibility tab was left alone")
+	assert_eq(str(SettingsService.get_value("palette")), "high_contrast")

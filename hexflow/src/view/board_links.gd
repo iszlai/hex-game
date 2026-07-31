@@ -95,6 +95,12 @@ func bind(state: GameState, layout: HexLayout, tiles: BoardTiles) -> void:
 	_board = state.board
 	_layout = layout
 	_tiles = tiles
+	# C-28's trace belongs to the level that was won, not to the renderer. Without
+	# this, §7.2's endless run — where reaching a goal *is* the next stage, so the
+	# board rebinds while the same node keeps playing — shows every stage after the
+	# first with its route already drawn. A restart and the next campaign level have
+	# the same shape and would have had the same bug.
+	_traced = 0.0
 
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D

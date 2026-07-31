@@ -30,6 +30,8 @@ const ROWS := {
 		{"key": "hold_to_confirm", "label": "Destructive actions", "kind": KIND_TOGGLE,
 			"names": ["press twice", "hold"]},
 		{"key": "show_glyphs", "label": "Controller glyphs", "kind": KIND_TOGGLE},
+		{"key": "", "label": "Reset gameplay to defaults", "kind": KIND_ACTION,
+			"action": "reset_tab"},
 		# §10.1's "Replay tutorial", which "resets the tutorial flags **only**".
 		{"key": "", "label": "Replay tutorial", "kind": KIND_ACTION, "action": "replay_tutorial"},
 	],
@@ -43,6 +45,8 @@ const ROWS := {
 		{"key": "vsync", "label": "V-Sync", "kind": KIND_TOGGLE},
 		{"key": "fps_cap", "label": "Frame cap", "kind": KIND_CHOICE,
 			"values": [30, 60, 90, 120, 0], "names": ["30", "60", "90", "120", "uncapped"]},
+		{"key": "", "label": "Reset video to defaults", "kind": KIND_ACTION,
+			"action": "reset_tab"},
 	],
 	"Audio": [
 		{"key": "music_volume", "label": "Music", "kind": KIND_RANGE,
@@ -51,6 +55,8 @@ const ROWS := {
 			"min": 0, "max": 100, "step": 5, "suffix": "%"},
 		{"key": "ui_volume", "label": "Interface", "kind": KIND_RANGE,
 			"min": 0, "max": 100, "step": 5, "suffix": "%"},
+		{"key": "", "label": "Reset audio to defaults", "kind": KIND_ACTION,
+			"action": "reset_tab"},
 	],
 	"Accessibility": [
 		# §21's four alternates plus the default. It was deliberately absent while
@@ -65,6 +71,8 @@ const ROWS := {
 			"names": ["100%", "115%", "125%", "140%", "150%"]},
 		{"key": "reduce_motion", "label": "Reduce motion", "kind": KIND_TOGGLE},
 		{"key": "flat_board", "label": "Flat board", "kind": KIND_TOGGLE},
+		{"key": "", "label": "Reset accessibility to defaults", "kind": KIND_ACTION,
+			"action": "reset_tab"},
 	],
 }
 
@@ -259,6 +267,8 @@ func _do_action(action: String) -> void:
 			InputBindings.install()
 			AudioDirector.play_sfx("ui.confirm")
 			_refresh()
+		"reset_tab":
+			_reset_tab()
 		"replay_tutorial":
 			Tutorial.reset()
 			AudioDirector.play_sfx("ui.confirm")
@@ -318,6 +328,27 @@ func _end_capture(collision: String) -> void:
 		# to know why. Refused, and named.
 		AudioDirector.play_sfx("ui.reject")
 		hint_label.text = "Already used by %s" % _action_label(collision)
+
+
+## §21: "a reset-to-default is always one press away". The Controls tab has had
+## one since rebinding landed; the row belongs on every tab that can be changed,
+## for the same reason — a player who has moved four sliders and cannot hear the
+## game any more needs a way back that does not involve guessing what 85 was.
+##
+## Per **tab**, not per screen. A blanket reset would take the palette and the text
+## size away from someone who only wanted their volumes back, and those are the two
+## settings a player is least likely to have set by accident.
+func _reset_tab() -> void:
+	for row: Variant in rows_of(tab_name()):
+		var spec: Dictionary = row
+		var key: String = str(spec.get("key", ""))
+		if key == "" or not SettingsService.DEFAULTS.has(key):
+			continue
+		SettingsService.set_value(key, SettingsService.DEFAULTS[key])
+		_apply(spec)
+	AudioDirector.play_sfx("ui.confirm")
+	_refresh()
+	hint_label.text = "%s restored" % tab_name()
 
 
 func _focused_row() -> Dictionary:

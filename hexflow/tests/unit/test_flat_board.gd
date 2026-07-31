@@ -20,6 +20,12 @@ var _stack: TileStack = null
 
 
 func before_each() -> void:
+	# Stated, not inherited. `flat_board` is a *setting*, and a setting is global
+	# state that any earlier test in the run can have moved — this file used to
+	# depend on nobody having touched it, which held right up until the settings
+	# screen gained a row that could. The claim being tested is "the board ships
+	# lit", so the shipped default is what it starts from.
+	SettingsService.set_value("flat_board", SettingsService.DEFAULTS["flat_board"])
 	_view = BoardView3D.new()
 	add_child_autofree(_view)
 	_view.bind(GameState.start(Fixtures.fixed_level(Fixtures.shortest_route_tiles())), PLAY)
@@ -43,7 +49,8 @@ func _key_light() -> DirectionalLight3D:
 ## Off by default: the lighting is what gives C-22's tile heights something to
 ## cast, so the board ships lit and a player opts out.
 func test_the_board_is_lit_until_asked_otherwise() -> void:
-	assert_false(SettingsService.flat_board(), "default")
+	assert_false(bool(SettingsService.DEFAULTS["flat_board"]), "the shipped default is lit")
+	assert_false(SettingsService.flat_board(), "and that is what is live")
 	assert_false(bool(_flag_on(_view.tiles)), "tiles take light")
 	assert_false(bool(_flag_on(_view.links)), "and so does the ribbon")
 	assert_true(_key_light().shadow_enabled, "and the key light casts")

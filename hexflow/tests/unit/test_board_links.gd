@@ -361,3 +361,27 @@ func test_the_connector_draw_does_nothing_while_the_route_is_hidden() -> void:
 	_links.draw_newest()
 	assert_eq(_links.draw_progress(last), 1.0, "there is no partial bar during play")
 	assert_eq(_links.transform_of(last), before, "and nothing was touched")
+
+
+## C-28's trace belongs to the level that was won, not to the renderer.
+##
+## §7.2's endless run is the case that catches this: reaching a goal *is* the next
+## stage, so the board rebinds while the same node plays on. A trace left at one
+## would have every stage after the first opening with its whole route already
+## drawn — which is exactly what a run looked like before this line existed.
+func test_the_trace_does_not_survive_into_the_next_board() -> void:
+	_place_along_the_route(4)
+	_links.set_trace(1.0)
+	assert_eq(_links.multimesh.visible_instance_count, _links.count())
+
+	# A new board on the **same node** — which is the whole point. `_bind` would
+	# build a fresh view and a fresh view has nothing to carry over; endless keeps
+	# the one it has and hands it board after board.
+	_state = GameState.start(Fixtures.fixed_level(Fixtures.shortest_route_tiles()))
+	_view.bind(_state, PLAY)
+	assert_eq(_links.traced(), 0.0, "a new board has nothing traced yet")
+	assert_eq(_links.multimesh.visible_instance_count, 0,
+		"and the buffer agrees — this is what a second endless stage looked like")
+	_place_along_the_route(2)
+	assert_eq(_links.multimesh.visible_instance_count, 0,
+		"and it is being played, not being shown off")
