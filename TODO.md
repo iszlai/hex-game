@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 466 tests / 15,846 asserts green in ~86 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 480 tests / 15,940 asserts green in ~85 s, 60 frozen
 level files re-verified.
 
 ---
@@ -489,7 +489,7 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       emitter takes its colour from a palette token, so §21's swaps reach the particles too.
       **Simplified:** §14.4 calls the motes "path flow motes" and they currently drift over the whole
       board rather than following the path, which needs an emission shape rebuilt per move
-- [ ] Reduce Motion path: durations ×0.4, no shake/parallax/particles/breathing, still fully legible
+- [x] Reduce Motion path: durations ×0.4, no shake/parallax/particles/breathing, still fully legible
       (§14.5) — **the rule is implemented, and it is not just a multiplier**: §14.5 also names 120 ms
       for screen transitions outright (not a scaled 320), and says the loops *stop* rather than
       shorten. `Motion` gets all three right and the test names the two traps. Verified on screen for
@@ -546,6 +546,13 @@ the checklist below.
 - [x] Skippable at any time with one Back press — resolved **before** the pause branch, because
       §11.3 puts `board_pause` and `board_back` on the same Esc and the pause would otherwise always
       win on a keyboard. It only claims the press while a beat is actually up
+
+**Still owed, beyond the playtest:** §10.2's *Interaction* column. The words and the mechanics are
+built; the **emphasis** mostly is not. T3's preview scaling up 1.15×, T5's undo button glowing, T8's
+discard button glowing, T10's two ghost stubs on a gate and T12's charge slot filling are all
+unbuilt — §10.1 asks for guidance that "renders on the board … not in a modal", and today a beat is
+twelve words in the banner plus whatever the board was already doing. T1's candidate pulse, T6's
+flyaway and T7's wall shake come free from animations that already exist.
 
 Two things the wiring turned up. T1's gate cannot simply follow the stored optimum: chapter 1 level
 1's optimal line **opens with a discard** (which is what C-14's `solution_script` exists to record),
