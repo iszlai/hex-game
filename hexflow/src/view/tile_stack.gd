@@ -73,9 +73,20 @@ func _ready() -> void:
 
 ## Shows [param tiles] — direction indices, soonest first. Called when the stream
 ## advances, which is once per move.
+##
+## [constant Direction.NONE] ends the pile. The NOW slot is handed
+## `[current_tile()]` whatever the state, and on the last move of a level that is
+## the sentinel — a coin drawn for it is a coin the player does not have. The
+## stream no longer pads its preview either; this is the second lock, because a
+## pile that draws tiles nobody holds is the kind of lie that reads as a bug in the
+## rules rather than in a view.
 func show_tiles(tiles: Array[int]) -> void:
 	_ensure_nodes()
-	_tiles = tiles
+	_tiles.clear()
+	for tile: int in tiles:
+		if tile == Direction.NONE:
+			break
+		_tiles.append(tile)
 	_rebuild()
 
 

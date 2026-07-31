@@ -58,10 +58,22 @@ func current() -> int:
 
 
 ## The next [param n] tiles after the current one — the preview queue shows 2.
+##
+## A fixed stream returns **fewer than [param n]** as it runs down, rather than
+## padding the tail with [constant Direction.NONE]. The sentinel means "there is no
+## tile here", and handing it out as though it were one made every caller
+## responsible for spotting it: C-18's pile drew a coin per entry, so a level with
+## two tiles left showed a full stack of five, three of them carrying an arrow read
+## out of `DELTAS[-2]`. What is left is what gets returned.
+##
+## An endless bag never runs out, so this only ever shortens a campaign queue.
 func peek(n: int) -> Array[int]:
 	var out: Array[int] = []
 	for i: int in range(1, n + 1):
-		out.append(at(index + i))
+		var tile: int = at(index + i)
+		if tile == Direction.NONE:
+			break
+		out.append(tile)
 	return out
 
 

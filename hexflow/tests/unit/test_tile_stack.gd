@@ -70,6 +70,23 @@ func test_it_shows_the_soonest_tiles_and_no_more_than_its_slots() -> void:
 	assert_eq(_stack.pieces.multimesh.visible_instance_count, 0, "and nothing when empty")
 
 
+## The pile ends where the tiles end.
+##
+## The NOW slot is handed `[current_tile()]` whatever the state, and on the last
+## move of a level that is `Direction.NONE` — so a control that took the array at
+## face value drew a coin for a tile the player does not have, with an arrow
+## pointing wherever `DELTAS[-2]` happens to land.
+func test_a_tile_that_is_not_there_is_not_drawn() -> void:
+	_stack.show_tiles([Direction.NONE] as Array[int])
+	assert_eq(_stack.count(), 0, "the sentinel is not a tile")
+	assert_eq(_stack.pieces.multimesh.visible_instance_count, 0, "so it gets no coin")
+	assert_eq(_stack.arrows.multimesh.visible_instance_count, 0, "and no arrow")
+
+	_stack.show_tiles([0, 1, Direction.NONE] as Array[int])
+	assert_eq(_stack.count(), 2, "the pile stops where the queue does")
+	assert_eq(_stack.pieces.multimesh.visible_instance_count, 2)
+
+
 ## C4: the buffer is sized for every slot the control will ever show, so the
 ## stream advancing rewrites instances rather than reallocating them.
 func test_advancing_the_stream_never_reallocates() -> void:
