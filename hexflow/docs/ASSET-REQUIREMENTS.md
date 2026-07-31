@@ -7,14 +7,19 @@ This list is derived from the spec, not from taste: each row names the section t
 row disagrees with [`HEXFLOW-SPEC.md`](../../HEXFLOW-SPEC.md), the spec is right and this file is
 stale. Progress lives in [`TODO.md`](../../TODO.md), not here.
 
-## Check it from the terminal
+## Check it, and fill it in
 
 ```sh
-make assets                                        what is here, what is missing
+make assets-ui     the desk in a browser — every slot, with previews; drop files onto them
+make assets        the same thing as a table, for a terminal
 make assets-add FILE=~/Downloads/x.png AS=chapter_3
 ```
 
-`make assets` is this document in the form a machine can check — it names every
+`make assets-ui` is the one to use when the question is "which chapter does this
+painting belong to" — it shows them. The terminal version is better when the
+question is "what is still missing".
+
+Both read `tools/asset_manifest.json`, which is this document in the form a machine can check — it names every
 role, whether the file is there, its real dimensions and what is still wanted.
 `assets-add` puts a file where the game looks for it and **copies rather than
 moves**, so the original stays in your Downloads folder.

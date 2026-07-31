@@ -1,0 +1,199 @@
+{
+  "assets": [
+    {
+      "role": "menu",
+      "path": "assets/art/menu.png",
+      "kind": "image",
+      "want": [
+        1920,
+        1200
+      ],
+      "note": "backdrop behind the menus"
+    },
+    {
+      "role": "chapter_1",
+      "path": "assets/art/chapter_1.png",
+      "kind": "image",
+      "want": [
+        1920,
+        1200
+      ],
+      "note": "backdrop · Flow"
+    },
+    {
+      "role": "chapter_2",
+      "path": "assets/art/chapter_2.png",
+      "kind": "image",
+      "want": [
+        1920,
+        1200
+      ],
+      "note": "backdrop · Walls"
+    },
+    {
+      "role": "chapter_3",
+      "path": "assets/art/chapter_3.png",
+      "kind": "image",
+      "want": [
+        1920,
+        1200
+      ],
+      "note": "backdrop · Branches"
+    },
+    {
+      "role": "chapter_4",
+      "path": "assets/art/chapter_4.png",
+      "kind": "image",
+      "want": [
+        1920,
+        1200
+      ],
+      "note": "backdrop · Gates & Portals"
+    },
+    {
+      "role": "chapter_5",
+      "path": "assets/art/chapter_5.png",
+      "kind": "image",
+      "want": [
+        1920,
+        1200
+      ],
+      "note": "backdrop · Pressure"
+    },
+    {
+      "role": "panel_frame",
+      "path": "assets/art/panel_frame.png",
+      "kind": "image",
+      "want": [
+        96,
+        96
+      ],
+      "note": "9-slice timber",
+      "material": true
+    },
+    {
+      "role": "panel_fill",
+      "path": "assets/art/panel_fill.png",
+      "kind": "image",
+      "want": [
+        96,
+        96
+      ],
+      "note": "9-slice reading surface",
+      "material": true
+    },
+    {
+      "role": "tile_grain",
+      "path": "assets/art/tile_grain.png",
+      "kind": "image",
+      "want": [
+        256,
+        256
+      ],
+      "note": "tiling board material",
+      "material": true
+    },
+    {
+      "role": "logo",
+      "path": "assets/art/logo.png",
+      "kind": "image",
+      "want": [
+        512,
+        512
+      ],
+      "note": "brand mark"
+    },
+    {
+      "role": "music_menu",
+      "path": "assets/music/menu.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · menus"
+    },
+    {
+      "role": "music_chapter_1",
+      "path": "assets/music/chapter_1.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 1"
+    },
+    {
+      "role": "music_chapter_2",
+      "path": "assets/music/chapter_2.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 2"
+    },
+    {
+      "role": "music_chapter_3",
+      "path": "assets/music/chapter_3.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 3"
+    },
+    {
+      "role": "music_chapter_4",
+      "path": "assets/music/chapter_4.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 4"
+    },
+    {
+      "role": "music_chapter_5",
+      "path": "assets/music/chapter_5.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 5"
+    }
+  ],
+  "groups": [
+    {
+      "role": "sfx",
+      "dir": "assets/sfx/",
+      "ext": ".wav",
+      "want": 16,
+      "note": "§15.2's sixteen effects (synthesised placeholders)"
+    },
+    {
+      "role": "fonts",
+      "dir": "assets/fonts/",
+      "ext": ".ttf",
+      "want": 3,
+      "note": "§13.4's three families"
+    },
+    {
+      "role": "glyphs",
+      "dir": "assets/glyphs/",
+      "ext": ".png",
+      "want": 52,
+      "note": "§11.4 · 13 slots × 4 controller families"
+    }
+  ],
+  "extensions": {
+    "image": [
+      ".png"
+    ],
+    "audio": [
+      ".ogg",
+      ".wav"
+    ]
+  }
+}

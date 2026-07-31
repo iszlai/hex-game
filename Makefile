@@ -45,7 +45,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels sfx art assets assets-add shot measure \
+        test-file gate levels sfx art assets assets-add assets-ui shot measure \
         playtest playtest-restore \
         clean clean-levels legacy-branch status
 
@@ -145,6 +145,9 @@ assets: check ## What art and audio the game has, and what it is still missing
 
 assets-add: check ## Put a file where the game looks for it. FILE=~/x.png AS=chapter_3
 	@$(RUN_CMD) --headless -s res://tools/assets.gd -- add "$(FILE)" "$(or $(AS),)"
+
+assets-ui: ## The asset desk in a browser: see every slot, drop files onto them
+	@python3 $(PROJECT)/tools/asset_server.py $(or $(PORT),7777)
 
 playtest: check ## Play as a first-time player would: your save is moved aside, not deleted
 	@$(RUN_CMD) --headless -s res://tools/playtest.gd -- reset

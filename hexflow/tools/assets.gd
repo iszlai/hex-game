@@ -16,60 +16,44 @@ extends SceneTree
 ## because a tool that eats the original is a tool you use once and then stop
 ## trusting.
 
-## Every asset the game looks for, by the **role** it plays. `kind` decides what is
-## checked; `want` is the shape the requirements ask for, and is advice rather than
-## a gate — a picture that is smaller than ideal should land with a warning, not be
-## refused.
-const ASSETS := [
-	{"role": "menu", "path": "res://assets/art/menu.png", "kind": "image",
-		"want": Vector2i(1920, 1200), "note": "backdrop behind the menus"},
-	{"role": "chapter_1", "path": "res://assets/art/chapter_1.png", "kind": "image",
-		"want": Vector2i(1920, 1200), "note": "backdrop · Flow"},
-	{"role": "chapter_2", "path": "res://assets/art/chapter_2.png", "kind": "image",
-		"want": Vector2i(1920, 1200), "note": "backdrop · Walls"},
-	{"role": "chapter_3", "path": "res://assets/art/chapter_3.png", "kind": "image",
-		"want": Vector2i(1920, 1200), "note": "backdrop · Branches"},
-	{"role": "chapter_4", "path": "res://assets/art/chapter_4.png", "kind": "image",
-		"want": Vector2i(1920, 1200), "note": "backdrop · Gates & Portals"},
-	{"role": "chapter_5", "path": "res://assets/art/chapter_5.png", "kind": "image",
-		"want": Vector2i(1920, 1200), "note": "backdrop · Pressure"},
+## The manifest is **shared**, not duplicated: `tools/asset_manifest.json` is read
+## by this and by the browser tool beside it. Two copies of "what the game wants"
+## is one copy that quietly stops being true, and the whole point of a checker is
+## that it cannot.
+const MANIFEST := "res://tools/asset_manifest.json"
 
-	{"role": "panel_frame", "path": "res://assets/art/panel_frame.png", "kind": "image",
-		"want": Vector2i(96, 96), "note": "9-slice timber · deliver NEUTRAL"},
-	{"role": "panel_fill", "path": "res://assets/art/panel_fill.png", "kind": "image",
-		"want": Vector2i(96, 96), "note": "9-slice surface · deliver NEUTRAL"},
-	{"role": "tile_grain", "path": "res://assets/art/tile_grain.png", "kind": "image",
-		"want": Vector2i(256, 256), "note": "tiling board material · deliver NEUTRAL"},
-	{"role": "logo", "path": "res://assets/art/logo.png", "kind": "image",
-		"want": Vector2i(512, 512), "note": "brand mark"},
+static var _manifest: Dictionary = {}
 
-	{"role": "music_menu", "path": "res://assets/music/menu.ogg", "kind": "audio",
-		"want": Vector2i(0, 0), "note": "bed · menus"},
-	{"role": "music_chapter_1", "path": "res://assets/music/chapter_1.ogg", "kind": "audio",
-		"want": Vector2i(0, 0), "note": "bed · chapter 1"},
-	{"role": "music_chapter_2", "path": "res://assets/music/chapter_2.ogg", "kind": "audio",
-		"want": Vector2i(0, 0), "note": "bed · chapter 2"},
-	{"role": "music_chapter_3", "path": "res://assets/music/chapter_3.ogg", "kind": "audio",
-		"want": Vector2i(0, 0), "note": "bed · chapter 3"},
-	{"role": "music_chapter_4", "path": "res://assets/music/chapter_4.ogg", "kind": "audio",
-		"want": Vector2i(0, 0), "note": "bed · chapter 4"},
-	{"role": "music_chapter_5", "path": "res://assets/music/chapter_5.ogg", "kind": "audio",
-		"want": Vector2i(0, 0), "note": "bed · chapter 5"},
-]
 
-## Whole groups the game wants and cannot yet name file by file — 52 controller
-## glyphs and 13 music stems would bury the table above in rows that all say the
-## same thing. Counted rather than listed.
-const GROUPS := [
-	{"role": "sfx", "dir": "res://assets/sfx/", "ext": ".wav", "want": 16,
-		"note": "§15.2's sixteen effects (synthesised placeholders)"},
-	{"role": "fonts", "dir": "res://assets/fonts/", "ext": ".ttf", "want": 3,
-		"note": "§13.4's three families"},
-	{"role": "glyphs", "dir": "res://assets/glyphs/", "ext": ".png", "want": 52,
-		"note": "§11.4 · 13 slots × 4 controller families"},
-]
+static func manifest() -> Dictionary:
+	if not _manifest.is_empty():
+		return _manifest
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(MANIFEST)) != OK:
+		push_error("tools/asset_manifest.json is unreadable")
+		return {}
+	_manifest = json.data
+	return _manifest
 
-const EXTS := {"image": [".png"], "audio": [".ogg", ".wav"]}
+
+static func assets() -> Array:
+	return manifest().get("assets", []) as Array
+
+
+static func groups() -> Array:
+	return manifest().get("groups", []) as Array
+
+
+static func extensions() -> Dictionary:
+	return manifest().get("extensions", {}) as Dictionary
+
+
+## Manifest paths are project-relative; the engine wants `res://`.
+static func res(path: String) -> String:
+	return "res://" + path
+
+
+
 
 
 func _initialize() -> void:
@@ -91,9 +75,9 @@ func _status() -> void:
 	print("  ─────────────────────────────────────────────────────────────────────")
 	var missing: Array[String] = []
 	var bytes: int = 0
-	for entry: Variant in ASSETS:
+	for entry: Variant in assets():
 		var spec: Dictionary = entry
-		var path: String = str(spec["path"])
+		var path: String = res(str(spec["path"]))
 		if not FileAccess.file_exists(path):
 			missing.append(str(spec["role"]))
 			print("  %-18s %-11s %s" % [spec["role"], "missing", spec["note"]])
@@ -101,20 +85,20 @@ func _status() -> void:
 		bytes += _size_of(path)
 		print("  %-18s %-11s %s" % [spec["role"], "here", _detail(spec)])
 
-	for entry: Variant in GROUPS:
+	for entry: Variant in groups():
 		var group: Dictionary = entry
-		var found: int = _count(str(group["dir"]), str(group["ext"]))
+		var found: int = _count(res(str(group["dir"])), str(group["ext"]))
 		var want: int = int(group["want"])
 		var state: String = "here" if found >= want else ("%d of %d" % [found, want])
 		if found < want:
 			missing.append(str(group["role"]))
-		bytes += _bytes_in(str(group["dir"]))
+		bytes += _bytes_in(res(str(group["dir"])))
 		print("  %-18s %-11s %s" % [group["role"], state, group["note"]])
 
 	print("")
 	print("  %d of %d roles present · %.1f MB on disk"
-		% [ASSETS.size() + GROUPS.size() - missing.size(),
-			ASSETS.size() + GROUPS.size(), float(bytes) / 1048576.0])
+		% [assets().size() + groups().size() - missing.size(),
+			assets().size() + groups().size(), float(bytes) / 1048576.0])
 	if missing.is_empty():
 		print("  nothing missing")
 	else:
@@ -125,14 +109,14 @@ func _status() -> void:
 
 
 func _detail(spec: Dictionary) -> String:
-	var path: String = str(spec["path"])
+	var path: String = res(str(spec["path"]))
 	var size: String = "%.0f KB" % (float(_size_of(path)) / 1024.0)
 	if str(spec["kind"]) != "image":
 		return "%s · %s" % [size, spec["note"]]
 	var got: Vector2i = _png_size(path)
 	if got == Vector2i.ZERO:
 		return "%s · unreadable" % size
-	var want: Vector2i = spec["want"]
+	var want := Vector2i(int((spec["want"] as Array)[0]), int((spec["want"] as Array)[1]))
 	var warn: String = "" if got.x >= want.x and got.y >= want.y \
 		else "  (under %dx%d)" % [want.x, want.y]
 	return "%dx%d · %s%s" % [got.x, got.y, size, warn]
@@ -160,12 +144,12 @@ func _add(source: String, role: String) -> void:
 		return
 
 	var ext: String = "." + source.get_extension().to_lower()
-	var allowed: Array = EXTS[str(spec["kind"])]
+	var allowed: Array = extensions()[str(spec["kind"])]
 	if not allowed.has(ext):
 		print("%s wants %s, and that is a %s file" % [role, " or ".join(allowed), ext])
 		return
 
-	var target: String = str(spec["path"])
+	var target: String = res(str(spec["path"]))
 	var wanted_ext: String = "." + target.get_extension()
 	if ext != wanted_ext:
 		# An .ogg where a .wav is expected, or the other way round: the role decides
@@ -185,14 +169,14 @@ func _add(source: String, role: String) -> void:
 	print("%s %s" % ["replaced" if replacing else "added", target])
 	if str(spec["kind"]) == "image":
 		print("  %s" % _detail(spec))
-		if str(spec["note"]).contains("NEUTRAL"):
+		if bool(spec.get("material", false)):
 			print("  reminder: this one is a *material* — it is tinted by the palette,")
 			print("  so colour baked into it survives all five (docs/ASSET-REQUIREMENTS.md)")
 	print("  run `make import` so Godot picks it up, then commit it")
 
 
 func _spec_for(role: String) -> Dictionary:
-	for entry: Variant in ASSETS:
+	for entry: Variant in assets():
 		if str((entry as Dictionary)["role"]) == role:
 			return entry
 	return {}
@@ -201,9 +185,9 @@ func _spec_for(role: String) -> Dictionary:
 func _roles() -> void:
 	print("")
 	print("roles:")
-	for entry: Variant in ASSETS:
+	for entry: Variant in assets():
 		var spec: Dictionary = entry
-		var mark: String = " " if FileAccess.file_exists(str(spec["path"])) else "*"
+		var mark: String = " " if FileAccess.file_exists(res(str(spec["path"]))) else "*"
 		print("  %s %-18s %s" % [mark, spec["role"], spec["note"]])
 	print("")
 	print("  * = not here yet")
