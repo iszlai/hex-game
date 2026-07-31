@@ -313,13 +313,15 @@ finish. **Met** — `tests/property/test_level_files.gd`, `tests/e2e/test_campai
       `HexLayout`'s §4.3 conversion, its corners, its `from_pixel` rounding for the hit-test (B7) —
       so there is still exactly one hexagon formula in the codebase. Navigation is `InputRouter`'s
       *unchanged*: the same ±75° cone over the same lattice, so left means the same thing on the map
-      as on the board. Three map states, three silhouettes (§21): a locked level is hatched like a
-      wall, an open one is an outline, a completed one is filled with the path colour as §9 asks.
-      What the map *does* borrow from the board is its **material and its height** — the same
-      `tile_face.png` atlas sampled the same way, a body in `board_tile_side`, and `BoardTiles`' own
-      three heights assigned in progress order rather than by kind (C-25, amended). The flower stands
-      on an opaque plate, because the board has a board plane and the map only had an illustration
-      showing through every gap between tiles
+      as on the board. What the map borrows from the board is its **material and its height** — the
+      same `tile_face.png` atlas sampled the same way, a body in `board_tile_side`, and the height
+      C-22 gives the board tile each map state *is*, asked of `BoardTiles.top_ratio` rather than
+      copied (C-25, amended). Three map states, three silhouettes (§21), and the silhouette is the
+      height: a locked level is a **wall**, a completed one is **path** and fills with the path
+      colour as §9 asks, an open one is the **empty cell** a tile can be placed on. That replaced
+      the 45° hatch rather than joining it — five ruled strokes over a drawn stone face read as
+      damage to the drawing. The flower stands on an opaque plate, because the board has a board
+      plane and the map only had an illustration showing through every gap between tiles
       Chapters page on the bumpers — `menu_cycle_prev`/`next`, new in the binding table, because
       left and right are already spoken for by the cone. `tests/unit/test_hex_flower.gd` asserts the
       layout table the way `test_direction.gd` asserts Appendix A (a permutation silently renumbers

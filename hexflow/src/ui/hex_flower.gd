@@ -12,7 +12,7 @@
 ## rule, plus every colour from [Palette]. There is no second hexagon formula in
 ## the codebase, which is what §9's sentence is protecting. Logged as **C-25**.
 ##
-## Nothing allocates in `_draw` (C4): every polygon, hatch line and pip position
+## Nothing allocates in `_draw` (C4): every polygon, body facet and pip position
 ## is built once in [method bind].
 class_name HexFlower
 extends Control
@@ -66,20 +66,24 @@ const TILE_INSET := 0.90
 ## they overlap and the banding follows the lattice, which looks like a bug too.
 const PLATE_SCALE := 1.03
 
-## How tall each state stands, as a fraction of the circumradius — [BoardTiles]'
-## own three heights, so the map's steps are the board's steps rather than a
-## second set of numbers that drift apart from them.
+## Which board tile each map state *is*, so C-22's heights arrive by asking
+## [method BoardTiles.top_ratio] rather than by copying three numbers out of it.
 ##
-## What the height *means* is the one thing that differs, and deliberately. On the
-## board C-22 puts a tile's **kind** in its height and a wall is the tallest thing
-## on it. On the map there are no kinds, only progress, so the same three numbers
-## are assigned in progress order: a locked level is a thin plate, an open one
-## stands up, a finished one stands proudest. Height still rises with "more", it
-## is simply more of something else.
-const HEIGHT := {
-	State.LOCKED: BoardTiles.EMPTY_TOP,
-	State.OPEN: BoardTiles.PATH_TOP,
-	State.DONE: BoardTiles.WALL_TOP,
+## The mapping is the one the player already knows, which is the whole point. A
+## locked level is a **wall**: the tallest thing on the board, and the board's word
+## for not through here. A finished one is **path**, standing proud the way a
+## joined cell does. An open one is an **empty cell**, the thin plate a tile can be
+## placed on — which is exactly what an open level is.
+##
+## So height on the map means what height on the board means, and a player who has
+## learned to read one has learned to read the other. The earlier arrangement had
+## these in progress order — locked lowest, finished tallest — which was tidy and
+## said nothing, because progress is already the thing the colour and the pips are
+## for.
+const KIND := {
+	State.LOCKED: BoardTiles.Kind.WALL,
+	State.OPEN: BoardTiles.Kind.EMPTY,
+	State.DONE: BoardTiles.Kind.PATH,
 }
 
 ## The board's heights are read through §12.3's oblique camera, which foreshortens
@@ -89,8 +93,9 @@ const HEIGHT := {
 const HEIGHT_SCALE := 0.9
 
 ## The tallest body, in circumradii — what [method fit] has to leave room for
-## below the bottom row.
-const MAX_BODY: float = BoardTiles.WALL_TOP * HEIGHT_SCALE
+## below the bottom row. [constant BoardTiles.MAX_TOP] is the board's answer to the
+## same question, which is the one this borrows.
+const MAX_BODY: float = BoardTiles.MAX_TOP * HEIGHT_SCALE
 
 ## `assets/art/tile_face.png` is a 2×2 atlas of drawn hexagon faces (C-26).
 const FACE_CELLS := 2
@@ -103,17 +108,27 @@ const FACE_FILL := 0.98
 ## vertex colour instead and the arithmetic comes out the same.
 const FACE_GAIN := 1.65
 
-## How far a body is pulled toward `board_tile_side` from the colour of its own
-## face. Not all the way: a prism's side is the *same stone* with less light on it,
-## and a body in a flat neutral makes every tile look like a sticker on one block.
-## This is the 2D reading of what `hex_prism.gdshader` does with `side_ink`.
-const BODY_TOWARD_SIDE := 0.62
+## What the atlas reads on average — mid-grey, by construction, since that is the
+## value the multiply is designed to leave alone. A tile's face therefore lands at
+## `fill * FACE_GAIN * FACE_MID` overall, and the body has to be built from *that*
+## rather than from `fill`: shading a side down from the unlit colour left every
+## body brighter than the top it belongs to, which is a solid lit from underneath.
+const FACE_MID := 0.5
 
-## How much lighter the right-hand facet is than the left. The board is lit by one
-## key light from the upper right (`board_key_light`); two facets at one flat value
-## have no light in them at all.
-const BODY_LIGHT := 0.12
-const BODY_SHADE := 0.22
+## How far a body is pulled toward `board_tile_side` from the colour of its own
+## face. Not far: a prism's side is the *same stone* with less light on it, and a
+## body in a flat neutral makes every tile look like a sticker on one block. This
+## is the 2D reading of what `hex_prism.gdshader` does with `side_ink`.
+const BODY_TOWARD_SIDE := 0.35
+
+## How much each facet is shaded below its own top. **Both** are darker, and that
+## is the part worth stating: a side is a face the light reaches less of, so a body
+## brighter than the tile above it reads as a solid lit from underneath. The board
+## is lit by one key light from the upper right (`board_key_light`), so the
+## right-hand facet keeps more of it — the difference between the two is the only
+## thing saying there are two.
+const BODY_SHADE_LIT := 0.14
+const BODY_SHADE_DARK := 0.40
 
 enum State { LOCKED, OPEN, DONE }
 
@@ -130,7 +145,6 @@ var _plates: Dictionary = {}           # Vector3i -> PackedVector2Array, the sur
 var _uvs: Dictionary = {}              # Vector3i -> PackedVector2Array into the face atlas
 var _body: Dictionary = {}             # Vector3i -> [left quad, right quad]
 var _cursor_ring: Dictionary = {}      # Vector3i -> PackedVector2Array
-var _hatch: Dictionary = {}            # Vector3i -> PackedVector2Array of line pairs
 var _pips: Dictionary = {}             # Vector3i -> PackedVector2Array of pip centres
 ## Cell indices sorted back to front. A body hangs below its own tile and has to
 ## be covered by whatever stands in front of it, which on a head-on map is
@@ -173,7 +187,6 @@ func bind(rows: Array[Dictionary], box: Vector2) -> void:
 	_uvs.clear()
 	_body.clear()
 	_cursor_ring.clear()
-	_hatch.clear()
 	_pips.clear()
 	_font_size = maxi(Typography.FLOOR_PX, int(s * 0.42))
 	# C-26's drawn tile top, if this build has one. Optional in exactly the sense
@@ -190,9 +203,8 @@ func bind(rows: Array[Dictionary], box: Vector2) -> void:
 		_polygons[cell] = _hexagon(centre, TILE_INSET)
 		_plates[cell] = _hexagon(centre, PLATE_SCALE)
 		_uvs[cell] = _face_uvs(i + 1)
-		_body[cell] = _body_quads(centre, s * float(HEIGHT[state]) * HEIGHT_SCALE)
+		_body[cell] = _body_quads(centre, s * _height_of(state) * HEIGHT_SCALE)
 		_cursor_ring[cell] = _hexagon(centre, CURSOR_SCALE * CURSOR_GROW)
-		_hatch[cell] = _hatch_lines(centre, s)
 		_pips[cell] = _pip_centres(centre, s)
 
 	# Back to front, so a body is covered by whatever stands in front of it.
@@ -202,6 +214,14 @@ func bind(rows: Array[Dictionary], box: Vector2) -> void:
 	_order.sort_custom(func(a: int, b: int) -> bool:
 		return float(_centres[CELLS[a]].y) < float(_centres[CELLS[b]].y))
 	queue_redraw()
+
+
+## How tall this state stands, in circumradii — the board's own answer for the
+## board tile this state *is* ([constant KIND]). Asked rather than copied, so a
+## retune of C-22's heights moves the map with the board instead of leaving the
+## two to drift.
+func _height_of(state: State) -> float:
+	return BoardTiles.top_ratio(KIND[state] as BoardTiles.Kind)
 
 
 func _state_of(i: int) -> State:
@@ -266,10 +286,13 @@ func _draw() -> void:
 ## surface, the drawn stone face on top of it and the board's own ink around it.
 ##
 ## Three states still get three *silhouettes*, which is what §21 and C-25 are
-## actually asking for — the colour-independent cue is now the height as well as
-## the pattern, and height is the cue C-22 already chose for the board. A locked
-## level is a thin hatched plate, an open one stands up, a completed one stands
-## proudest and takes the path colour §9 asks for.
+## actually asking for — a locked level is a thin plate, an open one stands up, a
+## completed one stands proudest and takes the path colour §9 asks for. The
+## colour-independent cue is the **height**, which is the cue C-22 already chose
+## for the board, with the pip row absent on a locked level saying it a second
+## time. It is not the 45° hatch any more: five ruled strokes over a drawn stone
+## face read as damage to the drawing rather than as a pattern, which is what a
+## hatch stops being the moment the surface under it has a texture of its own.
 func _draw_level(cell: Vector3i, row: Dictionary) -> void:
 	var state: State = row.get("state", State.LOCKED) as State
 	var polygon: PackedVector2Array = _polygons[cell]
@@ -285,14 +308,6 @@ func _draw_level(cell: Vector3i, row: Dictionary) -> void:
 	else:
 		draw_colored_polygon(polygon, fill)
 
-	# §6's hatch, on the locked plate, for the same reason a wall carries one: it is
-	# the cue that survives colour going away, and the map means the same thing by
-	# it that the board does — not through here.
-	if state == State.LOCKED:
-		var lines: PackedVector2Array = _hatch[cell]
-		for i: int in range(0, lines.size(), 2):
-			draw_line(lines[i], lines[i + 1], palette.wall_stroke, 1.5)
-
 	draw_polyline(polygon, _stroke_of(state), STROKE)
 	_draw_number(cell, int(_cell_of[cell]), state)
 	# No pips on a locked level: three hollow circles under every number is a row of
@@ -305,9 +320,18 @@ func _draw_level(cell: Vector3i, row: Dictionary) -> void:
 ## standing on the map rather than a shape printed on it.
 func _draw_body(cell: Vector3i, fill: Color) -> void:
 	var quads: Array = _body[cell]
-	var side: Color = fill.lerp(palette.board_tile_side, BODY_TOWARD_SIDE)
-	draw_colored_polygon(quads[0] as PackedVector2Array, side.darkened(BODY_SHADE))
-	draw_colored_polygon(quads[1] as PackedVector2Array, side.lightened(BODY_LIGHT))
+	var side: Color = _as_lit(fill).lerp(palette.board_tile_side, BODY_TOWARD_SIDE)
+	draw_colored_polygon(quads[0] as PackedVector2Array, side.darkened(BODY_SHADE_DARK))
+	draw_colored_polygon(quads[1] as PackedVector2Array, side.darkened(BODY_SHADE_LIT))
+
+
+## [param fill] as the face pass actually leaves it. With no atlas in the build the
+## face is drawn flat, and this is the identity.
+func _as_lit(fill: Color) -> Color:
+	if _face == null:
+		return fill
+	var k: float = FACE_GAIN * FACE_MID
+	return Color(fill.r * k, fill.g * k, fill.b * k, 1.0)
 
 
 func _fill_of(state: State) -> Color:
@@ -424,18 +448,6 @@ func _face_uvs(index: int) -> PackedVector2Array:
 		var f: Vector2 = p.rotated(turn) / (layout.size * 2.0) * FACE_FILL + Vector2(0.5, 0.5)
 		out.append((cell + f) / float(FACE_CELLS))
 	out.append(out[0])
-	return out
-
-
-## The wall's 45° hatch, same angle and spacing as [BoardView] draws it, because a
-## locked level and a wall mean the same thing to the player: not through here.
-func _hatch_lines(centre: Vector2, s: float) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	var r: float = s * 0.6
-	for i: int in range(-2, 3):
-		var offset := Vector2(float(i) * r * 0.42, 0.0)
-		out.append(centre + offset + Vector2(-r * 0.5, -r * 0.5))
-		out.append(centre + offset + Vector2(r * 0.5, r * 0.5))
 	return out
 
 
