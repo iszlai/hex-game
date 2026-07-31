@@ -22,6 +22,13 @@ const EV_AUTO_SKIPPED := "auto_skipped"
 const EV_GOAL_REACHED := "goal_reached"
 const EV_WON := "won"
 const EV_DEAD := "dead"
+
+## Why a run ended (§5.8). There are four ways to reach `DEAD` and they ask the
+## player for different things — a board that is boxed in wants an undo, a queue
+## that has run dry wants a restart — so the banner cannot say one sentence for all
+## of them without pointing at the wrong half of the screen. Integers, so §19's
+## ban on floats and engine types in `src/core/` is untouched.
+enum Dead { NONE, BUDGET, UNREACHABLE_GOAL, PATH_FROZEN, OUT_OF_TILES }
 const EV_UNDONE := "undone"
 
 var level: Level = null
@@ -34,6 +41,9 @@ var wild_charges: int = 0
 var placements: int = 0
 var history: Array[Move] = []
 var status: Status = Status.PLAYING
+## Why, when [member status] is `DEAD`. Reset by every fresh resolution, so an undo
+## out of a dead board does not leave the last reason lying around.
+var dead_reason: Dead = Dead.NONE
 
 ## Facts produced by the last mutation, oldest first. Drain, do not clear blindly.
 var events: Array = []
@@ -221,16 +231,19 @@ func _commit(kind: Move.Kind, target: Vector3i, anchor: Vector3i, dir: int) -> v
 ## Recomputes [member status] and burns free auto-discards until a placeable tile
 ## is current (§5.7). The player is never charged for an impossible draw.
 func _resolve_turn() -> void:
+	dead_reason = Dead.NONE
 	if Rules.is_won(board, path):
 		_set_status(Status.WON)
 		return
 
 	if level.has_budget() and placements >= level.budget:
+		dead_reason = Dead.BUDGET
 		_set_status(Status.DEAD)
 		return
 
 	# Optimistic bound: a goal outside the flood fill can never be reached.
 	if Rules.has_unreachable_goal(board, path):
+		dead_reason = Dead.UNREACHABLE_GOAL
 		_set_status(Status.DEAD)
 		return
 
@@ -238,6 +251,7 @@ func _resolve_turn() -> void:
 	# so no future draw can ever help. Without this check the auto-discard loop
 	# below would spin forever on an infinite bag stream.
 	if Rules.wild_targets(board, path).is_empty():
+		dead_reason = Dead.PATH_FROZEN
 		_set_status(Status.DEAD)
 		return
 
@@ -245,6 +259,7 @@ func _resolve_turn() -> void:
 		var dir: int = stream.current()
 		if dir == Direction.NONE:
 			# A fixed tile sequence ran out before the goal (§5.8).
+			dead_reason = Dead.OUT_OF_TILES
 			_set_status(Status.DEAD)
 			return
 		if not Rules.legal_targets(board, path, dir).is_empty():
@@ -258,7 +273,7 @@ func _set_status(s: Status) -> void:
 	if s == Status.WON:
 		events.append({"type": EV_WON, "placements": placements})
 	elif s == Status.DEAD:
-		events.append({"type": EV_DEAD})
+		events.append({"type": EV_DEAD, "reason": dead_reason})
 
 
 ## Any path neighbour is a valid anchor for a wild placement; the canonical order

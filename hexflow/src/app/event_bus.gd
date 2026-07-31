@@ -18,7 +18,10 @@ signal wild_charges_changed(charges: int)
 signal move_undone()
 signal legal_targets_changed(targets: Array)
 signal level_won(placements: int, par: int, stars: int)
-signal level_dead()
+## §5.8's dead state, with the reason — four different endings ask the player for
+## different things, and a banner that names the wrong one sends them looking in the
+## wrong half of the screen.
+signal level_dead(reason: int)
 signal illegal_move_attempted(cell: Vector3i)
 
 # --- intents: the view asking the app for something --------------------------

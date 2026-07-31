@@ -248,3 +248,32 @@ func test_restart_reproduces_the_opening_position_byte_for_byte() -> void:
 	var state := GameState.start(lv)
 	state.place(state.legal_targets()[0])
 	assert_eq(state.restart().to_dict(), opening)
+
+
+## §5.8's dead state is recoverable, so the banner's job is to say *which* recovery
+## the player wants — and there are four different endings. A board that is boxed
+## in wants an undo; a queue that has run dry wants a restart. One sentence for all
+## four sends the player looking at the wrong half of the screen, which is exactly
+## what "No route left" did to a run that had simply spent its tiles.
+func test_a_dead_run_says_which_way_it_died() -> void:
+	# Out of tiles: the path can still grow, there is just nothing left to grow it.
+	var short := Fixtures.fixed_level(["NE"] as Array[String])
+	var state := GameState.start(short)
+	assert_true(state.place(state.legal_targets()[0]))
+	assert_eq(state.status, GameState.Status.DEAD)
+	assert_eq(state.dead_reason, GameState.Dead.OUT_OF_TILES,
+		"the queue ran out; the board is fine")
+
+
+## And the reason does not outlive the state it explains. §5.8's whole point is
+## that an undo brings the level back, and a stale reason would have the banner
+## explaining an ending that has been taken back.
+func test_the_reason_is_cleared_by_recovering() -> void:
+	var short := Fixtures.fixed_level(["NE"] as Array[String])
+	var state := GameState.start(short)
+	assert_true(state.place(state.legal_targets()[0]))
+	assert_ne(state.dead_reason, GameState.Dead.NONE)
+
+	assert_true(state.undo())
+	assert_eq(state.status, GameState.Status.PLAYING)
+	assert_eq(state.dead_reason, GameState.Dead.NONE, "the ending was taken back")

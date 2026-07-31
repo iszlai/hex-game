@@ -377,7 +377,7 @@ func _publish(events: Array) -> void:
 			GameState.EV_WON:
 				_on_won(int(ev["placements"]))
 			GameState.EV_DEAD:
-				EventBus.level_dead.emit()
+				EventBus.level_dead.emit(int(ev.get("reason", GameState.Dead.NONE)))
 				_on_dead()
 
 	if state != null:

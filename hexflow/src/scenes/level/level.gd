@@ -784,11 +784,24 @@ func _on_level_won(placements: int, par: int, stars: int) -> void:
 	])
 
 
-func _on_level_dead() -> void:
+## §5.8 makes this recoverable, so the banner's job is to tell the player *which*
+## recovery they want. "No route left" was said for all four endings, and it points
+## at the board — which is the wrong half of the screen when what actually ran out
+## is the tile queue.
+const DEAD_REASONS := {
+	GameState.Dead.BUDGET: "Budget spent",
+	GameState.Dead.UNREACHABLE_GOAL: "A goal is walled off",
+	GameState.Dead.PATH_FROZEN: "The path is boxed in",
+	GameState.Dead.OUT_OF_TILES: "Out of tiles",
+}
+
+
+func _on_level_dead(reason: int) -> void:
 	# Never a hard fail: undo takes the default focus (§5.8).
 	_haptics.play("dead")
 	board_view.play_dead()
-	_flash_banner("No route left — %s undo · %s restart" % [
+	_flash_banner("%s — %s undo · %s restart" % [
+		DEAD_REASONS.get(reason, "No route left"),
 		InputGlyphs.label_for("board_undo"), InputGlyphs.label_for("board_restart")
 	])
 
@@ -925,7 +938,11 @@ func _refresh_hud() -> void:
 	# The pieces say which directions are coming; the captions say how many are
 	# left. A count only means anything for a level whose tile array is fixed —
 	# the endless and daily bags are unbounded by construction (§5.3, C-18).
-	now_label.text = "NOW   %s" % Direction.name_of(state.current_tile())
+	# `Direction.NONE` is a sentinel, not a direction. Printing "NONE" told the
+	# player the name of a constant when what they needed to know was that the queue
+	# is empty — which is the same information the banner now leads with.
+	now_label.text = "NOW   %s" % (Direction.name_of(state.current_tile())
+		if state.current_tile() >= 0 else "—")
 	next_label.text = "NEXT" if state.stream.remaining() < 0 \
 		else "NEXT  %d left" % state.stream.remaining()
 	now_stack.show_tiles([state.current_tile()] as Array[int])
