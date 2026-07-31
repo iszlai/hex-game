@@ -67,6 +67,28 @@ uniform sampler2D grain_map : source_color, filter_linear_mipmap, repeat_enable;
 uniform float grain_strength = 0.0;
 const float GRAIN_SCALE = 2.2;
 
+// The grain is sampled **per tile**, not across the board.
+//
+// It used to be one continuous sheet that the tiles were cut out of, and that is
+// exactly what it looked like: a textured table with hexagons scored into it. A
+// board of slabs wants each slab to be its own piece of stone — its own grain
+// direction, its own patch of the map — which is the difference between a surface
+// with tiles drawn on it and tiles lying on a surface.
+//
+// The variation is hashed from the tile's own origin rather than carried in
+// INSTANCE_CUSTOM, whose four channels are all spoken for. That also makes it
+// stable: a tile's grain is a function of where it is, so it cannot crawl when the
+// board rebuilds or shimmer when the camera turns.
+const float GRAIN_ROTATION = 6.2831853;
+
+vec2 grain_hash(vec2 seed) {
+	// Two decorrelated values in 0..1. Deterministic, and no engine RNG is involved
+	// anywhere near it (C2).
+	float a = fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
+	float b = fract(sin(dot(seed, vec2(39.3468, 11.1357))) * 24634.6345);
+	return vec2(a, b);
+}
+
 uniform bool flat_board = false;
 uniform vec4 hatch_ink : source_color;
 uniform vec4 side_ink : source_color;
@@ -114,6 +136,7 @@ varying flat float depth_along;
 varying flat float ripple_distance;
 varying vec3 world;
 varying flat float tile_width;
+varying flat vec3 tile_origin;
 
 void vertex() {
 	tint = COLOR.rgb;
@@ -125,6 +148,9 @@ void vertex() {
 	// with the board instead of swimming across it as the camera yaws.
 	world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	tile_width = length(MODEL_MATRIX[0].xyz);
+	// Where this tile stands. The grain is keyed off it, so every instance gets its
+	// own piece of stone without a per-instance channel to carry it.
+	tile_origin = MODEL_MATRIX[3].xyz;
 }
 
 void fragment() {
@@ -137,8 +163,16 @@ void fragment() {
 
 	vec3 base = tint;
 	if (grain_strength > 0.0) {
+		// Tile-local, then turned and offset by the tile's own hash, so no two
+		// neighbours show the same piece of the map at the same angle.
+		vec2 local = (world.xz - tile_origin.xz) / (tile_width * GRAIN_SCALE);
+		vec2 h = grain_hash(tile_origin.xz);
+		float angle = h.x * GRAIN_ROTATION;
+		vec2 turned = vec2(
+			local.x * cos(angle) - local.y * sin(angle),
+			local.x * sin(angle) + local.y * cos(angle));
 		// Doubled so 0.5 is neutral: below it darkens, above it lightens.
-		float g = texture(grain_map, world.xz / (tile_width * GRAIN_SCALE)).r * 2.0;
+		float g = texture(grain_map, turned + h * 8.0).r * 2.0;
 		base *= mix(1.0, g, grain_strength);
 	}
 	if (int(kind + 0.5) == KIND_CANDIDATE) {

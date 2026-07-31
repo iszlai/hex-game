@@ -22,13 +22,23 @@ enum Kind { EMPTY = 0, CANDIDATE = 1, PATH = 2, START = 3, WALL = 4 }
 
 ## Tile heights as a fraction of the cell circumradius, so the board keeps its
 ## proportions at every §4.4 size. Ordered, and the order is the point (§21).
-const EMPTY_TOP := 0.16
-const PATH_TOP := 0.28
-const WALL_TOP := 0.52
+## Thickened once, together, keeping every gap between them: C-22 puts a tile's
+## *kind* in its height, so what has to survive a retune is the ordering and the
+## fact that each step is visible from the §12.3 camera — not the numbers. A board
+## of slabs reads as objects lying on a surface; the old set read as a relief cut
+## into one.
+const EMPTY_TOP := 0.26
+const PATH_TOP := 0.42
+const WALL_TOP := 0.74
 
 ## The tallest thing standing on the plane, which the projected fit has to reserve
 ## room for — see [constant BoardView3D.TILE_TOP_RATIO].
 const MAX_TOP := WALL_TOP
+
+## How much of the tile's half-width and height the top chamfer takes. Small: it is
+## a cut edge, not a dome, and anything larger starts eating the face the §6 marks
+## are drawn on.
+const CHAMFER := 0.12
 
 ## Prisms are drawn a little narrower than their cell, so the background shows
 ## between them. This is the 3D board's answer to `cell_empty_stroke`: without it,
@@ -186,27 +196,50 @@ func top_of(cell: Vector3i) -> float:
 ##
 ## `UV.x` is the radial fraction, 0 at the centre of the top face and 1 at the rim;
 ## `UV.y` runs 0 at the plane to 1 at the top.
+##
+## The top is **chamfered** rather than square. A hard 90° edge is what made these
+## read as extruded shapes rather than as cut slabs: the top face and the side meet
+## on one line, so the only thing separating a tile from the one behind it is
+## colour. A chamfer gives the rim its own facet at its own angle to the key light,
+## which is the bright line along the near edge of every tile in a drawn board.
+##
+## Cheaper than rounding the corners, and does the same job at this camera: what
+## reads at 1280×800 is the lit facet, not the curvature of the silhouette.
 static func build_prism_mesh() -> ArrayMesh:
 	var rim: Array[Vector3] = []
+	var lip: Array[Vector3] = []
 	for i: int in range(6):
 		var a := deg_to_rad(60.0 * float(i) - 30.0)
-		rim.append(Vector3(cos(a), 0.0, sin(a)))
+		var out := Vector3(cos(a), 0.0, sin(a))
+		rim.append(out)
+		lip.append(out * (1.0 - CHAMFER))
 
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# Flat shading: without this, `generate_normals` averages the normals of every
 	# face meeting at a corner, and a prism's top face comes out leaning sideways.
 	st.set_smooth_group(-1)
+	var lip_v: float = 1.0 - CHAMFER
 	for i: int in range(6):
 		var a: Vector3 = rim[i]
 		var b: Vector3 = rim[(i + 1) % 6]
-		var a_top := a + Vector3.UP
-		var b_top := b + Vector3.UP
-		# Top face, fanned from the centre.
+		# The chamfer drops from the inset top down and out to the full-width rim.
+		var a_lip: Vector3 = lip[i] + Vector3.UP
+		var b_lip: Vector3 = lip[(i + 1) % 6] + Vector3.UP
+		var a_top: Vector3 = a + Vector3.UP * (1.0 - CHAMFER)
+		var b_top: Vector3 = b + Vector3.UP * (1.0 - CHAMFER)
+		# Top face, fanned from the centre to the inset lip.
 		_add_triangle(st,
-			[Vector3.UP, a_top, b_top],
-			[Vector2(0.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, 1.0)])
-		# Side wall, as two triangles of one quad.
+			[Vector3.UP, a_lip, b_lip],
+			[Vector2(0.0, 1.0), Vector2(lip_v, 1.0), Vector2(lip_v, 1.0)])
+		# The chamfer itself, as two triangles of one quad.
+		_add_triangle(st,
+			[a_lip, a_top, b_top],
+			[Vector2(lip_v, 1.0), Vector2(1.0, 1.0), Vector2(1.0, 1.0)])
+		_add_triangle(st,
+			[a_lip, b_top, b_lip],
+			[Vector2(lip_v, 1.0), Vector2(1.0, 1.0), Vector2(lip_v, 1.0)])
+		# Side wall, from under the chamfer down to the plane.
 		_add_triangle(st,
 			[a_top, a, b],
 			[Vector2(1.0, 1.0), Vector2(1.0, 0.0), Vector2(1.0, 0.0)])

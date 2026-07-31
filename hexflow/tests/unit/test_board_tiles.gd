@@ -298,29 +298,61 @@ func test_the_shake_runs_along_whatever_axis_it_was_given() -> void:
 ## The winding is the engine's, not my reading of it: `generate_normals` derives the
 ## normals from the triangle order, so normals pointing the wrong way is a board
 ## rendered inside out — caught here rather than at the first screenshot.
+##
+## Three bands, since the top is chamfered: the face, the cut edge around it, and
+## the side wall. The chamfer is the one worth asserting — it has to face *both* up
+## and outward, because a facet that faced only one of the two would be either a
+## wider top or a taller side, and in both cases the lit line along the near edge of
+## every tile disappears.
 func test_the_prism_is_wound_so_its_faces_point_outward() -> void:
 	var mesh := BoardTiles.build_prism_mesh()
 	var arrays: Array = mesh.surface_get_arrays(0)
 	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-	assert_eq(verts.size(), 18 * 3, "6 top triangles and 12 side triangles")
+	assert_eq(verts.size(), 30 * 3, "6 top, 12 chamfer and 12 side triangles")
 	assert_eq(normals.size(), verts.size())
 
 	var tops := 0
+	var chamfers := 0
 	var sides := 0
 	for i: int in range(0, verts.size(), 3):
 		var centroid: Vector3 = (verts[i] + verts[i + 1] + verts[i + 2]) / 3.0
 		var n: Vector3 = normals[i]
-		if absf(n.y) > 0.5:
+		var outward := Vector3(centroid.x, 0.0, centroid.z).normalized()
+		if n.y > 0.9:
 			tops += 1
 			assert_almost_eq(n.y, 1.0, 0.001, "the top face must face up")
 			assert_almost_eq(centroid.y, 1.0, 0.001, "and be the top")
+		elif n.y > 0.1:
+			chamfers += 1
+			assert_gt(n.dot(outward), 0.1, "a chamfer must also face away from the centre")
+			assert_gt(centroid.y, 1.0 - BoardTiles.CHAMFER - 0.001,
+				"a chamfer belongs at the top of the tile")
+			assert_lt(centroid.y, 1.0 + 0.001, "and never above it")
 		else:
 			sides += 1
-			var outward := Vector3(centroid.x, 0.0, centroid.z).normalized()
+			assert_almost_eq(n.y, 0.0, 0.001, "a side is vertical")
 			assert_gt(n.dot(outward), 0.9, "a side must face away from the centre")
 	assert_eq(tops, 6, "six top triangles")
+	assert_eq(chamfers, 12, "twelve chamfer triangles")
 	assert_eq(sides, 12, "twelve side triangles")
+
+
+## C-22 reads a tile's kind off its height, so the three have to stay ordered and
+## stay *apart* — a thickening pass that squashed two together would take a channel
+## §21 depends on away without anything failing.
+func test_the_three_heights_stay_ordered_and_legible() -> void:
+	assert_lt(BoardTiles.EMPTY_TOP, BoardTiles.PATH_TOP, "a joined tile stands proud")
+	assert_lt(BoardTiles.PATH_TOP, BoardTiles.WALL_TOP, "a wall stands over both")
+	for pair: Array in [
+		[BoardTiles.EMPTY_TOP, BoardTiles.PATH_TOP],
+		[BoardTiles.PATH_TOP, BoardTiles.WALL_TOP],
+	]:
+		var step: float = float(pair[1]) - float(pair[0])
+		assert_gt(step, 0.1,
+			"a step of %.2f is too small to see from §12.3's camera" % step)
+	assert_eq(BoardTiles.MAX_TOP, BoardTiles.WALL_TOP,
+		"the projected fit reserves room for the tallest thing on the plane")
 
 
 func test_the_prism_is_a_unit_pointy_top_hexagon() -> void:

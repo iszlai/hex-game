@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 517 tests / 16,209 asserts green in ~90 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 518 tests / 16,299 asserts green in ~90 s, 60 frozen
 level files re-verified.
 
 ---
@@ -107,6 +107,13 @@ action rows, and it only fits because the key hints were moved into the legend.
 - [x] `hex_layout.gd` — pointy-top cube↔pixel both ways, floats kept out of core (C-13)
 - [x] `board_view.gd` — `_draw` grey-box, geometry prebuilt in `bind()`, nothing allocates per frame (C4)
 - [x] Every modifier readable by glyph **and** shape **and** colour, never colour alone (C5, §21)
+- [x] Tiles read as **slabs** rather than as a relief cut into one surface — three changes together:
+      the grain is sampled per tile and turned by a hash of the tile's own origin (it was one sheet
+      the hexes were cut out of, and looked it); the top is **chamfered**, so the rim has its own
+      facet at its own angle to the key light instead of meeting the side on one hard line; and the
+      three C-22 heights roughly doubled, keeping their order and their gaps —
+      `test_board_tiles.gd` now asserts that ordering directly, since a thickening pass that
+      squashed two together would quietly cost §21 a channel
 - [x] The **edge** a placement would cross, lit on each candidate — `src/view/board_seams.gd`. The
       tint said *where* a tile may go and could not say *which way in*: a tile is a direction, so
       every candidate is entered from exactly one anchor across one of its six edges (§5.4's
