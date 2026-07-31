@@ -94,6 +94,17 @@
       "material": true
     },
     {
+      "role": "tile_face",
+      "path": "assets/art/tile_face.png",
+      "kind": "image",
+      "want": [
+        1024,
+        1024
+      ],
+      "material": true,
+      "note": "drawn tile top — 2×2 atlas of hexagon faces, a value map"
+    },
+    {
       "role": "logo",
       "path": "assets/art/logo.png",
       "kind": "image",

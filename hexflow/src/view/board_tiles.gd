@@ -535,10 +535,22 @@ func _set_ripple_time(value: float) -> void:
 const GRAIN_STRENGTH := 0.62
 
 
+## How much of the drawn face shows. Full: it *is* the tile's surface, not a wash
+## over one, and anything less leaves the computed rim showing through the drawn
+## one — the two are alternatives, not layers.
+const FACE_STRENGTH := 1.0
+
+
 func _apply_grain(mat: ShaderMaterial) -> void:
 	var grain: Texture2D = Art.tile_grain()
 	mat.set_shader_parameter("grain_map", grain)
 	mat.set_shader_parameter("grain_strength", GRAIN_STRENGTH if grain != null else 0.0)
+	# The drawn top (C-26), if the build has one. Optional in the same sense as
+	# every other art file here: without it the board draws its computed outline
+	# and loses nothing it depends on.
+	var face: Texture2D = Art.tile_face()
+	mat.set_shader_parameter("face_map", face)
+	mat.set_shader_parameter("face_strength", FACE_STRENGTH if face != null else 0.0)
 
 
 ## §21's escape hatch (C-24): with [param flat] the board takes no light, so a
@@ -556,6 +568,12 @@ func set_flat(flat: bool) -> void:
 	# setting on to avoid.
 	mat.set_shader_parameter("grain_strength", 0.0 if flat else
 		(GRAIN_STRENGTH if Art.tile_grain() != null else 0.0))
+	# And the drawn face with it, for the same reason and one more: the drawing
+	# carries its own light and shade, and §21's flat board is a request to be shown
+	# the palette rather than a rendering of it. What is left is the computed
+	# outline, which is a shape rather than a shading.
+	mat.set_shader_parameter("face_strength", 0.0 if flat else
+		(FACE_STRENGTH if Art.tile_face() != null else 0.0))
 
 
 ## §14.1's candidate breathing, at §14.5's discretion: the period when it runs, and

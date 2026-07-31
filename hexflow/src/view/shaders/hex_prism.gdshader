@@ -104,6 +104,26 @@ uniform vec4 side_ink : source_color;
 // second thing to keep in step for no gain.
 uniform vec4 tile_ink : source_color;
 
+// C-26's drawn tile top (optional): a 2x2 atlas of hexagon faces, sampled across
+// the face rather than tiled over it, so what the player sees on a tile is a
+// *drawing* — hand-drawn outline, rim, light-and-shadow split, halftone screening
+// the shadow — instead of a lit polygon with a computed ring on it.
+//
+// A value map like everything else here, so the palette still supplies the colour
+// (§13.2). One drawing is the brown wall, the gold goal and the pale path.
+//
+// Four cells, and a hexagon is symmetric under a sixth of a turn, so each is used
+// at six rotations: twenty-four appearances from four drawings, which is what
+// stops sixty tiles wearing the same crack.
+uniform sampler2D face_map : source_color, filter_linear_mipmap;
+uniform float face_strength = 0.0;
+const float FACE_CELLS = 2.0;
+const float FACE_TURN = 1.0471976;   // 60 degrees
+// The art is drawn pointy-top, the same way round as the lattice, so there is no
+// half-step to make. It is a constant rather than nothing because the next sheet
+// may not be — `cut_faces.py` reports which way each one was drawn.
+const float FACE_ALIGN = 0.0;
+
 // Where the silhouette is drawn, and how much of the rim it takes.
 const float OUTLINE_AT = 1.0;
 const float OUTLINE_W = 0.05;
@@ -216,11 +236,31 @@ void fragment() {
 			1.0 - smoothstep(HATCH_DUTY - aa, HATCH_DUTY + aa, wave));
 	}
 
+	// The drawn face, when the build has one. It replaces the computed outline and
+	// plate below rather than joining them — two rims on one tile, one ruled and one
+	// drawn, is worse than either.
+	float drawn = 0.0;
+	if (face_strength > 0.0 && up > 0.35) {
+		vec2 h = grain_hash(tile_origin.xz);
+		float cell = floor(h.x * FACE_CELLS * FACE_CELLS);
+		float angle = FACE_ALIGN + floor(h.y * 6.0) * FACE_TURN;
+		vec2 local = (world.xz - tile_origin.xz) / tile_width;
+		vec2 turned = vec2(
+			local.x * cos(angle) - local.y * sin(angle),
+			local.x * sin(angle) + local.y * cos(angle));
+		// Into the cell, held a hair inside it so a mip cannot fetch its neighbour.
+		vec2 f = clamp(turned * 0.5 + 0.5, 0.004, 0.996);
+		vec2 at = (vec2(mod(cell, FACE_CELLS), floor(cell / FACE_CELLS)) + f) / FACE_CELLS;
+		float v = texture(face_map, at).r * 2.0;
+		drawn = smoothstep(0.35, 0.75, up) * face_strength;
+		base *= mix(1.0, v, drawn);
+	}
+
 	// The plate and its outline, on the face only: a side is already dark and is
 	// separated from its neighbour by the gap between prisms, so an outline there
 	// would be ink on ink. Drawn after the hatch so a wall is outlined too rather
 	// than having its outline hatched over.
-	if (up > 0.35) {
+	if (up > 0.35 && drawn <= 0.0) {
 		float face = smoothstep(0.35, 0.75, up);
 		// Inside the seam the face is lifted a little, which is what makes the rim
 		// around it read as standing proud rather than as a drawn ring.

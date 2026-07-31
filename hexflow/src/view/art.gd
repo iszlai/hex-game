@@ -23,6 +23,9 @@ const TINT_FRAME := "surface_frame"
 const TINT_FILL := "surface_panel"
 
 const TILE_GRAIN := DIR + "tile_grain.png"
+## C-26's drawn tile top: a 2x2 atlas of hexagon faces, ink and screentone baked
+## in as values. Optional — with no file the board keeps its procedural outline.
+const TILE_FACE := DIR + "tile_face.png"
 const PANEL_FRAME := DIR + "panel_frame.png"
 const PANEL_FILL := DIR + "panel_fill.png"
 ## §13.7's 9-slice inset, matching the corner `tools/make_art.gd` draws.
@@ -42,6 +45,10 @@ static func backdrop(chapter: int = 0) -> Texture2D:
 ## palette's and this only says how the light falls on it.
 static func tile_grain() -> Texture2D:
 	return _load(TILE_GRAIN)
+
+
+static func tile_face() -> Texture2D:
+	return _load(TILE_FACE)
 
 
 static func panel_frame() -> Texture2D:

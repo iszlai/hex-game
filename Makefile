@@ -45,7 +45,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels sfx art glyphs marks marks-cut panels-cut grain-cut assets assets-add assets-ui shot measure \
+        test-file gate levels sfx art glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
         playtest playtest-restore \
         clean clean-levels legacy-branch status
 
@@ -162,6 +162,10 @@ panels-cut: ## Cut a drawn panel into a nine-slice texture. FILE=~/f.png AS=pane
 grain-cut: ## Turn a drawn stone texture into the board's value map. FILE=~/stone.png
 	@test -n "$(FILE)" || { echo "usage: make grain-cut FILE=~/stone.png"; exit 1; }
 	@python3 $(PROJECT)/tools/cut_grain.py "$(FILE)" $(PROJECT)/assets/art/tile_grain.png
+
+faces-cut: ## Cut a 2x2 sheet of drawn hex tiles into the face atlas. FILE=~/tiles.png
+	@test -n "$(FILE)" || { echo "usage: make faces-cut FILE=~/tiles.png"; exit 1; }
+	@python3 $(PROJECT)/tools/cut_faces.py "$(FILE)" $(PROJECT)/assets/art/tile_face.png
 
 assets: check ## What art and audio the game has, and what it is missing. ROLE=glyphs for one group's files
 	@$(RUN_CMD) --headless -s res://tools/assets.gd -- status "$(or $(ROLE),)"
