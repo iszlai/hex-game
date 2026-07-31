@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 526 tests / 16,333 asserts green in ~90 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 528 tests / 16,400 asserts green in ~90 s, 60 frozen
 level files re-verified.
 
 ---
@@ -488,7 +488,8 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       is written in 24×24 units and scaled once, so "2 px stroke on a 24 grid" holds at every drawn
       size, and `tests/unit/test_icon.gd` asserts the family: nine icons, none off the grid, none too
       small to sit beside the others, and no two the same drawing. The four rail icons are live;
-      the legend's rows still use text glyphs
+      the legend's rows use them too now — they had been text glyphs, and `⬢ ⬡ ◍ ⌸ ▨ ⌾` are in
+      none of the three faces §13.4 vendors, so the whole panel drew as empty boxes
 - [x] Real §12.3 HUD layout: 56 px top bar, 400 px rail, 140 px NOW tile, 72 px NEXT, 56 px banner —
       the last thing on the level screen that was still M3's. The band sizes are constants in
       `level.gd` rather than numbers in the scene, because §12.3's diagram is *dimensioned* and a

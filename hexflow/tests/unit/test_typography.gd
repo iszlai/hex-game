@@ -111,3 +111,72 @@ func test_scaling_the_theme_scales_every_role_in_it() -> void:
 		var name: String = Typography.variation_for(role as Typography.Role)
 		assert_gt(large.get_font_size("font_size", name), small.get_font_size("font_size", name),
 			"%s did not grow with the scale" % name)
+
+
+## Every character the interface puts on screen has to be one the font can draw.
+##
+## This is a bug that shows as nothing. A face missing a glyph renders an empty box,
+## the build is green, the tests pass, and the only way to find out is to look at
+## the right screen. It had been true for a while: Space Grotesk has no ★, so the
+## results card drew its three stars as three boxes; the legend's ⬢⬡◍⌸▨⌾ are in
+## none of the three vendored faces, so the whole panel was boxes.
+##
+## The source is scanned rather than a list being kept here, because a list is a
+## thing to forget to update and the next decorative character will be added by
+## someone who has never read this file.
+const SCAN_DIRS := ["res://src/ui/", "res://src/scenes/", "res://src/view/"]
+
+
+func _decorative_characters() -> Dictionary:
+	var found: Dictionary = {}
+	for dir: String in SCAN_DIRS:
+		_scan(dir, found)
+	return found
+
+
+func _scan(dir: String, found: Dictionary) -> void:
+	for sub: String in DirAccess.get_directories_at(dir):
+		_scan(dir + sub + "/", found)
+	for file: String in DirAccess.get_files_at(dir):
+		if not file.ends_with(".gd"):
+			continue
+		for line: String in FileAccess.get_file_as_string(dir + file).split("\n"):
+			var trimmed := line.strip_edges()
+			if trimmed.begins_with("#"):
+				continue  # documentation, never drawn
+			var parts: PackedStringArray = line.split("\"")
+			for i: int in range(1, parts.size(), 2):
+				for c: String in parts[i]:
+					# Above the punctuation the prose uses; those are in every face.
+					if c.unicode_at(0) > 0x2000:
+						found[c] = "%s%s" % [dir.get_file(), file]
+
+
+func test_every_character_the_interface_draws_can_be_drawn() -> void:
+	var found: Dictionary = _decorative_characters()
+	assert_gt(found.size(), 0, "the scan found nothing, so it is not scanning")
+
+	var missing: Array[String] = []
+	for c: String in found:
+		var covered := false
+		for role: Variant in Typography.ROLES:
+			if Typography.font_of(role).has_char(c.unicode_at(0)):
+				covered = true
+				break
+		if not covered:
+			missing.append("%s (U+%04X, %s)" % [c, c.unicode_at(0), found[c]])
+	assert_eq(missing, [] as Array[String],
+		"no vendored face can draw these, so they render as empty boxes")
+
+
+## And drawable by the role that actually draws them — a character only Inter has is
+## still a box in a heading. The fallback chain is what makes this hold, so this is
+## the test that would fail if it were ever dropped.
+func test_every_role_can_draw_every_character() -> void:
+	var found: Dictionary = _decorative_characters()
+	for role: Variant in Typography.ROLES:
+		var font := Typography.font_of(role)
+		for c: String in found:
+			assert_true(font.has_char(c.unicode_at(0)),
+				"%s cannot draw %s (U+%04X, from %s)" % [
+					Typography.Role.keys()[role], c, c.unicode_at(0), found[c]])

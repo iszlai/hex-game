@@ -16,17 +16,28 @@
 class_name LegendPanel
 extends PanelContainer
 
-## `[glyph, name, colour-independent cue, palette token]`. The palette token is
-## the *colour* channel only; the glyph and the cue are what carry the meaning.
+## `[icon, name, colour-independent cue, palette token]`. The palette token is the
+## *colour* channel only; the icon and the cue are what carry the meaning.
+##
+## The first column is an [Icon] — §13.5's vector paths — and not a character.
+## It used to be `⬢ ⬡ ◍ ⌸ ▨ ⌾`, and **none of those is in any face this project
+## vendors**, so the entire panel drew as empty boxes and nothing failed. Which is
+## the argument for the icons in the first place: a drawing does not depend on
+## whether a type designer thought a hexagon was worth including.
+##
+## Path, Target and Cursor share the hexagon, because what tells them apart on the
+## board is fill and stroke weight rather than shape — so the cue column says so,
+## and that is the channel §21 asks for.
 const ROWS := [
-	["◎", "Goal", "inner ring + target glyph", "goal_cell"],
-	["▨", "Wall", "45° hatching, never enterable", "wall_stroke"],
-	["⌸", "Gate", "single ring; needs two path neighbours", "gate"],
-	["◍", "Portal", "two concentric rings, dashed tether to its twin", "portal"],
-	["★", "Wild", "star glyph; grants a charge when entered", "wild"],
-	["⬢", "Path", "filled, gradient deepening from the start", "path_core"],
-	["⬡", "Target", "heavier stroke — a legal move for this tile", "cell_candidate_stroke"],
-	["⌾", "Cursor", "outline standing outside the cell", "focus"],
+	[Icon.Kind.GOAL, "Goal", "inner ring + target glyph", "goal_cell"],
+	[Icon.Kind.WALL, "Wall", "45° hatching, never enterable", "wall_stroke"],
+	[Icon.Kind.GATE, "Gate", "single ring; needs two path neighbours", "gate"],
+	[Icon.Kind.PORTAL, "Portal", "two concentric rings, dashed tether to its twin", "portal"],
+	[Icon.Kind.WILD, "Wild", "star glyph; grants a charge when entered", "wild"],
+	[Icon.Kind.HEXAGON, "Path", "filled, gradient deepening from the start", "path_core"],
+	[Icon.Kind.HEXAGON, "Target", "heavier stroke — a legal move for this tile",
+		"cell_candidate_stroke"],
+	[Icon.Kind.HEXAGON, "Cursor", "outline standing outside the cell", "focus"],
 ]
 
 ## `[name, action]`, or `[name, modifier, action]` for a chord. The glyph column
@@ -99,11 +110,10 @@ func _row(row: Array) -> HBoxContainer:
 	var box := HBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
 
-	var glyph := Label.new()
-	glyph.text = str(row[0])
-	glyph.custom_minimum_size = Vector2(28.0, 0.0)
-	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	glyph.add_theme_color_override("font_color", _colour(str(row[3])))
+	var glyph := Icon.new()
+	glyph.kind = row[0] as Icon.Kind
+	glyph.colour = _colour(str(row[3]))
+	glyph.custom_minimum_size = Vector2(28.0, Icon.GRID)
 	box.add_child(glyph)
 
 	var name_label := Label.new()

@@ -58,6 +58,7 @@ static func size_of(role: Role, scale: float = 1.0) -> int:
 static func font_of(role: Role) -> FontVariation:
 	var base := FontFile.new()
 	base.load_dynamic_font(DIR + str(ROLES[role]["family"]) + ".ttf")
+	base.fallbacks = _fallbacks(str(ROLES[role]["family"]))
 	var variation := FontVariation.new()
 	variation.base_font = base
 	variation.variation_opentype = {"wght": int(ROLES[role]["weight"])}
@@ -68,6 +69,29 @@ static func font_of(role: Role) -> FontVariation:
 		var ts := TextServerManager.get_primary_interface()
 		variation.opentype_features = {ts.name_to_tag("tnum"): 1}
 	return variation
+
+
+## The other two families, behind whichever one this role uses.
+##
+## Not a nicety. A display face is chosen for its letters and carries almost no
+## symbols: Space Grotesk has no ★, so the results card — which is set in Display —
+## drew its three stars as three empty boxes, and nothing failed. The legend, the
+## streak pips and the legend button were the same story in other faces.
+##
+## A fallback chain is the general answer rather than hunting for characters every
+## face happens to share, and it is what makes §13.4's families *replaceable*: the
+## next display face will have its own gaps and they will be covered the same way.
+## What it cannot cover is a character no vendored face has at all —
+## `tests/unit/test_typography.gd` is what catches those, because they are silent.
+static func _fallbacks(family: String) -> Array[Font]:
+	var out: Array[Font] = []
+	for other: String in ["Inter", "JetBrainsMono", "SpaceGrotesk"]:
+		if other == family:
+			continue
+		var font := FontFile.new()
+		font.load_dynamic_font(DIR + other + ".ttf")
+		out.append(font)
+	return out
 
 
 ## One theme carrying all five roles: the default type is Body, and each other role

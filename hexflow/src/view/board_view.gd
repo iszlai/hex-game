@@ -129,13 +129,17 @@ func _draw_cell(c: Vector3i) -> void:
 	# alone (§21). The grey-box uses text glyphs; M7 swaps in the icon atlas.
 	if _board.is_goal(c):
 		_draw_ring(centre, palette.goal_cell, 0.62)
-		_draw_glyph(centre, "◎", palette.goal_cell)
+		# `●`, not `◎`. The bullseye is in none of the three faces §13.4 vendors, so
+		# it drew as an empty box — and the grey-box's whole job is to keep working.
+		# The ring above already supplies the outer circle a bullseye would have.
+		_draw_glyph(centre, "●", palette.goal_cell)
 	if _board.is_portal(c):
 		_draw_ring(centre, palette.portal, 0.68)
 		_draw_ring(centre, palette.portal, 0.46)
 	if _board.is_gate(c):
 		_draw_ring(centre, palette.gate, 0.58)
-		_draw_glyph(centre, "⌸", palette.gate)
+		# `□` for the same reason as the goal above: `⌸` is in no vendored face.
+		_draw_glyph(centre, "□", palette.gate)
 	if _board.is_wild(c):
 		_draw_glyph(centre, "★", palette.wild)
 
