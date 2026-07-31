@@ -12,17 +12,35 @@ stale. Progress lives in [`TODO.md`](../../TODO.md), not here.
 ```sh
 make assets-ui     the desk in a browser — every slot, with previews; drop files onto them
 make assets        the same thing as a table, for a terminal
+make assets ROLE=glyphs    one group, file by file: what each is for and what to make
 make assets-add FILE=~/Downloads/x.png AS=chapter_3
 ```
 
 `make assets-ui` is the one to use when the question is "which chapter does this
-painting belong to" — it shows them. The terminal version is better when the
-question is "what is still missing".
+painting belong to" — it shows them. It has five desks, because it is five
+different questions:
+
+| Desk | Answers |
+|---|---|
+| **Art** | which painting is which chapter, and is it big enough |
+| **Glyphs** | which of §11.4's 52 files is which button, one tile per file |
+| **Sound** | what each of §15.2's sixteen is *for*, playable, with the brief beside it |
+| **Type** | what the three faces look like, rendered in the file actually on disk at §13.4's role sizes |
+| **Colour** | every palette token, edited in place, measured live against §21's floors |
+
+The terminal version is better when the question is "what is still missing".
 
 Both read `tools/asset_manifest.json`, which is this document in the form a machine can check — it names every
 role, whether the file is there, its real dimensions and what is still wanted.
 `assets-add` puts a file where the game looks for it and **copies rather than
 moves**, so the original stays in your Downloads folder.
+
+Where a breakdown already exists inside the project, both tools **read** it rather
+than restate it: the glyph list comes from `src/data/input_glyphs.json`, the colour
+tokens from `src/view/palette.gd`, and the palette checks from the test that
+enforces them. What is left over — the sixteen sound briefs, the three type roles —
+is held against the game's own tables by `tests/unit/test_asset_manifest.gd`, so a
+brief for a file nothing loads fails the build rather than wasting your afternoon.
 
 Prose goes stale silently; the command cannot. Where the two disagree, run the
 command.
@@ -100,7 +118,8 @@ than drawn by hand — a glyph cannot end up disagreeing with the label it repla
 
 `make glyphs` renders all 52 and **never overwrites a file that exists**, so a licensed pack replaces
 them by landing in the folder, one file or all of them. `make glyphs FRESH=1` re-renders over the top
-when you actually mean to.
+when you actually mean to. Run `make assets ROLE=glyphs` for the file-by-file list, or drop them onto
+the tiles in `make assets-ui`.
 
 What is drawn is legible before it is pretty: a circle for a face button, a bumper for a shoulder, a
 pill for View/Menu, four arrows for the D-pad, and PlayStation's ✕○□△ and the Switch's −/+ as the
@@ -114,6 +133,12 @@ Licensing differs per platform holder — check before shipping any pack, includ
 
 No files. A palette is a Godot resource of **29 tokens**; the list of tokens is fixed by
 [`src/view/palette.gd`](../src/view/palette.gd) and may not shrink.
+
+Because there is nothing to deliver, the Colour desk in `make assets-ui` **edits them in place**:
+pick a palette, pick a token, and the value is written straight into the `.tres`. It shows the same
+pairs the test below measures — simulating the deficiency each palette is for — so a change that
+breaks a floor says so before `make test` does. Only the test is the gate; the desk is the fast
+answer.
 
 | Palette | File | Status | Notes |
 |---|---|---|---|
@@ -242,13 +267,18 @@ lengthens every string.
 
 ## Sizes, so far
 
+Run `make assets` for the live figure; these go stale.
+
 | | Size |
 |---|---|
-| Art (8 files) | 1.4 MB |
+| Art (10 files) | 16.5 MB — six painted backdrops and a 1024² logo, none downsampled yet |
+| Music (6 beds) | 2.9 MB |
 | Fonts (3 families) | 1.2 MB |
-| Sound effects (16) | 328 KB |
-| Music | 0 — not built |
+| Controller glyphs (52) | 208 KB |
+| Sound effects (16) | 264 KB |
 | **Budget** | §20: ≤ 100 MB texture memory, ≤ 250 MB per platform build |
 
-Music and full-resolution painted backdrops are the two things that will actually move these numbers.
-Neither has been measured, and §20's texture row was rewritten by C-26 to stop claiming it was free.
+The painted art is now the whole story: 16.5 MB of PNG against a 250 MB build budget is comfortable,
+but it is seven files at more than 2 MB each and none has been through a compressor. §20's texture
+row was rewritten by C-26 to stop claiming this was free, and it still has not been measured on a
+Deck.

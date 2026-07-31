@@ -169,24 +169,64 @@
       "role": "sfx",
       "dir": "assets/sfx/",
       "ext": ".wav",
+      "kind": "audio",
       "want": 16,
-      "note": "§15.2's sixteen effects (synthesised placeholders)"
+      "note": "§15.2's sixteen effects (synthesised placeholders)",
+      "brief": "Mono WAV. The character column is §15.2's, verbatim — it is the brief, not a description of what is there now.",
+      "items": [
+        {"name": "ui_move", "for": "Focus / cursor move", "make": "Short soft tick, 40 ms", "bus": "UI"},
+        {"name": "ui_confirm", "for": "Menu confirm", "make": "Warm two-tone blip", "bus": "UI"},
+        {"name": "ui_back", "for": "Menu back", "make": "Downward blip", "bus": "UI"},
+        {"name": "ui_reject", "for": "Illegal / rejection", "make": "Muted low thud, no harshness", "bus": "UI"},
+        {"name": "place_note", "for": "Placement commit", "make": "ONE glass/marimba tone — the game pitches it up a pentatonic scale as the path grows. Do not supply sixteen notes", "bus": "SFX"},
+        {"name": "place_connector", "for": "Connector draw", "make": "Soft airy swell, layered under place_note", "bus": "SFX"},
+        {"name": "tile_advance", "for": "Queue advance", "make": "Light paper/glass slide", "bus": "SFX"},
+        {"name": "tile_discard", "for": "Voluntary discard", "make": "Short descending sweep", "bus": "SFX"},
+        {"name": "tile_autoskip", "for": "Free auto-discard", "make": "Airy upward whoosh — deliberately NOT a failure sound", "bus": "SFX"},
+        {"name": "goal_reach", "for": "Goal reached", "make": "Resolving major chord + shimmer", "bus": "SFX"},
+        {"name": "level_win", "for": "All goals reached", "make": "4-note motif, chapter-keyed", "bus": "SFX"},
+        {"name": "level_dead", "for": "Dead state", "make": "Single low sustained tone, no sting", "bus": "SFX"},
+        {"name": "star_award", "for": "Each star", "make": "Rising chime, 3 pitches", "bus": "SFX"},
+        {"name": "wild_pickup", "for": "Wild charge gained", "make": "Bright bell", "bus": "SFX"},
+        {"name": "portal_link", "for": "Portal twin joins", "make": "Reverse-reverb pop", "bus": "SFX"},
+        {"name": "gate_open", "for": "Gate satisfied", "make": "Two-stage mechanical click", "bus": "SFX"}
+      ]
     },
     {
       "role": "fonts",
       "dir": "assets/fonts/",
       "ext": ".ttf",
+      "kind": "font",
       "want": 3,
-      "note": "§13.4's three families"
+      "note": "§13.4's three families",
+      "brief": "A replacement must be SIL OFL or equivalent, must carry a real `wght` axis (Medium and Bold are a variation, not a second file), and must land with its licence beside it.",
+      "items": [
+        {"name": "SpaceGrotesk", "for": "Display, Heading", "make": "Display face. Wide-set, confident; carries the title block and the chapter names", "licence": "LICENSE-spacegrotesk.txt",
+          "roles": [{"role": "DISPLAY", "size": 48, "weight": 700}, {"role": "HEADING", "size": 32, "weight": 500}]},
+        {"name": "Inter", "for": "Body, Caption", "make": "Reading face. Must hold up at §13.4's 18 px floor on a 7-inch screen", "licence": "LICENSE-inter.txt",
+          "roles": [{"role": "BODY", "size": 24, "weight": 500}, {"role": "CAPTION", "size": 18, "weight": 400}]},
+        {"name": "JetBrainsMono", "for": "Numeral", "make": "Numerals only. TABULAR FIGURES are mandatory — a proportional 1 makes every counter in the game jitter as it counts", "licence": "LICENSE-jetbrainsmono.txt",
+          "roles": [{"role": "NUMERAL", "size": 24, "weight": 500}]}
+      ]
     },
     {
       "role": "glyphs",
       "dir": "assets/glyphs/",
       "ext": ".png",
+      "kind": "image",
       "want": 52,
-      "note": "§11.4 · 13 slots × 4 controller families"
+      "want_size": [48, 48],
+      "note": "§11.4 · 13 slots × 4 controller families",
+      "brief": "White on transparent — tinted by `text_primary` at runtime, so a glyph that arrives already coloured is coloured in all six palettes. 48×48 for a 24 px slot. Licensing differs per platform holder: check before shipping any pack.",
+      "derive": "glyphs"
     }
   ],
+  "colour": {
+    "note": "§13.2's tokens, §21's palettes. No file to deliver — a palette is a decision, so the desk edits it in place rather than asking for an upload.",
+    "tokens": "src/view/palette.gd",
+    "dir": "src/data/palettes/",
+    "checks": "tests/unit/test_palette_vision.gd"
+  },
   "extensions": {
     "image": [
       ".png"
@@ -194,6 +234,9 @@
     "audio": [
       ".ogg",
       ".wav"
+    ],
+    "font": [
+      ".ttf"
     ]
   }
 }

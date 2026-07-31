@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 488 tests / 15,987 asserts green in ~90 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 493 tests / 16,043 asserts green in ~90 s, 60 frozen
 level files re-verified.
 
 ---
@@ -675,8 +675,11 @@ chapter 1 without incident.
 
 ## Cross-cutting debt
 
-- [ ] `assets/` is an empty tree — `fonts/`, `sfx/`, `music/`, `icons/`, `glyphs/`, `i18n/` all
-      unpopulated. §13.4 requires the fonts vendored before M7.
+- [ ] `assets/i18n/` is still empty, pending the M10 extraction. The rest of the tree is populated:
+      `fonts/` (3 vendored), `sfx/` (16 synthesised), `music/` (6 beds, stems still owed),
+      `art/` (6 painted backdrops, 3 generated surfaces, the logo) and `glyphs/` (52 placeholders).
+      `icons/` stays empty by design — §13.5's nine are vector paths drawn in code.
+      `make assets` is the answer to what is here; `make assets-ui` is the one with the pictures in it
 - [ ] `src/scenes/{main_menu,level_select,results,run_summary,settings}/` are empty directories.
       `GameDirector.SCENES` names all seven screens and `go_to()` silently no-ops on the five that
       do not resolve — harmless now, a silent dead end once something calls them.

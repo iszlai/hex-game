@@ -22,6 +22,9 @@ extends SceneTree
 ## that it cannot.
 const MANIFEST := "res://tools/asset_manifest.json"
 
+## Where the glyph breakdown is derived from, for the same reason.
+const GLYPH_ATLAS := "res://src/data/input_glyphs.json"
+
 static var _manifest: Dictionary = {}
 
 
@@ -44,6 +47,37 @@ static func groups() -> Array:
 	return manifest().get("groups", []) as Array
 
 
+## Every file a group wants, as `{name, for, make}`.
+##
+## A group with `derive` names a file that already knows the answer, and that file
+## wins: §11.4's 52 glyphs are 13 slots × 4 families *because `input_glyphs.json`
+## says so*, and a manifest that listed them separately would be a second opinion
+## the game never reads. Everything else carries its own `items`, which
+## `tests/unit/test_asset_manifest.gd` holds against the game's own tables.
+static func items_of(group: Dictionary) -> Array:
+	if str(group.get("derive", "")) == "glyphs":
+		return glyph_items()
+	return group.get("items", []) as Array
+
+
+static func glyph_items() -> Array:
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(GLYPH_ATLAS)) != OK:
+		push_error("%s is unreadable" % GLYPH_ATLAS)
+		return []
+	var out: Array = []
+	for entry: Variant in ((json.data as Dictionary).get("families", []) as Array):
+		var family: Dictionary = entry
+		var labels: Dictionary = family["labels"]
+		for slot: Variant in labels:
+			out.append({
+				"name": "%s_%s" % [family["name"], slot],
+				"for": str(slot),
+				"make": 'the button the game writes as "%s"' % labels[slot],
+			})
+	return out
+
+
 static func extensions() -> Dictionary:
 	return manifest().get("extensions", {}) as Dictionary
 
@@ -63,7 +97,11 @@ func _initialize() -> void:
 		"add":
 			_add(args[1] if args.size() > 1 else "", args[2] if args.size() > 2 else "")
 		_:
-			_status()
+			var role: String = args[1] if args.size() > 1 else ""
+			if role != "":
+				_breakdown(role)
+			else:
+				_status()
 	quit()
 
 
@@ -87,14 +125,24 @@ func _status() -> void:
 
 	for entry: Variant in groups():
 		var group: Dictionary = entry
-		var found: int = _count(res(str(group["dir"])), str(group["ext"]))
-		var want: int = int(group["want"])
-		var state: String = "here" if found >= want else ("%d of %d" % [found, want])
-		if found < want:
+		var absent: Array[String] = _absent(group)
+		var want: int = items_of(group).size()
+		var found: int = want - absent.size()
+		var state: String = "here" if absent.is_empty() else ("%d of %d" % [found, want])
+		if not absent.is_empty():
 			missing.append(str(group["role"]))
 		bytes += _bytes_in(res(str(group["dir"])))
 		print("  %-18s %-11s %s" % [group["role"], state, group["note"]])
+		# The count alone answers "is it done" and not "what do I make next", which
+		# is the question someone reading this actually has.
+		if not absent.is_empty():
+			print("  %-18s %-11s %s" % ["", "", "missing: " + _wrap(absent)])
+		var extra: Array[String] = _extras(group)
+		if not extra.is_empty():
+			print("  %-18s %-11s %s" % ["", "", "nothing asked for: " + _wrap(extra)])
 
+	print("")
+	print("  a group's own breakdown, file by file:  make assets ROLE=glyphs")
 	print("")
 	print("  %d of %d roles present · %.1f MB on disk"
 		% [assets().size() + groups().size() - missing.size(),
@@ -120,6 +168,88 @@ func _detail(spec: Dictionary) -> String:
 	var warn: String = "" if got.x >= want.x and got.y >= want.y \
 		else "  (under %dx%d)" % [want.x, want.y]
 	return "%dx%d · %s%s" % [got.x, got.y, size, warn]
+
+
+# --- breakdown -----------------------------------------------------------------
+
+## One group, file by file — what each slot is for and what to make for it.
+##
+## `make assets` says "52 of 52 glyphs"; this says which file is `deck_select` and
+## that it stands for the button the Deck calls **View**. The browser desk shows the
+## same thing with the pictures in it (`make assets-ui`), and both read this table,
+## because the two disagreeing would be worse than either alone.
+func _breakdown(role: String) -> void:
+	var group: Dictionary = _group_for(role)
+	if group.is_empty():
+		print("no such group: %s" % role)
+		print("groups: %s" % ", ".join(_group_roles()))
+		return
+
+	var items: Array = items_of(group)
+	print("")
+	print("  %s — %s" % [group["role"], group["note"]])
+	if group.has("brief"):
+		print("  %s" % group["brief"])
+	print("")
+	print("  FILE                          FOR                  WHAT TO MAKE")
+	print("  ─────────────────────────────────────────────────────────────────────────────")
+	for entry: Variant in items:
+		var item: Dictionary = entry
+		var file: String = str(item["name"]) + str(group["ext"])
+		var path: String = res(str(group["dir"]) + file)
+		var mark: String = " " if FileAccess.file_exists(path) else "*"
+		print("  %s %-27s %-20s %s" % [mark, file, item["for"], item["make"]])
+	print("")
+	print("  * = not here yet · drop one in with")
+	print("    cp yourfile%s %s%s" % [group["ext"], group["dir"], "<file above>"])
+	print("")
+
+
+func _group_for(role: String) -> Dictionary:
+	for entry: Variant in groups():
+		if str((entry as Dictionary)["role"]) == role:
+			return entry
+	return {}
+
+
+func _group_roles() -> Array[String]:
+	var out: Array[String] = []
+	for entry: Variant in groups():
+		out.append(str((entry as Dictionary)["role"]))
+	return out
+
+
+## The files a group wants and does not have.
+func _absent(group: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	for entry: Variant in items_of(group):
+		var file: String = str((entry as Dictionary)["name"]) + str(group["ext"])
+		if not FileAccess.file_exists(res(str(group["dir"]) + file)):
+			out.append(file)
+	return out
+
+
+## Files in the folder that the manifest never asked for. Usually a name typo, and
+## a typo the game will silently ignore is exactly what a checker is for.
+func _extras(group: Dictionary) -> Array[String]:
+	var wanted: Dictionary = {}
+	for entry: Variant in items_of(group):
+		wanted[str((entry as Dictionary)["name"]) + str(group["ext"])] = true
+	var dir: String = res(str(group["dir"]))
+	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(dir)):
+		return []
+	var out: Array[String] = []
+	for file: String in DirAccess.get_files_at(dir):
+		if file.ends_with(str(group["ext"])) and not wanted.has(file):
+			out.append(file)
+	return out
+
+
+## A list that stays inside a terminal: the first few, then a count.
+func _wrap(names: Array[String]) -> String:
+	if names.size() <= 6:
+		return ", ".join(names)
+	return "%s … and %d more" % [", ".join(names.slice(0, 6)), names.size() - 6]
 
 
 # --- add -----------------------------------------------------------------------
