@@ -293,10 +293,10 @@
       "brief": "A replacement must be SIL OFL or equivalent, must carry a real `wght` axis (Medium and Bold are a variation, not a second file), and must land with its licence beside it. The display and heading faces are characterful and carry few symbols; the families fall back to one another so a missing glyph is drawn rather than boxed.",
       "items": [
         {
-          "name": "Cinzel",
+          "name": "BelligerentMadness",
           "for": "Display",
-          "make": "Roman inscriptional capitals — a title cut into stone, which is what a cairn is (C-30)",
-          "licence": "LICENSE-cinzel.txt",
+          "make": "Hand-drawn display face. STATIC — no weight axis, and C-30 exempts it: at one size on one screen there is nothing to vary. Its licence requires attribution and the fontmonkey URL to ship beside it",
+          "licence": "LICENSE-belligerentmadness.txt",
           "roles": [
             {
               "role": "DISPLAY",

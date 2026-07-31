@@ -55,11 +55,24 @@ func test_every_family_ships_with_its_open_licence() -> void:
 			"%s.ttf is not vendored" % family)
 	# One licence per family, all SIL OFL (§13.4 admits no other kind).
 	for licence: String in ["LICENSE-inter.txt", "LICENSE-jetbrainsmono.txt",
-			"LICENSE-cinzel.txt", "LICENSE-caveat.txt"]:
+			"LICENSE-caveat.txt"]:
 		var path: String = DIR + licence
 		assert_true(FileAccess.file_exists(path), "%s is missing" % licence)
 		assert_true(FileAccess.get_file_as_string(path).contains("SIL OPEN FONT LICENSE"),
 			"%s is not the OFL" % licence)
+
+	# The display face is the one exception §13.4 admits (C-30): free for commercial
+	# use, but under the Font Monkey licence rather than the OFL, and that licence
+	# has conditions the OFL does not. It requires the licence, an attribution and
+	# the fontmonkey URL to travel with the files — so the check is that they are
+	# actually there, not merely that a licence file exists. A condition nobody
+	# verifies is a condition being breached at the next release.
+	var display: String = DIR + "LICENSE-belligerentmadness.txt"
+	assert_true(FileAccess.file_exists(display), "the display face ships no licence")
+	var text: String = FileAccess.get_file_as_string(display)
+	assert_true(text.contains("P.D. Magnus"), "the licence requires attribution to the author")
+	assert_true(text.contains("fontmonkey.com"), "the licence requires the fontmonkey URL")
+	assert_true(text.contains("commercial"), "and it has to be the licence that permits this")
 
 
 func test_each_role_loads_at_its_own_weight() -> void:

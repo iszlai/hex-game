@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://ctneccb5se765"
-path="res://.godot/imported/Cinzel.ttf-1e003c02bd9f5caf99829299b24c9916.fontdata"
+uid="uid://dfjf0bf4j42sq"
+path="res://.godot/imported/BelligerentMadness.ttf-8cd67ed4a4b0ef26ba5c47975454beef.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/Cinzel.ttf"
-dest_files=["res://.godot/imported/Cinzel.ttf-1e003c02bd9f5caf99829299b24c9916.fontdata"]
+source_file="res://assets/fonts/BelligerentMadness.ttf"
+dest_files=["res://.godot/imported/BelligerentMadness.ttf-8cd67ed4a4b0ef26ba5c47975454beef.fontdata"]
 
 [params]
 

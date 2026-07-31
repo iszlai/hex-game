@@ -23,7 +23,11 @@ const ROLES := {
 	# 800, not 700: Caveat's axis stops at 700 and it needs all of it to read as
 	# handwriting rather than as a scrawl, so the display face has to sit above that
 	# to keep the hierarchy §13.4's table is.
-	Role.DISPLAY: {"family": "Cinzel", "weight": 800, "size": 48},
+	# Belligerent Madness is a **static** face — no `wght` axis, which §13.4 asks of
+	# every family and C-30 exempts this one from. The weight below is the table's
+	# hierarchy rather than an instruction the file can follow: at one size, on one
+	# screen, a display face has nothing to vary.
+	Role.DISPLAY: {"family": "BelligerentMadness", "weight": 800, "size": 48},
 	Role.HEADING: {"family": "Caveat", "weight": 700, "size": 32},
 	Role.BODY: {"family": "Inter", "weight": 500, "size": 24},
 	Role.CAPTION: {"family": "Inter", "weight": 400, "size": 18},
@@ -95,7 +99,7 @@ static func _fallbacks(family: String) -> Array[Font]:
 	var out: Array[Font] = []
 	# Inter first: it carries by far the most symbols of the four, so it answers
 	# most gaps before the others are asked.
-	for other: String in ["Inter", "JetBrainsMono", "Cinzel", "Caveat"]:
+	for other: String in ["Inter", "JetBrainsMono", "Caveat", "BelligerentMadness"]:
 		if other == family:
 			continue
 		var font := FontFile.new()

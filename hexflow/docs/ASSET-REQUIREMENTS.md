@@ -241,8 +241,8 @@ the repository.
 
 ## 4. Type — done, one item outstanding
 
-Four variable fonts are vendored under `hexflow/assets/fonts/`, all SIL OFL, with their licences:
-**Cinzel** (display), **Caveat** (headings), **Inter** (body, captions), **JetBrains Mono**
+Four fonts are vendored under `hexflow/assets/fonts/`, three SIL OFL and one Font Monkey, all with their licences:
+**Belligerent Madness** (display), **Caveat** (headings), **Inter** (body, captions), **JetBrains Mono**
 (numerals, tabular). C-30 changed the first two: §13.4's original Space Grotesk belonged to the
 minimalist direction C-26 replaced, and the game had become carved timber and painted stone with an
 interface lettered like a dashboard.
