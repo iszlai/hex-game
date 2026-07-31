@@ -60,25 +60,31 @@ func _links_only() -> Array:
 	return out
 
 
-## C-28: the route is built as the player plays and **not drawn**. The path is
-## read off the filled cells; two lit cells sitting next to each other are already
-## saying they are joined, and the line was saying it twice.
-func test_the_route_is_built_as_it_is_played_and_not_drawn() -> void:
+## C-30: the route is drawn as it is built. C-28 had it hidden until the level was
+## won, on the argument that two filled cells side by side already say they are
+## joined — which holds for a line and §5.1 makes the path a *tree*. On one that
+## has doubled back, two adjacent filled cells are frequently not joined at all,
+## and `board_seams.gd` had already conceded exactly that argument for candidates.
+func test_the_route_is_drawn_as_it_is_built() -> void:
 	assert_eq(_links.count(), 0, "nothing is joined yet")
-	assert_eq(_links.multimesh.visible_instance_count, 0)
+	assert_eq(_links.multimesh.visible_instance_count, 0, "and nothing drawn")
 	for i: int in range(4):
 		_place_along_the_route(1)
-		assert_eq(_links.count(), i + 1, "one bar per step, built and ready")
-		assert_eq(_links.multimesh.visible_instance_count, 0,
-			"and none of them drawn while the level is still being played")
+		assert_eq(_links.count(), i + 1, "one bar per step")
+		assert_eq(_links.multimesh.visible_instance_count, i + 1,
+			"and every one of them on screen the moment it is made")
 
 
-## C-28's payoff, and the whole reason the connectors still exist: on the winning
-## move the route draws itself from the start out to the goal.
-func test_the_win_draws_the_route_from_the_start_outward() -> void:
+## The payoff, which C-30 turns from a reveal into a reprise: on the winning move
+## the route redraws itself from the start out to the goal, in the order it means
+## rather than the order the player happened to build it in.
+func test_the_win_redraws_the_route_from_the_start_outward() -> void:
 	_place_along_the_route(4)
-	assert_eq(_links.multimesh.visible_instance_count, 0)
+	assert_eq(_links.multimesh.visible_instance_count, _links.count(),
+		"the line was there the whole time")
 
+	_links.set_trace(0.0)
+	assert_eq(_links.multimesh.visible_instance_count, 0, "the reprise starts empty")
 	_links.set_trace(0.5)
 	var half: int = _links.multimesh.visible_instance_count
 	assert_gt(half, 0, "half way through, half the route is on screen")
@@ -194,7 +200,8 @@ func test_undo_shortens_the_stroke() -> void:
 	assert_true(_state.undo(), "the fixture must be undoable")
 	_view.rebuild()
 	assert_eq(_links.count(), before - 1, "the undone step is no longer in the route")
-	assert_eq(_links.multimesh.visible_instance_count, 0, "and nothing is drawn during play")
+	assert_eq(_links.multimesh.visible_instance_count, before - 1,
+		"and the drawn line is shorter by one, not merely the buffer behind it")
 
 
 ## A portal jump is not a lattice step and must not draw like one (§6): dashes, and
@@ -352,36 +359,42 @@ func test_the_bar_is_a_unit_cube_wound_outward() -> void:
 			"face at %v must point away from the centre" % centroid)
 
 
-## C-28: while the route is hidden, §14.1's connector draw has nothing to draw and
-## must not quietly rewrite an instance the player cannot see.
-func test_the_connector_draw_does_nothing_while_the_route_is_hidden() -> void:
+## §14.1's connector draw has a job again under C-30 — it is the beat that runs on
+## every placement rather than only after the level is over. The bar it grows is
+## the newest one and only the newest one: the rest of the ribbon is already there
+## and must not flicker when one more joins it.
+func test_the_connector_draw_grows_only_the_newest_bar() -> void:
 	_place_along_the_route(3)
 	var last: int = _links.count() - 1
-	var before: Transform3D = _links.transform_of(last)
+	assert_gt(last, 0, "there is a settled bar behind the newest one")
+	var settled: Transform3D = _links.transform_of(last - 1)
+
 	_links.draw_newest()
-	assert_eq(_links.draw_progress(last), 1.0, "there is no partial bar during play")
-	assert_eq(_links.transform_of(last), before, "and nothing was touched")
+	assert_eq(_links.draw_progress(last), 0.0, "the newest bar starts from nothing")
+	assert_eq(_links.draw_progress(last - 1), 1.0, "the one before it is whole")
+	assert_eq(_links.transform_of(last - 1), settled, "and was not touched")
 
 
-## C-28's trace belongs to the level that was won, not to the renderer.
+## A board that is rebound mid-trace does not inherit the trace, and under C-30
+## that is no longer a reset to zero — it is a reset to *drawing whatever route
+## this board has*, which on a fresh one is none.
 ##
-## §7.2's endless run is the case that catches this: reaching a goal *is* the next
-## stage, so the board rebinds while the same node plays on. A trace left at one
-## would have every stage after the first opening with its whole route already
-## drawn — which is exactly what a run looked like before this line existed.
-func test_the_trace_does_not_survive_into_the_next_board() -> void:
+## §7.2's endless run is the case that catches it: reaching a goal *is* the next
+## stage, so the board rebinds while the same node plays on. Left mid-reprise, the
+## next stage would open showing a fraction of a route it does not have.
+func test_a_rebound_board_draws_its_own_route_and_not_the_last_one() -> void:
 	_place_along_the_route(4)
-	_links.set_trace(1.0)
-	assert_eq(_links.multimesh.visible_instance_count, _links.count())
+	_links.set_trace(0.5)
+	assert_lt(_links.multimesh.visible_instance_count, _links.count(), "mid-reprise")
 
 	# A new board on the **same node** — which is the whole point. `_bind` would
 	# build a fresh view and a fresh view has nothing to carry over; endless keeps
 	# the one it has and hands it board after board.
 	_state = GameState.start(Fixtures.fixed_level(Fixtures.shortest_route_tiles()))
 	_view.bind(_state, PLAY)
-	assert_eq(_links.traced(), 0.0, "a new board has nothing traced yet")
+	assert_eq(_links.traced(), 1.0, "a new board draws what it has")
 	assert_eq(_links.multimesh.visible_instance_count, 0,
-		"and the buffer agrees — this is what a second endless stage looked like")
+		"which on a board nobody has played is nothing")
 	_place_along_the_route(2)
-	assert_eq(_links.multimesh.visible_instance_count, 0,
-		"and it is being played, not being shown off")
+	assert_eq(_links.multimesh.visible_instance_count, 2,
+		"and then exactly the two steps that were taken on it")

@@ -422,6 +422,17 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       it faint) — two channels that are not colour. The buffer is sized once for the longest path the
       board can hold and drawn with `visible_instance_count`, so a placement rewrites instances and
       an undo shortens the stroke rather than leaving the undone step lit.
+      **C-28 is reversed by C-30 (2026-07-31).** For one step the ribbon was not drawn at all during
+      play — only traced on the winning move — on the argument that two filled cells side by side
+      already say they are joined. That is true of a line and §5.1 makes the path a *tree*: on a
+      route that has doubled back the two adjacent filled cells are frequently not joined, and
+      `board_seams.gd` had already conceded exactly that argument one layer earlier, lighting a
+      candidate's entry edge because the cell it connects from "is genuinely ambiguous". Committing
+      the move freezes the ambiguity rather than resolving it. So the connector draws as it is made,
+      §14.1's `connector_draw` beat has a job on every placement again, and the win trace is kept as
+      a **reprise** — the same line redrawn start to goal, of something the player watched grow.
+      Which also gives §2.1's pitch, §13.1's "single continuous line of light" and the game's own
+      name something on screen to refer to.
       **Not built:** §6 also gives a portal a standing "faint tether line to twin", visible before it
       is used. Only *traversed* jumps are drawn, as in the grey-box. Harmless while every campaign
       level ships exactly one pair, ambiguous the moment one ships two

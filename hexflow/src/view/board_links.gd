@@ -72,11 +72,22 @@ var _state: GameState = null
 var _layout: HexLayout = null
 var _depth: Dictionary = {}
 
-## C-28: how much of the route is drawn, 0 to 1. Zero for the whole of play — the
-## path is read off the filled cells — and driven to one by [method play_trace]
-## when the level is won, so the line the player built runs start to goal once,
-## as the thing they get for finishing.
-var _traced: float = 0.0
+## How much of the route is drawn, 0 to 1.
+##
+## **One for the whole of play** — the connector is drawn as the placement that
+## makes it is made. C-28 had this at zero and revealed the ribbon only on the
+## winning move; **amended by C-30**, because the reasoning did not survive being
+## looked at. Two filled cells side by side say they are joined *if the path is a
+## line*, and §5.1 makes it a tree: on a path that has doubled back, two adjacent
+## filled cells are frequently not joined at all. The board already conceded this
+## argument for candidates — `board_seams.gd` lights the entry edge precisely
+## because "the cell a given candidate connects from is genuinely ambiguous" — and
+## the ambiguity does not go away once the move is committed.
+##
+## [method play_trace] still runs on the winning move. It is a reprise now rather
+## than a reveal: the same line, redrawn start to goal, of something the player
+## watched grow.
+var _traced: float = 1.0
 var _segments: Array = []    # of [Vector3 from, Vector3 to, Kind, Color]
 ## §14.1's connector draw, mid-flight: how much of the newest bar exists yet.
 var _drawing: float = 1.0
@@ -95,12 +106,11 @@ func bind(state: GameState, layout: HexLayout, tiles: BoardTiles) -> void:
 	_board = state.board
 	_layout = layout
 	_tiles = tiles
-	# C-28's trace belongs to the level that was won, not to the renderer. Without
-	# this, §7.2's endless run — where reaching a goal *is* the next stage, so the
-	# board rebinds while the same node keeps playing — shows every stage after the
-	# first with its route already drawn. A restart and the next campaign level have
-	# the same shape and would have had the same bug.
-	_traced = 0.0
+	# A fresh board draws whatever route it already has, which on a new level is
+	# none — so this is 1.0 rather than 0.0 (C-30). The case the old reset existed
+	# for is handled by the route itself being empty: §7.2's endless run rebinds
+	# while the same node keeps playing, and the next stage starts with no edges.
+	_traced = 1.0
 
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -225,12 +235,6 @@ func _links() -> Array:
 func draw_newest() -> void:
 	if multimesh == null or _segments.is_empty():
 		return
-	# C-28: nothing to grow while the route is hidden. §14.1's `connector_draw` row
-	# stays in the table and stays wired — it runs when the trace has revealed the
-	# ribbon, which is after the level is over — but during play the placement's
-	# feedback is the tile pop, not a bar nobody can see.
-	if _traced <= 0.0:
-		return
 	# Set to zero *now*, not on the tween's first step. A tween does not run until
 	# the next idle frame, so the bar would otherwise be drawn at full length for
 	# one frame and then snap back to nothing to grow again.
@@ -270,9 +274,11 @@ func _visible_count() -> int:
 	return mini(shown, multimesh.instance_count)
 
 
-## C-28's payoff: on the winning move the connectors arrive in path order, so the
-## route the player built draws itself from the start out to the goal. It is the
-## one time the line exists, which is what makes it worth watching.
+## The payoff: on the winning move the connectors arrive in path order, so the
+## route the player built redraws itself from the start out to the goal. Under
+## C-30 this is a reprise rather than a reveal — the line was there the whole time
+## and this is the run of it, in the order it means rather than the order the
+## player happened to build it in.
 func play_trace() -> void:
 	if multimesh == null or _segments.is_empty():
 		return
