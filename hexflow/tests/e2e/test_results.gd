@@ -213,3 +213,57 @@ func _clear_navigated_scenes() -> void:
 		if child.scene_file_path.begins_with("res://src/scenes/"):
 			get_tree().root.remove_child(child)
 			child.queue_free()
+
+
+## §14.1's last unwitnessed row: three stars at 260 ms, `BACK`/`EASE_OUT`, staggered
+## 140 ms apart.
+##
+## The animation was built and nothing had ever watched it run, which is the state
+## the checklist rule exists for — code existing is not the criterion. What is
+## asserted is the part a player would notice if it broke: the stars arrive **one
+## after another** rather than together, and each lands at full size.
+func test_the_stars_arrive_one_at_a_time() -> void:
+	SettingsService.set_value("reduce_motion", false)
+	_win(1, 1)
+	await wait_seconds(Motion.beat_seconds("results") + 0.2)
+	await _open()
+
+	var labels: Array = _scene.get("_star_labels")
+	var earned: int = int(GameDirector.last_result["stars"])
+	assert_eq(earned, Scoring.MAX_STARS, "the solution script plays par")
+	assert_eq(labels.size(), Scoring.MAX_STARS, "three slots, always")
+
+	# The stagger itself is **not** raced here. A headless frame is longer than
+	# 140 ms, so a mid-flight sample lands wherever the frame boundary falls, and
+	# `BACK`/`EASE_OUT` overshoots past 1.0 on the way — two ways to read a settled
+	# star as a moving one and vice versa. The table's stagger is asserted in
+	# `test_motion.gd`; what this test is for is that the row plays at all and
+	# lands where it should.
+	await wait_seconds(
+		float(Motion.RESULTS_STAR_STAGGER_MS * Scoring.MAX_STARS) / 1000.0
+		+ Motion.seconds("results_star") + 0.3)
+	for i: int in range(earned):
+		assert_almost_eq((labels[i] as Label).scale.x, 1.0, 0.02,
+			"star %d settles at full size" % i)
+
+
+## An unearned star is drawn hollow and at rest. §14.1 animates what was *earned* —
+## a star that arrived and then turned out not to be there is a promise the card
+## cannot keep.
+func test_an_unearned_star_is_shown_but_never_played() -> void:
+	SettingsService.set_value("reduce_motion", false)
+	GameDirector.last_result = {
+		"mode": GameDirector.Mode.CAMPAIGN, "chapter": 1, "index": 1,
+		"placements": 99, "par": 4, "stars": 1, "hints": 0, "won": true,
+	}
+	await _open()
+
+	var labels: Array = _scene.get("_star_labels")
+	await wait_seconds(
+		float(Motion.RESULTS_STAR_STAGGER_MS * Scoring.MAX_STARS) / 1000.0
+		+ Motion.seconds("results_star") + 0.3)
+	assert_eq((labels[0] as Label).text, "★", "the one that was earned is filled")
+	for i: int in range(1, Scoring.MAX_STARS):
+		assert_eq((labels[i] as Label).text, "☆", "star %d is hollow" % i)
+		assert_almost_eq((labels[i] as Label).scale.x, 1.0, 0.001,
+			"and sits at rest rather than having been played")
