@@ -112,9 +112,9 @@ func test_a_seam_runs_across_the_step_it_marks() -> void:
 			"the seam for %s runs along its step instead of across it" % nearest)
 
 
-## It stands on the taller of the two tiles. A seam sunk into the side of a raised
-## path tile is invisible from this camera at exactly the moment it matters.
-func test_a_seam_clears_both_tiles_it_divides() -> void:
+## The wash lies on the **candidate's** own face — it marks the cell being offered,
+## so it belongs at that cell's height rather than at the taller neighbour's.
+func test_a_seam_lies_on_the_candidate_it_offers() -> void:
 	var targets: Array[Vector3i] = _targets()
 	_view.set_candidates(targets)
 	for i: int in range(_view.seams.count()):
@@ -126,9 +126,10 @@ func test_a_seam_clears_both_tiles_it_divides() -> void:
 			if d < best:
 				best = d
 				nearest = t
-		var anchor: Vector3i = _state.anchor_of(nearest)
-		var top: float = maxf(_view.tiles.top_of(anchor), _view.tiles.top_of(nearest))
-		assert_gt(centre.y, top, "the seam for %s is sunk into a tile" % nearest)
+		var top: float = _view.tiles.top_of(nearest)
+		assert_gt(centre.y, top, "the seam for %s is sunk into its own tile" % nearest)
+		assert_lt(centre.y, top + _view.layout.size * 0.05,
+			"the seam for %s floats above the face it washes" % nearest)
 
 
 ## C4: the buffer is sized for the worst case once, and a new candidate set rewrites
@@ -184,3 +185,29 @@ func test_a_forked_path_gets_one_correct_seam_per_anchor() -> void:
 		assert_true(found, "no seam on the edge %s would be entered by" % t)
 	assert_gt(anchors.size(), 1,
 		"the fixture is meant to reach these from different cells")
+
+
+## The wash reaches *into* the candidate, not back over the path cell it came from.
+## Its local z is the direction it spreads, and the far end of it has to sit nearer
+## the candidate's centre than the boundary does.
+func test_the_wash_spreads_into_the_cell_being_offered() -> void:
+	var targets: Array[Vector3i] = _fork()
+	_view.set_candidates(targets)
+	var layout: HexLayout = _view.layout
+	for t: Vector3i in targets:
+		var anchor: Vector3i = _state.anchor_of(t)
+		var a: Vector3 = layout.to_plane(anchor)
+		var b: Vector3 = layout.to_plane(t)
+		var boundary := Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5)
+		for i: int in range(_view.seams.count()):
+			var xf: Transform3D = _view.seams.transform_of(i)
+			if boundary.distance_to(Vector2(xf.origin.x, xf.origin.z)) > 0.001:
+				continue
+			var far: Vector3 = xf.origin + xf.basis.z
+			var centre := Vector2(b.x, b.z)
+			assert_lt(centre.distance_to(Vector2(far.x, far.z)),
+				centre.distance_to(boundary),
+				"the wash for %s spreads backwards over %s" % [t, anchor])
+			# And it stops short of crossing the cell: a lit edge, not a lit cell.
+			assert_lt(xf.basis.z.length(), layout.size * 0.87,
+				"the wash for %s reaches past the middle of the cell" % t)

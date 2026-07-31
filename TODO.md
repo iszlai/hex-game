@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 516 tests / 16,201 asserts green in ~90 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 517 tests / 16,209 asserts green in ~90 s, 60 frozen
 level files re-verified.
 
 ---
@@ -114,7 +114,9 @@ action rows, and it only fits because the key hints were moved into the legend.
       genuinely ambiguous. Which edge is not decided in the view — `GameState.anchor_of()` is asked,
       because it is what the commit uses, and a second opinion there could promise an edge the rules
       then do not take. Drawn in `path_core` rather than the candidate token: it is a ghost of the
-      connector that replaces it a moment later
+      connector that replaces it a moment later. A **wash**, not a bar — `seam_bleed.gdshader` lights
+      the candidate from that edge and fades inward, because a bar has hard ends and read as a chip
+      wedged in the crevice rather than as a way in
 - [x] `palette.gd` + `neon_dark.tres` indirection — no hardcoded colours
 - [x] `input_router.gd` — snap-to-candidate and free cursor, ±75° cone, clockwise cycling (§11.2)
 - [x] Keyboard bindings; mouse click-to-place through `HexLayout.from_pixel` (closes B7) — the
