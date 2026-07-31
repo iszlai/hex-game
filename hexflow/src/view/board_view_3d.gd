@@ -293,6 +293,10 @@ func _ensure_nodes() -> void:
 	# The board gets a world of its own so nothing else in the scene can light it
 	# or appear in it by accident.
 	viewport.own_world_3d = true
+	# §13.7: the board plays *over* the chapter's painted backdrop, so the viewport
+	# clears to nothing rather than to a colour. Without this the board is an opaque
+	# 880-px rectangle and the picture behind it is only ever visible in the margins.
+	viewport.transparent_bg = true
 	add_child(viewport)
 	camera = BoardCamera.new()
 	camera.name = "BoardCamera"
@@ -347,7 +351,10 @@ func _add_lighting() -> void:
 	viewport.add_child(key)
 
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
+	# `BG_CANVAS` rather than `BG_COLOR`: a colour background would paint over the
+	# transparency the viewport was just given. The tiles still light normally —
+	# what changes is only what is behind them (C-26, §13.7).
+	env.background_mode = Environment.BG_CANVAS
 	env.background_color = palette.bg_deep
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = palette.board_ambient
