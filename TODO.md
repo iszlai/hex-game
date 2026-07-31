@@ -25,7 +25,7 @@ level files re-verified.
 | M4 | Input & Deck | ✅ done | — |
 | M5 | Persistence & settings | ✅ done | — |
 | M6 | Campaign data | ✅ done | — |
-| M7 | Art & feel | 🟨 board + rail | greyscale under lighting, fonts, all §14 animation, all §15 audio |
+| M7 | Art & feel | 🟨 art in, audio short | §15.1's stems and §15.3's loudness; C-3's renderer decision |
 | M8 | Tutorial | 🟨 built, unplayed | the naive playtest, which *is* the exit criterion |
 | M9 | Modes & Steam | 🟨 screens done | GodotSteam, achievements, leaderboards |
 | M10 | Accessibility & i18n | ⬜ not started | palettes, text scale, Reduce Motion, extraction |
@@ -502,8 +502,8 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       the left and its binding on the right, as §12.3 draws it, and the top bar carries a **live**
       star band: what the run is worth right now, so a player one placement from dropping a star can
       see it before they spend it
-- [ ] Every §14.1 timing, exactly as tabulated — **the table is built and pinned**, the animations
-      mostly are not. `src/view/motion.gd` holds all fourteen rows as data the way Appendix A's
+- [x] Every §14.1 timing, exactly as tabulated — the table is pinned **and every row of it now
+      drives something**. `src/view/motion.gd` holds all fourteen rows as data the way Appendix A's
       directions are, so a tween built anywhere reads its duration *and* its curve from one place;
       `tests/unit/test_motion.gd` asserts every row against §14.1 and would fail a silent retune.
       **Wired so far:** candidate breathing and the goal pulse, both in the shader off `TIME` so

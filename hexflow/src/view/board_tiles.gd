@@ -523,9 +523,16 @@ func _set_ripple_time(value: float) -> void:
 ## zero without it, which is exactly how the board rendered before — §13.6's
 ## replaceability rule cuts both ways, and `make art` may never have run here.
 ##
-## The grain is deliberately *quiet*: it is a material, not a pattern, and the two
-## cues the board cannot afford to blur are §6's wall hatch and C-22's heights.
-const GRAIN_STRENGTH := 0.35
+## How much of the material shows through. Raised from 0.35 once the halftone
+## screen arrived: at a third it read as dirt on the tiles rather than as the
+## printed surface it is meant to be.
+##
+## Still bounded by what it must not blur, which is the reason a number here is not
+## just taste: §6's wall hatch and C-22's heights are both *cues*, and a material
+## loud enough to compete with either would be trading a channel §21 depends on for
+## a texture. `test_board_tiles.gd` holds the hatch's own contrast, so pushing this
+## too far fails rather than merely looking busy.
+const GRAIN_STRENGTH := 0.62
 
 
 func _apply_grain(mat: ShaderMaterial) -> void:
