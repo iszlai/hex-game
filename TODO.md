@@ -528,6 +528,14 @@ naive playtest, not a self-assessment. **Everything is built; the exit criterion
 the playtest is the criterion and nobody has run one. Do not tick this milestone on the strength of
 the checklist below.
 
+**To run it: `make playtest`**, which moves your own save aside — every beat writes a flag the moment
+it is shown, and yours have been set by weeks of playing and by the test suite, so launching normally
+shows a tutorial that has already happened. `make playtest-restore` puts it back; nothing is deleted.
+The protocol, and what each beat has to actually *achieve* rather than merely display, is
+[`hexflow/docs/PLAYTEST.md`](hexflow/docs/PLAYTEST.md). **Write the result here when it happens** —
+including a failure, which is the more useful of the two outcomes because it names the next thing to
+build rather than leaving it to be guessed at.
+
 - [x] `src/data/tutorial.json` — beats are **data**, never hardcoded in level scripts (§10) — twelve
       rows in a table `tests/unit/test_tutorial.gd` diffs against §10.2, the way Appendix A's
       directions and §14.1's timings are. `src/app/tutorial.gd` decides *which* beat is live and the

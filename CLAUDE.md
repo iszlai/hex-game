@@ -55,6 +55,7 @@ make godot   # fetch the pinned engine into .tools/
 make run     # play it
 make test    # whole suite, ~50 s
 make gate    # everything CI runs — before every push
+make playtest # play as a first-time player; your save is moved aside, not deleted
 make         # list targets
 ```
 
