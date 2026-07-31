@@ -61,10 +61,14 @@ const SYMBOLS := ["✕", "○", "□", "△", "−", "+"]
 
 ## A 3×5 uppercase face, written so the letterforms are visible in the source. At
 ## four letters this is 2 px per cell on the 48 px glyph and still reads; at one it
-## is 6. Bitmap rather than a real font because `Font.draw_string` needs a canvas
+## is 5. Bitmap rather than a real font because `Font.draw_string` needs a canvas
 ## item, and a headless authoring step has none.
 const FONT := {
-	"A": ["_#_", "#_#", "###", "#_#", "#_#"],
+	# A, V, X and Y are drawn flat-topped and cross-barred rather than pointed. The
+	# pointed forms put a single cell diagonally adjacent to the rest of the letter,
+	# which is invisible at one pixel per cell and reads as a **floating dot** at
+	# five — an "A" that looks like an "Å".
+	"A": ["###", "#_#", "###", "#_#", "#_#"],
 	"B": ["##_", "#_#", "##_", "#_#", "##_"],
 	"C": ["_##", "#__", "#__", "#__", "_##"],
 	"D": ["##_", "#_#", "#_#", "#_#", "##_"],
@@ -85,10 +89,13 @@ const FONT := {
 	"S": ["_##", "#__", "_#_", "__#", "##_"],
 	"T": ["###", "_#_", "_#_", "_#_", "_#_"],
 	"U": ["#_#", "#_#", "#_#", "#_#", "###"],
-	"V": ["#_#", "#_#", "#_#", "#_#", "_#_"],
+	"V": ["#_#", "#_#", "#_#", "###", "_#_"],
 	"W": ["#_#", "#_#", "###", "###", "#_#"],
+	# X keeps its diagonal join. The letter *is* two diagonals, so a corner-to-corner
+	# contact at the waist reads as an X rather than as a gap — barring it the way A's
+	# apex is barred turns it into a bowtie.
 	"X": ["#_#", "#_#", "_#_", "#_#", "#_#"],
-	"Y": ["#_#", "#_#", "_#_", "_#_", "_#_"],
+	"Y": ["#_#", "###", "_#_", "_#_", "_#_"],
 	"Z": ["###", "__#", "_#_", "#__", "###"],
 	"0": ["###", "#_#", "#_#", "#_#", "###"],
 	"1": ["_#_", "##_", "_#_", "_#_", "###"],
@@ -101,10 +108,6 @@ const FONT := {
 	"8": ["_#_", "#_#", "_#_", "#_#", "_#_"],
 	"9": ["_#_", "#_#", "_##", "__#", "##_"],
 }
-
-## Cell size by label length, so one letter fills the button and four still fit
-## inside it. The steps are chosen against the narrowest outline (the pill).
-const CELL := {1: 6, 2: 4, 3: 3, 4: 2}
 
 const INK := Color(1.0, 1.0, 1.0, 1.0)
 
@@ -154,30 +157,105 @@ func _atlas() -> Dictionary:
 
 ## Coordinates below are in **48 px space** whatever `SS` is; the primitives scale.
 func _glyph(slot: String, label: String) -> Image:
-	var image := Image.create(CANVAS, CANVAS, false, Image.FORMAT_RGBA8)
-	image.fill(Color(1.0, 1.0, 1.0, 0.0))
+	var image := _blank()
 
 	if SYMBOLS.has(label):
 		_symbol(image, label)
 	elif slot == "dpad":
 		_dpad(image)
 	else:
-		_outline(image, slot)
-		_text(image, _short(label))
+		# Outline and label are drawn on separate sheets so they can be *checked*
+		# against each other before they are merged. "CRE" ran straight through the
+		# side of its pill in the first render and looked, at a glance, like a
+		# letterform rather than a mistake — which is exactly the kind of defect a
+		# generator should not be able to emit twice.
+		var frame := _blank()
+		var box: Rect2 = _outline(frame, slot)
+		var text := _blank()
+		_text(text, _short(label), box)
+		# Clearance, not merely "no overlap". Letters that stop one pixel short of
+		# the stroke still merge into it once the downsample blurs both, which is
+		# what "CRE" did — it passed a touching test and looked wrong anyway.
+		var touching: int = _overlap(frame, _grow(text, CLEARANCE * SS))
+		if touching > 0:
+			push_error("%s_%s: the label crowds its own outline at %d places"
+				% [slot, label, touching])
+		_merge(image, frame)
+		_merge(image, text)
 
 	image.resize(SIZE, SIZE, Image.INTERPOLATE_BILINEAR)
 	return image
 
 
-func _outline(image: Image, slot: String) -> void:
-	if FACE.has(slot) or STICK.has(slot):
-		_ring(image, Vector2(24, 24), 21.0, 3.0)
-	elif SHOULDER.has(slot):
-		_round_rect(image, Rect2(4, 12, 40, 24), 8.0, 3.0)
-	elif BADGE.has(slot):
-		_round_rect(image, Rect2(2, 14, 44, 20), 10.0, 3.0)
-	else:
-		_ring(image, Vector2(24, 24), 21.0, 3.0)
+func _blank() -> Image:
+	var image := Image.create(CANVAS, CANVAS, false, Image.FORMAT_RGBA8)
+	image.fill(Color(1.0, 1.0, 1.0, 0.0))
+	return image
+
+
+## How much white space a label has to keep around it, in 48 px units.
+const CLEARANCE := 2
+
+
+## [param mask] spread outwards by [param radius]. Two 1-D passes rather than a
+## disc, because a square grow is stricter than a round one and this is a floor.
+func _grow(mask: Image, radius: int) -> Image:
+	var wide := _blank()
+	for y: int in range(CANVAS):
+		for x: int in range(CANVAS):
+			if mask.get_pixel(x, y).a > 0.0:
+				for d: int in range(maxi(x - radius, 0), mini(x + radius + 1, CANVAS)):
+					wide.set_pixel(d, y, INK)
+	var out := _blank()
+	for y: int in range(CANVAS):
+		for x: int in range(CANVAS):
+			if wide.get_pixel(x, y).a > 0.0:
+				for d: int in range(maxi(y - radius, 0), mini(y + radius + 1, CANVAS)):
+					out.set_pixel(x, d, INK)
+	return out
+
+
+## Pixels drawn on both sheets. Exact, because everything is still a hard-edged
+## mask at this point — the anti-aliasing happens in the downsample afterwards.
+func _overlap(a: Image, b: Image) -> int:
+	var count := 0
+	for y: int in range(CANVAS):
+		for x: int in range(CANVAS):
+			if a.get_pixel(x, y).a > 0.0 and b.get_pixel(x, y).a > 0.0:
+				count += 1
+	return count
+
+
+func _merge(into: Image, from: Image) -> void:
+	for y: int in range(CANVAS):
+		for x: int in range(CANVAS):
+			if from.get_pixel(x, y).a > 0.0:
+				into.set_pixel(x, y, INK)
+
+
+## Draws the outline for [param slot] and returns the box a label has to fit
+## **inside** it.
+##
+## The box is the point. Sizing the text to its own length alone was the first
+## version and it was wrong in both directions at once: a lone "L" swelled until it
+## broke out of the bumper it sits in, and "VIEW" stayed at a width the pill does
+## not have. The shape knows how much room it has; the label does not.
+func _outline(image: Image, slot: String) -> Rect2:
+	if SHOULDER.has(slot):
+		_round_rect(image, Rect2(4, 10, 40, 28), 8.0, 3.0)
+		# Inset well past the corner radius: a rounded box's *corners* are the part
+		# a centred label reaches first, not its sides.
+		return Rect2(10, 15, 28, 18)
+	if BADGE.has(slot):
+		# The widest label in the set lands here — "VIEW", "MENU" — so the pill is
+		# the biggest shape drawn, and its box is inset well clear of the rounded
+		# ends rather than of the bounding rectangle it does not fill.
+		_round_rect(image, Rect2(1, 12, 46, 24), 12.0, 3.0)
+		return Rect2(9, 15, 30, 18)
+	# Face buttons, sticks, and anything new: a ring. The box is the square that
+	# fits inside it with the stroke allowed for, not the ring's own diameter.
+	_ring(image, Vector2(24, 24), 21.0, 3.0)
+	return Rect2(11, 11, 26, 26)
 
 
 ## The four buttons a DualSense has instead of letters, and the Switch's two.
@@ -201,11 +279,16 @@ func _symbol(image: Image, label: String) -> void:
 			_line(image, Vector2(24, 13), Vector2(24, 35), 5.0)
 
 
-## Four arrows, filled: a D-pad outline at this size reads as a plus sign, and a
-## plus sign is already the Switch's `start`.
+## A cross on a round plate.
+##
+## The cross alone was the first version, and on a Switch pad it came out as the
+## same silhouette as `start` — which is a `+`. Two buttons that look identical is
+## the exact failure §11.4 is about, so the plate is not decoration: it is the
+## thing that tells them apart at a glance.
 func _dpad(image: Image) -> void:
-	_fill_rect(image, Rect2(18, 5, 12, 38))
-	_fill_rect(image, Rect2(5, 18, 38, 12))
+	_ring(image, Vector2(24, 24), 21.0, 3.0)
+	_fill_rect(image, Rect2(19.5, 10, 9, 28))
+	_fill_rect(image, Rect2(10, 19.5, 28, 9))
 
 
 func _short(label: String) -> String:
@@ -218,15 +301,19 @@ func _short(label: String) -> String:
 	return out.substr(0, 4)
 
 
-func _text(image: Image, label: String) -> void:
+func _text(image: Image, label: String, box: Rect2) -> void:
 	if label == "":
 		return
-	var cell: int = int(CELL.get(label.length(), 2))
 	# 3 cells per character, one between: the gap is a cell so the whole word
-	# scales as one thing rather than crowding at four letters.
-	var width: float = float(label.length() * 4 - 1) * float(cell)
-	var x: float = 24.0 - width / 2.0
-	var y: float = 24.0 - float(5 * cell) / 2.0
+	# scales as one thing rather than crowding at four letters. The cell is then
+	# whatever both the box's width and its height allow — never less than 1, or a
+	# long label in a short shape would render as nothing at all.
+	var cells_wide: int = label.length() * 4 - 1
+	var cell: int = maxi(1, mini(
+		int(box.size.x) / cells_wide, int(box.size.y) / 5))
+	var width: float = float(cells_wide * cell)
+	var x: float = box.position.x + (box.size.x - width) / 2.0
+	var y: float = box.position.y + (box.size.y - float(5 * cell)) / 2.0
 	for c: String in label:
 		var rows: Array = FONT[c]
 		for row: int in range(5):
