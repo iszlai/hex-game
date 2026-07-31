@@ -37,6 +37,11 @@ const CONTROLS := [
 	["Cycle", "board_cycle_prev", "board_cycle_next"],
 	["Place", "board_confirm"],
 	["Wild", "board_wild_modifier", "board_confirm"],
+	# C-18 gave the board six 60° stops and M4 bound the two actions that turn it,
+	# and nothing in the game has ever said so. A control the player cannot discover
+	# is a control that does not exist for them — and turning the board is how you
+	# see behind a tall wall, so it is not a garnish.
+	["Turn board", "board_rotate_ccw", "board_rotate_cw"],
 ]
 
 @export var palette: Palette = null

@@ -30,6 +30,8 @@ const ROWS := {
 		{"key": "hold_to_confirm", "label": "Destructive actions", "kind": KIND_TOGGLE,
 			"names": ["press twice", "hold"]},
 		{"key": "show_glyphs", "label": "Controller glyphs", "kind": KIND_TOGGLE},
+		# §10.1's "Replay tutorial", which "resets the tutorial flags **only**".
+		{"key": "", "label": "Replay tutorial", "kind": KIND_ACTION, "action": "replay_tutorial"},
 	],
 	"Controls": [
 		{"key": "haptics", "label": "Haptics", "kind": KIND_RANGE,
@@ -257,6 +259,10 @@ func _do_action(action: String) -> void:
 			InputBindings.install()
 			AudioDirector.play_sfx("ui.confirm")
 			_refresh()
+		"replay_tutorial":
+			Tutorial.reset()
+			AudioDirector.play_sfx("ui.confirm")
+			hint_label.text = "The tutorial will run again from chapter 1"
 		"rebind":
 			_begin_capture(str(_focused_row().get("action", "")))
 

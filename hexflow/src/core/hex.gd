@@ -12,6 +12,13 @@ class_name Hex
 
 
 ## Number of cells on a radius-[param radius] hexagonal board: 3R² + 3R + 1.
+## "No cell". `Vector3i.ZERO` is a real cell — the centre of every board — so a
+## function that can fail to find one needs a value that is not a coordinate.
+## `(1,1,1)` does not sum to zero, which §4.1 requires of every cube coordinate,
+## so nothing can ever equal it by accident.
+const NONE := Vector3i(1, 1, 1)
+
+
 static func cell_count(radius: int) -> int:
 	return 3 * radius * radius + 3 * radius + 1
 

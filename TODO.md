@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 448 tests / 15,696 asserts green in ~81 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 466 tests / 15,846 asserts green in ~86 s, 60 frozen
 level files re-verified.
 
 ---
@@ -26,7 +26,7 @@ level files re-verified.
 | M5 | Persistence & settings | ✅ done | — |
 | M6 | Campaign data | ✅ done | — |
 | M7 | Art & feel | 🟨 board + rail | greyscale under lighting, fonts, all §14 animation, all §15 audio |
-| M8 | Tutorial | ⬜ not started | T1–T12 data-driven, naive playtest |
+| M8 | Tutorial | 🟨 built, unplayed | the naive playtest, which *is* the exit criterion |
 | M9 | Modes & Steam | 🟨 screens done | GodotSteam, achievements, leaderboards |
 | M10 | Accessibility & i18n | ⬜ not started | palettes, text scale, Reduce Motion, extraction |
 | M11 | Release | ⬜ not started | Deck self-audit, three platform builds, depots |
@@ -521,16 +521,38 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       backends come back pinned to the panel's 8.33 ms and their frame *cost* is unmeasured. Needs a
       Deck, or a Linux box where vsync can actually be turned off
 
-## M8 — Tutorial ⬜
+## M8 — Tutorial 🟨
 
 Exit: a first-time player completes chapter 1 with no external explanation — verified by an actual
-naive playtest, not a self-assessment.
+naive playtest, not a self-assessment. **Everything is built; the exit criterion is not met**, because
+the playtest is the criterion and nobody has run one. Do not tick this milestone on the strength of
+the checklist below.
 
-- [ ] `src/data/tutorial.json` — beats are **data**, never hardcoded in level scripts (§10)
-- [ ] T1–T12 (§10.2), each ≤12 words, diegetic, non-blocking after T1
-- [ ] Beat flags in `save.tutorial_flags` so nothing repeats
-- [ ] Settings → "Replay tutorial" resets the flags only
-- [ ] Skippable at any time with one Back press
+- [x] `src/data/tutorial.json` — beats are **data**, never hardcoded in level scripts (§10) — twelve
+      rows in a table `tests/unit/test_tutorial.gd` diffs against §10.2, the way Appendix A's
+      directions and §14.1's timings are. `src/app/tutorial.gd` decides *which* beat is live and the
+      level screen decides what a live beat looks like; it holds no strings and no timings of its own
+- [x] T1–T12 (§10.2), each ≤12 words, diegetic, non-blocking after T1 — the word count is asserted,
+      because it is a hard number in §10.1 and the first thing to go when a beat is edited to explain
+      one more thing. A trigger arriving while a beat is up is **dropped**, not queued: §10.1 allows
+      twelve words on screen, not two beats' worth. **One divergence:** §10.2 writes T1 as "Your tile
+      points north-east", which is true of the level that ships and would become a lie the first time
+      `make levels` reseeded chapter 1 — the direction is filled in from the tile the player is
+      actually holding
+- [x] Beat flags in `save.tutorial_flags` so nothing repeats — including across a reopening of the
+      level, which is the case a screen-local variable gets wrong
+- [x] Settings → "Replay tutorial" resets the flags only — §10.1's emphasis is the spec's own, so the
+      test is that the campaign and the stats survive it
+- [x] Skippable at any time with one Back press — resolved **before** the pause branch, because
+      §11.3 puts `board_pause` and `board_back` on the same Esc and the pause would otherwise always
+      win on a keyboard. It only claims the press while a beat is actually up
+
+Two things the wiring turned up. T1's gate cannot simply follow the stored optimum: chapter 1 level
+1's optimal line **opens with a discard** (which is what C-14's `solution_script` exists to record),
+and a beat reading "your tile points north-east" must not gate the player onto a cell that tile cannot
+reach — so the gate is §10.2's own narrower claim, "only the one legal target accepts input", with the
+optimum used when it is available and legal. And the tutorial does not run in endless or the daily: a
+player there has been through chapter 1, and a beat firing would be teaching nobody.
 
 ## M9 — Modes & Steam 🟨
 

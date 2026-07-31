@@ -83,6 +83,12 @@ var _queue_tween: Tween = null
 var _flyaway: TileStack = null
 var _flyaway_tween: Tween = null
 
+## §10's live beat, or an empty dictionary. The screen owns the *presentation* of a
+## beat and [Tutorial] owns which one it is — this holds only what is on screen now
+## and how long it has been there.
+var _beat: Dictionary = {}
+var _beat_seconds: float = 0.0
+
 
 func _ready() -> void:
 	# Each screen claims its §11.1 action set. Doing it here rather than only in
@@ -123,6 +129,7 @@ func _ready() -> void:
 	EventBus.legal_targets_changed.connect(_on_targets_for_life)
 	EventBus.legal_targets_changed.connect(_on_legal_targets_changed)
 	EventBus.tile_advanced.connect(_on_tile_advanced)
+	EventBus.move_undone.connect(func() -> void: _beat_action("undo"))
 	EventBus.level_won.connect(_on_level_won)
 	EventBus.level_dead.connect(_on_level_dead)
 	EventBus.tile_auto_skipped.connect(_on_auto_skipped)
@@ -137,10 +144,12 @@ func _ready() -> void:
 	board_view.screen_positions_changed.connect(_on_board_turned)
 	get_viewport().size_changed.connect(_layout_board)
 	EventBus.tile_discarded.connect(_on_tile_discarded)
+	EventBus.wild_charges_changed.connect(_on_wild_charges_changed)
 	banner.visible = false
 	hold_panel.visible = false
 	_wire_buttons()
 	_build_flyaway()
+	_open_tutorial()
 	_bind_current_state()
 
 
@@ -266,6 +275,14 @@ func _begin_hold(action: String) -> void:
 
 
 func _action(event: InputEvent) -> bool:
+	# §10.1 gives the tutorial first claim on Back — "skippable at any time with a
+	# single Back press". It has to be resolved before the pause branch rather than
+	# after it, because §11.3 puts `board_pause` and `board_back` on the same Esc
+	# and the pause would otherwise always win on a keyboard. It only claims the
+	# press while a beat is actually up.
+	if event.is_action_pressed("board_back") or event.is_action_pressed("board_pause"):
+		if _skip_tutorial():
+			return true
 	# Movement repeats on a held key, so echo is allowed; nothing else is.
 	if event.is_action_pressed("board_move_up", true):
 		_router.move(Vector2.UP)
@@ -317,6 +334,7 @@ func _rotate(steps: int) -> void:
 
 
 func _process(delta: float) -> void:
+	_tick_beat(delta)
 	if not _holds.active():
 		if hold_panel.visible:
 			hold_panel.visible = false
@@ -324,6 +342,20 @@ func _process(delta: float) -> void:
 	# Only reached while a hold is in flight, and allocates nothing (C4).
 	_holds.tick(delta)
 	hold_bar.value = _holds.ratio()
+
+
+## §10.2's timed completions, and the fallback for the ones that wait on an action:
+## a player who never presses undo must not be left reading T5 for the whole level.
+## Allocates nothing — it is a float and a comparison (C4).
+func _tick_beat(delta: float) -> void:
+	if _beat.is_empty():
+		return
+	var limit: float = float(_beat.get("seconds", 0))
+	if limit <= 0.0:
+		return
+	_beat_seconds += delta
+	if _beat_seconds >= limit:
+		_finish_beat()
 
 
 func _on_hold_completed(action: String) -> void:
@@ -550,10 +582,54 @@ func _refresh_candidates() -> void:
 	var targets: Array[Vector3i] = state.legal_targets()
 	if _wild_active() and state.wild_charges > 0:
 		targets = state.wild_targets()
+	targets = _tutorial_gate(targets)
+	if _branch_available(targets):
+		_try_trigger("branch_available")
 	board_view.set_candidates(targets)
 	_router.set_candidates(targets, board_view.centres(), _play_area() * 0.5)
 	board_view.set_cursor(_router.cursor, _router.has_cursor)
 	_refresh_hud()
+
+
+## §10.1: "Beat 1 gates input to the single correct cell." The level's stored
+## solution is what "correct" means — the solver's own optimum, verified at
+## generation and re-verified on every push, so the tutorial cannot teach a move
+## the game does not think is best.
+##
+## §10.2's own Interaction column is the narrower claim: "only the one legal target
+## accepts input". On chapter 1 level 1 there *is* exactly one — one path cell, one
+## direction — so the board already satisfies it and this changes nothing. It earns
+## its place on the level after that, or on a reseeded one, where there might be two.
+##
+## The stored optimum is used when it is available and legal, and only then. It
+## cannot simply be trusted: the optimal line for chapter 1 level 1 opens with a
+## **discard** (C-14 is why the script exists at all), and a beat that reads "your
+## tile points north-east" must not gate the player onto a cell that tile cannot
+## reach. So the fallback is the ordinary legal set, which is never wrong.
+func _tutorial_gate(targets: Array[Vector3i]) -> Array[Vector3i]:
+	if _beat.is_empty() or not Tutorial.gates(_beat):
+		return targets
+	var wanted: Vector3i = _first_scripted_move()
+	if wanted != Hex.NONE and targets.has(wanted):
+		return [wanted] as Array[Vector3i]
+	if targets.size() == 1:
+		return targets
+	# More than one legal target and no scripted move among them: take the first,
+	# so §10.1's "the single correct cell" is still a single cell. They are all
+	# legal, so none of them is wrong.
+	return [targets[0]] as Array[Vector3i]
+
+
+## The first cell the stored optimal line places on, or [constant Hex.NONE].
+func _first_scripted_move() -> Vector3i:
+	var level: Level = GameDirector.level
+	if level == null:
+		return Hex.NONE
+	for step: Variant in level.solution_script:
+		var entry: Array = step
+		if int(entry[0]) == Solver.ACTION_PLACE:
+			return entry[1] as Vector3i
+	return Hex.NONE
 
 
 func _wild_active() -> bool:
@@ -580,6 +656,10 @@ func _on_cycling_hint_wanted() -> void:
 
 func _on_cell_joined(target: Vector3i, _anchor: Vector3i, _dir: int) -> void:
 	_haptics.play("commit")
+	# §10.2: a placement both ends the beat that was waiting for one (T1, T4) and
+	# is the trigger for the beat that follows it (T2, T5).
+	_beat_action("place")
+	_try_trigger("after_place")
 	# The board has already been rebuilt with the new cell in it; this is §14.1's
 	# 220 ms pop and 160 ms connector draw played over the top of that.
 	board_view.play_placement(target)
@@ -641,12 +721,14 @@ func _build_flyaway() -> void:
 
 func _on_tile_discarded(dir: int, _left: int) -> void:
 	_play_flyaway(dir)
+	_beat_action("discard")
 
 
 func _on_auto_skipped(dir: int) -> void:
 	# Deliberately not a failure beat: no charge is spent (§5.7).
 	_haptics.play("auto_discard")
 	_play_flyaway(dir)
+	_try_trigger("auto_skipped")
 	_flash_banner("No move — %s skipped, no cost" % Direction.name_of(dir))
 
 
@@ -685,6 +767,12 @@ func _on_illegal(cell: Vector3i) -> void:
 	# §12.4 gives an illegal confirm the same double haptic as a cone rejection.
 	_haptics.play("cursor_reject")
 	board_view.play_illegal(cell)
+	if GameDirector.level != null and GameDirector.level.board.is_wall(cell):
+		# §10.2's T7 — "Walls never open", said at the moment the player has just
+		# tried to open one, which is the only moment it is worth saying.
+		_try_trigger("wall_targeted")
+		if not _beat.is_empty():
+			return
 	_flash_banner("Not a legal target")
 
 
@@ -703,6 +791,96 @@ func _on_level_dead() -> void:
 	_flash_banner("No route left — %s undo · %s restart" % [
 		InputGlyphs.label_for("board_undo"), InputGlyphs.label_for("board_restart")
 	])
+
+
+# --- tutorial (§10) -----------------------------------------------------------
+
+## The triggers §10.2 waits on that are true the moment a level opens. Checked in
+## the table's own order, so a level carrying two of them shows the earlier beat
+## first and the later one when the earlier is done.
+func _open_tutorial() -> void:
+	if GameDirector.level == null or GameDirector.mode != GameDirector.Mode.CAMPAIGN:
+		# §10 weaves the tutorial into chapter 1; endless and the daily are not
+		# places to be taught, and a beat firing there would be teaching a player
+		# who has already been through it.
+		return
+	_try_trigger("level_start")
+	var board: Board = GameDirector.level.board
+	if not board.cells_with_flag(Board.F_GATE).is_empty():
+		_try_trigger("gate_visible")
+	if not board.portal_pairs().is_empty():
+		_try_trigger("portal_visible")
+
+
+## §10.1: "Non-blocking after the first beat" — so a trigger arriving while a beat
+## is up is dropped rather than queued. Twelve words on screen, never two beats'.
+func _try_trigger(trigger: String) -> void:
+	if not _beat.is_empty() or GameDirector.level == null:
+		return
+	if GameDirector.mode != GameDirector.Mode.CAMPAIGN:
+		return
+	var spec: Dictionary = Tutorial.next_for(GameDirector.level.id, trigger)
+	if spec.is_empty():
+		return
+	_beat = spec
+	_beat_seconds = 0.0
+	var state: GameState = GameDirector.state
+	var direction: int = state.current_tile() if state != null else Direction.NONE
+	_flash_banner(Tutorial.text_of(spec, direction))
+	# T1 gates input to the one correct cell, so the candidate set has to shrink
+	# *now* rather than on the next refresh.
+	if Tutorial.gates(spec):
+		_refresh_candidates()
+
+
+## Ends the live beat and records it, so §10's "never repeats" needs nothing
+## remembered by the screen.
+func _finish_beat() -> void:
+	if _beat.is_empty():
+		return
+	Tutorial.mark_seen(str(_beat.get("id", "")))
+	var was_gate: bool = Tutorial.gates(_beat)
+	_beat = {}
+	banner.visible = false
+	if was_gate:
+		_refresh_candidates()
+
+
+## An action the live beat was waiting for, if it was.
+func _beat_action(action: String) -> void:
+	if _beat.is_empty():
+		return
+	if str(_beat.get("done", "")) == action:
+		_finish_beat()
+
+
+## §10.1: "Skippable at any time with a single Back press; skipping sets all flags
+## seen." Back means pause everywhere else on this screen, so a live beat is the
+## one thing that gets first claim on it — and only while one is actually up.
+func _skip_tutorial() -> bool:
+	if _beat.is_empty():
+		return false
+	Tutorial.skip_all()
+	_beat = {}
+	banner.visible = false
+	_refresh_candidates()
+	return true
+
+
+## §10.2's T4 fires on "the first branch opportunity" — two legal targets that are
+## not neighbours of each other, which is the board saying the path has become a
+## tree rather than a line.
+func _branch_available(targets: Array[Vector3i]) -> bool:
+	for i: int in range(targets.size()):
+		for j: int in range(i + 1, targets.size()):
+			if Hex.distance(targets[i], targets[j]) > 1:
+				return true
+	return false
+
+
+func _on_wild_charges_changed(charges: int) -> void:
+	if charges > 0:
+		_try_trigger("wild_gained")
 
 
 func _on_setting_changed(key: String, _value: Variant) -> void:
