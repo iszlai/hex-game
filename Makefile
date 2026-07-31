@@ -45,7 +45,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels sfx art glyphs marks assets assets-add assets-ui shot measure \
+        test-file gate levels sfx art glyphs marks marks-cut assets assets-add assets-ui shot measure \
         playtest playtest-restore \
         clean clean-levels legacy-branch status
 
@@ -149,6 +149,10 @@ marks: check ## Re-render C-29's modifier atlas into assets/art/marks.png. FRESH
 	@$(RUN_CMD) --headless -s res://tools/make_marks.gd -- $(if $(FRESH),fresh,)
 	@echo
 	@echo 'a stand-in for painted art — commit it, and see: make assets ROLE=marks'
+
+marks-cut: ## Cut a generated sheet of four icons into assets/art/marks.png. FILE=~/Downloads/sheet.png
+	@test -n "$(FILE)" || { echo "usage: make marks-cut FILE=~/Downloads/sheet.png"; exit 1; }
+	@python3 $(PROJECT)/tools/cut_marks.py "$(FILE)" $(PROJECT)/assets/art/marks.png
 
 assets: check ## What art and audio the game has, and what it is missing. ROLE=glyphs for one group's files
 	@$(RUN_CMD) --headless -s res://tools/assets.gd -- status "$(or $(ROLE),)"
