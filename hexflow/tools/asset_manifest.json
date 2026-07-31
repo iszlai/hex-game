@@ -288,32 +288,40 @@
       "dir": "assets/fonts/",
       "ext": ".ttf",
       "kind": "font",
-      "want": 3,
-      "note": "§13.4's three families",
-      "brief": "A replacement must be SIL OFL or equivalent, must carry a real `wght` axis (Medium and Bold are a variation, not a second file), and must land with its licence beside it.",
+      "want": 4,
+      "note": "§13.4's four families (C-30)",
+      "brief": "A replacement must be SIL OFL or equivalent, must carry a real `wght` axis (Medium and Bold are a variation, not a second file), and must land with its licence beside it. The display and heading faces are characterful and carry few symbols; the families fall back to one another so a missing glyph is drawn rather than boxed.",
       "items": [
         {
-          "name": "SpaceGrotesk",
-          "for": "Display, Heading",
-          "make": "Display face. Wide-set, confident; carries the title block and the chapter names",
-          "licence": "LICENSE-spacegrotesk.txt",
+          "name": "Cinzel",
+          "for": "Display",
+          "make": "Roman inscriptional capitals — a title cut into stone, which is what a cairn is (C-30)",
+          "licence": "LICENSE-cinzel.txt",
           "roles": [
             {
               "role": "DISPLAY",
               "size": 48,
-              "weight": 700
-            },
+              "weight": 800
+            }
+          ]
+        },
+        {
+          "name": "Caveat",
+          "for": "Heading",
+          "make": "Handwritten — a note left by hand. Never used below 32 px (C-30)",
+          "licence": "LICENSE-caveat.txt",
+          "roles": [
             {
               "role": "HEADING",
               "size": 32,
-              "weight": 500
+              "weight": 700
             }
           ]
         },
         {
           "name": "Inter",
           "for": "Body, Caption",
-          "make": "Reading face. Must hold up at §13.4's 18 px floor on a 7-inch screen",
+          "make": "Reading face. Must hold up at §13.4's 18 px floor on a 7-inch screen — which is why the handwritten face is not used here",
           "licence": "LICENSE-inter.txt",
           "roles": [
             {

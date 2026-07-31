@@ -535,10 +535,17 @@ func _set_ripple_time(value: float) -> void:
 const GRAIN_STRENGTH := 0.62
 
 
-## How much of the drawn face shows. Full: it *is* the tile's surface, not a wash
-## over one, and anything less leaves the computed rim showing through the drawn
-## one — the two are alternatives, not layers.
-const FACE_STRENGTH := 1.0
+## How much of the drawn face shows.
+##
+## Not full. The drawing is a *shading* map and it multiplies, so what it costs is
+## proportional to how bright the tile under it already is — which is backwards.
+## At full strength the dark walls looked right and the near-white cursor and start
+## tiles wore every crack and every halftone dot as dirt, because on a pale surface
+## a multiply has the whole range to fall through.
+##
+## Held below the point where a light tile stops reading as lit. The computed rim is
+## still suppressed underneath: the two are alternatives, not layers.
+const FACE_STRENGTH := 0.5
 
 
 func _apply_grain(mat: ShaderMaterial) -> void:

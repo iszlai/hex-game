@@ -241,18 +241,29 @@ the repository.
 
 ## 4. Type — done, one item outstanding
 
-Three variable fonts are vendored under `hexflow/assets/fonts/`, SIL OFL, with their licences:
-**Space Grotesk** (display, headings), **Inter** (body, captions), **JetBrains Mono** (numerals,
-tabular). 1.2 MB.
+Four variable fonts are vendored under `hexflow/assets/fonts/`, all SIL OFL, with their licences:
+**Cinzel** (display), **Caveat** (headings), **Inter** (body, captions), **JetBrains Mono**
+(numerals, tabular). C-30 changed the first two: §13.4's original Space Grotesk belonged to the
+minimalist direction C-26 replaced, and the game had become carved timber and painted stone with an
+interface lettered like a dashboard.
 
-Outstanding: **subsetting to Latin-Extended** (§13.6). Needs a tool this repo does not vendor. Worth
-doing before the store build; nowhere near §20's 250 MB budget today.
+**Character goes where it is seen; legibility keeps what is read.** Display and headings are
+characterful. Body and captions are not, and that is the constraint rather than an oversight — the
+18 px floor exists because the Deck's screen is seven inches, and a handwritten face at 18 px fails
+the audit the floor is there to pass.
 
-If you replace a family, it must be SIL OFL or equivalent, must carry a real `wght` axis (Medium and
+A characterful face carries almost no symbols, so **the families fall back to one another**: a glyph
+missing from one is drawn by another rather than as an empty box. That had already bitten before it
+was noticed — Space Grotesk has no ★, so the results card drew three empty boxes and nothing failed.
+`tests/unit/test_typography.gd` scans the source for drawn characters and holds every role to being
+able to render each one; a character *no* face has fails there, because a fallback cannot invent one.
+
+If you replace a family it must be SIL OFL or equivalent, must carry a real `wght` axis (Medium and
 Bold are a variation, not a second file), and the numeral face must have **tabular figures** or every
 counter in the game jitters as it counts.
 
----
+Outstanding: **subsetting to Latin-Extended** (§13.6). Needs a tool this repo does not vendor. Worth
+doing before the store build; nowhere near §20's 250 MB budget today.
 
 ## 5. Text
 

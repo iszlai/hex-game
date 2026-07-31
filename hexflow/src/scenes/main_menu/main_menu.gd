@@ -122,7 +122,11 @@ static func seconds_to_reset() -> int:
 func _streak_pips() -> String:
 	var out := ""
 	for played: bool in SaveService.daily_streak_days(utc_date()):
-		out += "▪" if played else "▫"
+		# Circles, not the small squares this used to draw. Those rendered correctly
+		# once the faces fell back to one another — and still read as seven broken
+		# glyphs, because a row of empty squares is what a missing character looks
+		# like. A pip that has to be explained is a pip that has failed.
+		out += "●" if played else "○"
 	return out
 
 

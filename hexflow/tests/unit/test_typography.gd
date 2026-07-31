@@ -49,13 +49,13 @@ func test_every_family_ships_with_its_open_licence() -> void:
 	var families: Dictionary = {}
 	for role: Variant in _all_roles():
 		families[str(Typography.ROLES[role]["family"])] = true
-	assert_eq(families.size(), 3, "§13.4 names three families")
+	assert_eq(families.size(), 4, "§13.4 names four families (C-30)")
 	for family: Variant in families:
 		assert_true(FileAccess.file_exists(DIR + str(family) + ".ttf"),
 			"%s.ttf is not vendored" % family)
 	# One licence per family, all SIL OFL (§13.4 admits no other kind).
-	for licence: String in ["LICENSE-inter.txt", "LICENSE-spacegrotesk.txt",
-			"LICENSE-jetbrainsmono.txt"]:
+	for licence: String in ["LICENSE-inter.txt", "LICENSE-jetbrainsmono.txt",
+			"LICENSE-cinzel.txt", "LICENSE-caveat.txt"]:
 		var path: String = DIR + licence
 		assert_true(FileAccess.file_exists(path), "%s is missing" % licence)
 		assert_true(FileAccess.get_file_as_string(path).contains("SIL OPEN FONT LICENSE"),

@@ -20,8 +20,11 @@ const DIR := "res://assets/fonts/"
 enum Role { DISPLAY, HEADING, BODY, CAPTION, NUMERAL }
 
 const ROLES := {
-	Role.DISPLAY: {"family": "SpaceGrotesk", "weight": 700, "size": 48},
-	Role.HEADING: {"family": "SpaceGrotesk", "weight": 500, "size": 32},
+	# 800, not 700: Caveat's axis stops at 700 and it needs all of it to read as
+	# handwriting rather than as a scrawl, so the display face has to sit above that
+	# to keep the hierarchy §13.4's table is.
+	Role.DISPLAY: {"family": "Cinzel", "weight": 800, "size": 48},
+	Role.HEADING: {"family": "Caveat", "weight": 700, "size": 32},
 	Role.BODY: {"family": "Inter", "weight": 500, "size": 24},
 	Role.CAPTION: {"family": "Inter", "weight": 400, "size": 18},
 	Role.NUMERAL: {"family": "JetBrainsMono", "weight": 500, "size": 24},
@@ -58,9 +61,14 @@ static func size_of(role: Role, scale: float = 1.0) -> int:
 static func font_of(role: Role) -> FontVariation:
 	var base := FontFile.new()
 	base.load_dynamic_font(DIR + str(ROLES[role]["family"]) + ".ttf")
-	base.fallbacks = _fallbacks(str(ROLES[role]["family"]))
 	var variation := FontVariation.new()
 	variation.base_font = base
+	# On the **variation**, not on the base font underneath it. Setting them on the
+	# `FontFile` looked right and `has_char` even agreed — but a `FontVariation` is
+	# the font the control actually draws with, and it consults its own chain. The
+	# streak pips stayed as empty boxes on screen while the test that was meant to
+	# catch exactly that passed.
+	variation.fallbacks = _fallbacks(str(ROLES[role]["family"]))
 	variation.variation_opentype = {"wght": int(ROLES[role]["weight"])}
 	if role == Role.NUMERAL:
 		# Tabular figures, so a counter ticking from 9 to 10 does not shift the
@@ -85,7 +93,9 @@ static func font_of(role: Role) -> FontVariation:
 ## `tests/unit/test_typography.gd` is what catches those, because they are silent.
 static func _fallbacks(family: String) -> Array[Font]:
 	var out: Array[Font] = []
-	for other: String in ["Inter", "JetBrainsMono", "SpaceGrotesk"]:
+	# Inter first: it carries by far the most symbols of the four, so it answers
+	# most gaps before the others are asked.
+	for other: String in ["Inter", "JetBrainsMono", "Cinzel", "Caveat"]:
 		if other == family:
 			continue
 		var font := FontFile.new()

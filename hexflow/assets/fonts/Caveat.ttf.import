@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://c821e3c5ivg30"
-path="res://.godot/imported/SpaceGrotesk.ttf-ef722feb52caa018961f3d70a3a89996.fontdata"
+uid="uid://bt0qi13u7wx4b"
+path="res://.godot/imported/Caveat.ttf-3cbd2c23f57c75d34d02577b2dbcb96f.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/SpaceGrotesk.ttf"
-dest_files=["res://.godot/imported/SpaceGrotesk.ttf-ef722feb52caa018961f3d70a3a89996.fontdata"]
+source_file="res://assets/fonts/Caveat.ttf"
+dest_files=["res://.godot/imported/Caveat.ttf-3cbd2c23f57c75d34d02577b2dbcb96f.fontdata"]
 
 [params]
 
