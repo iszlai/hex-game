@@ -150,3 +150,50 @@ func test_shaping_a_tween_applies_the_row_it_was_given() -> void:
 	var tween := create_tween()
 	assert_same(Motion.shape(tween, "placement_pop"), tween, "shaping returns the tween")
 	tween.kill()
+
+
+## §14.1's two rail beats, which sat in the table unwired until §12.3's real layout
+## existed to play them in. Asserted on the level screen rather than on the table,
+## because the table was never the thing in doubt.
+func test_the_queue_advance_grows_the_now_tile_from_the_next_size() -> void:
+	# Stated rather than assumed: several tests above toggle §14.5, and a beat that
+	# is switched off has no scale to measure.
+	SettingsService.set_value("reduce_motion", false)
+	var level: Control = load("res://src/scenes/level/level.tscn").instantiate()
+	GameDirector.start_level(LevelRepository.load_level(1, 1))
+	add_child_autofree(level)
+	await wait_process_frames(2)
+
+	var now: Control = level.get_node("%NowStack")
+	# Read with no frame in between: `place_requested` is handled synchronously, and
+	# a headless frame can be long enough to carry a 180 ms tween most of the way.
+	EventBus.place_requested.emit(GameDirector.state.legal_targets()[0])
+	assert_lt(now.scale.x, 1.0, "the tile starts at NEXT's size, not NOW's")
+	assert_almost_eq(now.scale.x, float(level.get("NEXT_TILE")) / float(level.get("NOW_TILE")),
+		0.02, "§12.3's own two numbers are what it interpolates between")
+
+	await wait_seconds(Motion.seconds("queue_advance") + 0.2)
+	assert_almost_eq(now.scale.x, 1.0, 0.01, "and settles at NOW's size")
+
+
+## §14.5 stops the arc rather than shortening it: at 40% of 260 ms a tile crossing
+## 400 px is a flicker, and reducing motion is not the same as making it harder to
+## follow.
+func test_reduce_motion_stops_the_discard_arc_rather_than_hurrying_it() -> void:
+	var level: Control = load("res://src/scenes/level/level.tscn").instantiate()
+	GameDirector.start_level(LevelRepository.load_level(1, 1))
+	add_child_autofree(level)
+	await wait_process_frames(2)
+	var flyaway: Control = level.get_node("Flyaway")
+
+	SettingsService.set_value("reduce_motion", false)
+	EventBus.discard_requested.emit()
+	assert_true(flyaway.visible, "the tile leaves the rail")
+
+	await wait_seconds(Motion.seconds("auto_discard") + 0.3)
+	assert_false(flyaway.visible, "and is gone once it has")
+
+	SettingsService.set_value("reduce_motion", true)
+	EventBus.discard_requested.emit()
+	assert_false(flyaway.visible, "§14.5: no arc at all rather than a fast one")
+	SettingsService.set_value("reduce_motion", false)

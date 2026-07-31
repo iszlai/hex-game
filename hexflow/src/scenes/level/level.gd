@@ -76,6 +76,13 @@ var _hints: Dictionary = {}
 ## Rail button -> its §13.5 line icon, likewise built once.
 var _icons: Dictionary = {}
 
+## §14.1's queue advance and auto-discard. Both are tweens on nodes that already
+## exist — the flyaway is built once at `_ready` and reused, because a node created
+## the moment a tile is discarded is an allocation in that frame (C4).
+var _queue_tween: Tween = null
+var _flyaway: TileStack = null
+var _flyaway_tween: Tween = null
+
 
 func _ready() -> void:
 	# Each screen claims its §11.1 action set. Doing it here rather than only in
@@ -129,9 +136,11 @@ func _ready() -> void:
 	# the turn already shows the board that is arriving.
 	board_view.screen_positions_changed.connect(_on_board_turned)
 	get_viewport().size_changed.connect(_layout_board)
+	EventBus.tile_discarded.connect(_on_tile_discarded)
 	banner.visible = false
 	hold_panel.visible = false
 	_wire_buttons()
+	_build_flyaway()
 	_bind_current_state()
 
 
@@ -590,12 +599,86 @@ func _on_board_turned() -> void:
 func _on_tile_advanced(_current: int, _preview: Array) -> void:
 	board_view.rebuild()
 	_refresh_hud()
+	_play_queue_advance()
+
+
+## §14.1: 180 ms, `CUBIC`/`EASE_OUT` — "current flies to board, next slides up and
+## scales 72→140 px". The two stacks are laid out by a container, so the tile grows
+## into its slot rather than travelling to it: the *sizes* §12.3 names are the ones
+## being interpolated between, and the slide is the container's own reflow. What
+## the beat has to convey is that the tile in NEXT is now the tile in NOW, and a
+## piece arriving at 140 from 72 says that.
+func _play_queue_advance() -> void:
+	if now_stack == null:
+		return
+	var seconds: float = Motion.seconds("queue_advance")
+	if seconds <= 0.0:
+		return
+	if _queue_tween != null and _queue_tween.is_running():
+		_queue_tween.kill()
+	# Grows about its own middle, so the piece expands in place instead of shoving
+	# the NEXT caption beneath it.
+	now_stack.pivot_offset = now_stack.size * 0.5
+	now_stack.scale = Vector2.ONE * (NEXT_TILE / NOW_TILE)
+	_queue_tween = create_tween()
+	Motion.shape(_queue_tween, "queue_advance")
+	_queue_tween.tween_property(now_stack, "scale", Vector2.ONE, seconds)
+
+
+## §12.4 and §14.1's auto-discard: "tile arcs off-screen right with a fading
+## trail", 260 ms, `QUAD`/`EASE_IN`. Built once and reused — a tile is discarded
+## often enough that building the node each time would allocate on a beat the
+## player triggers by accident (C4).
+func _build_flyaway() -> void:
+	_flyaway = TileStack.new()
+	_flyaway.name = "Flyaway"
+	_flyaway.slots = 1
+	_flyaway.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flyaway.visible = false
+	_flyaway.custom_minimum_size = Vector2(NOW_TILE, NOW_TILE)
+	add_child(_flyaway)
+
+
+func _on_tile_discarded(dir: int, _left: int) -> void:
+	_play_flyaway(dir)
 
 
 func _on_auto_skipped(dir: int) -> void:
 	# Deliberately not a failure beat: no charge is spent (§5.7).
 	_haptics.play("auto_discard")
+	_play_flyaway(dir)
 	_flash_banner("No move — %s skipped, no cost" % Direction.name_of(dir))
+
+
+## The arc itself. §14.5 turns it off rather than shortening it into a twitch: at
+## 40% of 260 ms a tile crossing 400 px is a flicker, and §14.5's business is to
+## reduce motion, not to make it harder to follow.
+func _play_flyaway(dir: int) -> void:
+	if _flyaway == null or SettingsService.reduce_motion():
+		return
+	if _flyaway_tween != null and _flyaway_tween.is_running():
+		_flyaway_tween.kill()
+	_flyaway.show_tiles([dir] as Array[int])
+	_flyaway.set_board_yaw(BoardCamera.YAW_STOP_RADIANS * float(board_view.camera.yaw_step))
+	var from: Vector2 = now_stack.global_position
+	_flyaway.position = from
+	_flyaway.size = Vector2(NOW_TILE, NOW_TILE)
+	_flyaway.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	_flyaway.visible = true
+
+	var seconds: float = Motion.seconds("auto_discard")
+	var span: float = get_viewport_rect().size.x - from.x + NOW_TILE
+	_flyaway_tween = create_tween()
+	_flyaway_tween.set_parallel(true)
+	# The arc: horizontal travel takes §14.1's curve, and the vertical is a single
+	# hop over it, so the tile leaves the rail rather than sliding along it.
+	Motion.shape(_flyaway_tween, "auto_discard")
+	_flyaway_tween.tween_method(
+		func(t: float) -> void:
+			_flyaway.position = Vector2(from.x + span * t, from.y - 70.0 * sin(t * PI)),
+		0.0, 1.0, seconds)
+	_flyaway_tween.tween_property(_flyaway, "modulate:a", 0.0, seconds)
+	_flyaway_tween.chain().tween_callback(func() -> void: _flyaway.visible = false)
 
 
 func _on_illegal(cell: Vector3i) -> void:
