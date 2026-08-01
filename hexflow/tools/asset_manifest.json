@@ -115,64 +115,184 @@
       "note": "brand mark"
     },
     {
-      "role": "music_menu",
-      "path": "assets/music/menu.ogg",
+      "role": "music_menu_base",
+      "path": "assets/music/menu_base.ogg",
       "kind": "audio",
       "want": [
         0,
         0
       ],
-      "note": "bed · menus"
+      "note": "bed · menus · base stem (always)"
     },
     {
-      "role": "music_chapter_1",
-      "path": "assets/music/chapter_1.ogg",
+      "role": "music_menu_layer",
+      "path": "assets/music/menu_layer.ogg",
       "kind": "audio",
       "want": [
         0,
         0
       ],
-      "note": "bed · chapter 1"
+      "note": "bed · menus · layer stem (above 40% board fill)"
     },
     {
-      "role": "music_chapter_2",
-      "path": "assets/music/chapter_2.ogg",
+      "role": "music_menu_extra",
+      "path": "assets/music/menu_extra.ogg",
       "kind": "audio",
       "want": [
         0,
         0
       ],
-      "note": "bed · chapter 2"
+      "note": "bed · menus · extra stem (endless, every 5 goals)"
     },
     {
-      "role": "music_chapter_3",
-      "path": "assets/music/chapter_3.ogg",
+      "role": "music_chapter_1_base",
+      "path": "assets/music/chapter_1_base.ogg",
       "kind": "audio",
       "want": [
         0,
         0
       ],
-      "note": "bed · chapter 3"
+      "note": "bed · chapter 1 · base stem (always)"
     },
     {
-      "role": "music_chapter_4",
-      "path": "assets/music/chapter_4.ogg",
+      "role": "music_chapter_1_layer",
+      "path": "assets/music/chapter_1_layer.ogg",
       "kind": "audio",
       "want": [
         0,
         0
       ],
-      "note": "bed · chapter 4"
+      "note": "bed · chapter 1 · layer stem (above 40% board fill)"
     },
     {
-      "role": "music_chapter_5",
-      "path": "assets/music/chapter_5.ogg",
+      "role": "music_chapter_1_extra",
+      "path": "assets/music/chapter_1_extra.ogg",
       "kind": "audio",
       "want": [
         0,
         0
       ],
-      "note": "bed · chapter 5"
+      "note": "bed · chapter 1 · extra stem (endless, every 5 goals)"
+    },
+    {
+      "role": "music_chapter_2_base",
+      "path": "assets/music/chapter_2_base.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 2 · base stem (always)"
+    },
+    {
+      "role": "music_chapter_2_layer",
+      "path": "assets/music/chapter_2_layer.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 2 · layer stem (above 40% board fill)"
+    },
+    {
+      "role": "music_chapter_2_extra",
+      "path": "assets/music/chapter_2_extra.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 2 · extra stem (endless, every 5 goals)"
+    },
+    {
+      "role": "music_chapter_3_base",
+      "path": "assets/music/chapter_3_base.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 3 · base stem (always)"
+    },
+    {
+      "role": "music_chapter_3_layer",
+      "path": "assets/music/chapter_3_layer.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 3 · layer stem (above 40% board fill)"
+    },
+    {
+      "role": "music_chapter_3_extra",
+      "path": "assets/music/chapter_3_extra.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 3 · extra stem (endless, every 5 goals)"
+    },
+    {
+      "role": "music_chapter_4_base",
+      "path": "assets/music/chapter_4_base.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 4 · base stem (always)"
+    },
+    {
+      "role": "music_chapter_4_layer",
+      "path": "assets/music/chapter_4_layer.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 4 · layer stem (above 40% board fill)"
+    },
+    {
+      "role": "music_chapter_4_extra",
+      "path": "assets/music/chapter_4_extra.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 4 · extra stem (endless, every 5 goals)"
+    },
+    {
+      "role": "music_chapter_5_base",
+      "path": "assets/music/chapter_5_base.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 5 · base stem (always)"
+    },
+    {
+      "role": "music_chapter_5_layer",
+      "path": "assets/music/chapter_5_layer.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 5 · layer stem (above 40% board fill)"
+    },
+    {
+      "role": "music_chapter_5_extra",
+      "path": "assets/music/chapter_5_extra.ogg",
+      "kind": "audio",
+      "want": [
+        0,
+        0
+      ],
+      "note": "bed · chapter 5 · extra stem (endless, every 5 goals)"
     }
   ],
   "groups": [

@@ -45,7 +45,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels tutorial sheet sfx art icon glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
+        test-file gate levels tutorial sheet sfx music art icon glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
         playtest playtest-restore edit-maps play-draft \
         clean clean-levels legacy-branch status
 
@@ -178,6 +178,21 @@ sfx: check ## Re-render §15.2's sixteen effects into assets/sfx/ (commit the ou
 	@$(RUN_CMD) --headless -s res://tools/make_sfx.gd
 	@echo
 	@echo "sound effects are committed assets — commit the .wav files"
+
+# Two steps because Godot cannot encode Vorbis: it composes and renders the stems
+# to WAV (§15.1 wants 2–3 minute loops, so that is 21 MB apiece), and ffmpeg turns
+# each into the .ogg the game loads. The WAVs are deleted — they are an
+# intermediate, and the score in tools/make_music.gd is the source that matters.
+# TRACK=chapter_3 re-renders one bed; it takes about 50 s each.
+music: check ## Recompose §15.1's beds and their three stems (commit the .ogg)
+	@command -v ffmpeg >/dev/null || { echo "music needs ffmpeg on PATH"; exit 1; }
+	@$(RUN_CMD) --headless -s res://tools/make_music.gd -- $(TRACK)
+	@cd $(PROJECT)/assets/music && for w in *.wav; do \
+	  ffmpeg -y -hide_banner -loglevel error -i "$$w" \
+	    -c:a vorbis -strict -2 -q:a 3 -ar 44100 "$${w%.wav}.ogg" \
+	    && rm -f "$$w" "$$w.import"; done
+	@echo
+	@echo "beds are committed assets — commit the .ogg files"
 
 art: check ## Re-render §13.7's backdrops and panel surfaces into assets/art/ (commit the output)
 	@$(RUN_CMD) --headless -s res://tools/make_art.gd

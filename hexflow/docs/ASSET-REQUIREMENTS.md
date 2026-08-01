@@ -221,22 +221,31 @@ looking at a real board is still the test that matters.
 > `place_note` is **one sample, pitched** — the game plays it up a major pentatonic scale as the path
 > grows and back down on undo, capped at three octaves. Supply a single clean tone, not sixteen notes.
 
-### Music — **Missing**, and the largest single gap (§15.1, open decision C-6)
+### Music — **Placeholder**, composed in the repository (§15.1, C-6 and C-40)
 
-| | Requirement |
-|---|---|
-| Tracks | 6 — one per chapter, plus a menu track |
-| Stems per track | 2 — `base` (always) and `layer` (fades in above 40% board fill, out below 30%, 1.5 s cross-fade) |
-| Extra | Endless takes a **third** stem, entering every 5 goals |
-| Files | **13+** loops |
-| Length | 2–3 minutes, **seamlessly looping** |
-| Tempo | 70–85 BPM |
-| Instrumentation | Warm pads, soft plucks. **No percussion in campaign** |
-| Behaviour | Ducks −6 dB for 600 ms on the goal-reached sequence |
-| Loudness | −16 LUFS integrated, −1 dBTP (§15.3) — measured over a real mix, which has never been done |
+| | Requirement | What ships |
+|---|---|---|
+| Tracks | 6 — one per chapter, plus a menu track | 6, composed by `tools/make_music.gd` |
+| Stems per track | 2 — `base` (always) and `layer` (fades in above 40% board fill, out below 30%, 1.5 s cross-fade) | 3 |
+| Extra | Endless takes a **third** stem, entering every 5 goals | shipped for every bed |
+| Files | **13+** loops | 18 |
+| Length | 2–3 minutes, **seamlessly looping** | 2:03–2:14, seam measured |
+| Tempo | 70–85 BPM | 72–84, rising across the campaign |
+| Instrumentation | Warm pads, soft plucks. **No percussion in campaign** | pads + sub, plucks + one bell |
+| Behaviour | Ducks −6 dB for 600 ms on the goal-reached sequence | done |
+| Loudness | −16 LUFS integrated, −1 dBTP (§15.3) | −16 LUFS on `base + layer`, peaks under −2 dBFS |
 
-**C-6 is undecided**: commission or licence. Either way a written commercial licence has to end up in
-the repository.
+**If you replace it, replace it as one session exported three times.** That is the whole brief. The
+stems are played *together*, so three separate renders — however good each one is — will phase against
+each other and cannot be used. This is why the beds are composed here rather than sourced: a music
+generator will give you another variation and cannot give you the same take with the pads muted.
+
+`make music` recomposes everything; `make music TRACK=chapter_3` does one, in about 50 seconds. The
+score is at the top of `tools/make_music.gd` — six rows of key, tempo, chords and colour, which is
+also the thing to hand a composer.
+
+A commission or a licensed library is still the ceiling (C-6), and a written commercial licence would
+have to end up in the repository.
 
 ---
 
