@@ -115,6 +115,35 @@ exactly one option keeps par alive.
    despite having the second-lowest par, and the two multi-goal chapters are among the most forgiving.
    That is a deliberate lever for pacing: walls for the spikes, branches for the recovery after one.
 
+**How many ways through each level has** — `tools/count_routes.gd`, measured 2026-08-01. A route is
+a *set of cells*, not an order: two lines lighting the same hexes in a different forced order are the
+same way through the board. Counts are of routes finishing in exactly the ideal number of moves.
+
+```
+Ch 1:   1   2   1   4   1   1   1  25   2   1   7   2
+Ch 2:   4   1  15   3   1   4   7   4  15  10   1   1
+Ch 3:   2  11   1  17  24   4   1   5   1   1   2   1
+Ch 4:   3   1   8   3   2  60   1   3   5   2   1   1
+Ch 5:   1  20   1   1   1   1   2   ?   1   ?   ?   1
+```
+
+Chapter means: 4.0 · 5.5 · 5.8 · **7.5** · 3.2. Chapter 4 is the *widest* chapter in the game — a
+third independent measure saying it is the easy one, after `par` and after forgiveness.
+
+Two things follow.
+
+**There is no curve, in either dial.** Most levels have one to five perfect routes and a handful have
+twenty-five or sixty, scattered through chapters with no order. Chapter 4 level 6 has **60** ways to
+finish perfectly and sits between levels with 2 and 1. The generator selected on length, and length
+does not predict either dial (measured: `forgiving` correlates with route count at +0.44, and every
+other cheap number below +0.2).
+
+**Size is what makes a level unmeasurable, and shape is not.** Chapter 5's levels 8, 10 and 11 —
+ideal 14, 14, 15 on radius-4 boards — exceed any budget worth spending and report nothing. That is a
+constraint on *authoring*, not just on this tool: a sweep cannot score a board it cannot search. It
+argues for holding late-game boards near radius 3 and reaching for difficulty through **shape**
+instead, which is free to measure and, unlike size, is something a player remembers.
+
 **The genuine ambiguity, which is why this is not just a defect.** §6 says each modifier is
 "introduced by one chapter and reused thereafter", and §9 introduces multi-goal at chapter 3 — but
 §8.4's parameter table lists chapter 4's modifiers as "portals, gates" with no goal count. So whether
