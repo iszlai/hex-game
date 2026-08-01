@@ -109,12 +109,13 @@ func _refresh() -> void:
 ## what the third one would have cost rather than leaving it to be inferred.
 ##
 ## "par" is golf, and it is a word the player never asked for. §5.10 keeps the
-## name because it names a *field*; what reaches the screen is "the ideal", which
-## says the same thing without a sport in it.
+## name because it names a *field*; the screen calls the number "the ideal", and
+## matching it is "perfect" — which is what the player did, said as a verdict
+## rather than as a measurement they have to compare for themselves.
 func _band_text(placements: int, par: int) -> String:
 	var over: int = placements - par
 	if _stars_earned() >= Scoring.MAX_STARS:
-		return "the ideal"
+		return "perfect"
 	if placements <= par + Scoring.MAX_STARS:
 		return "%d over \u00b7 %d fewer for three stars" % [over, over]
 	return "%d over" % over
