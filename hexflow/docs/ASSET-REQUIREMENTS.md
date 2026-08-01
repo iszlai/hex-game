@@ -231,9 +231,9 @@ looking at a real board is still the test that matters.
 | Files | **13+** loops | 18 |
 | Length | 2–3 minutes, **seamlessly looping** | 2:03–2:14, seam measured |
 | Tempo | 70–85 BPM | 72–84, rising across the campaign |
-| Instrumentation | Warm pads, soft plucks. **No percussion in campaign** | pads + sub, plucks + one bell |
+| Instrumentation | Warm pads, soft plucks. **No percussion in campaign** | lo-fi jazz: Rhodes + upright + tape noise, melody on the layer. No drums (C-42) |
 | Behaviour | Ducks −6 dB for 600 ms on the goal-reached sequence | done |
-| Loudness | −16 LUFS integrated, −1 dBTP (§15.3) | −16 LUFS on `base + layer`, peaks under −2 dBFS |
+| Loudness | −16 LUFS integrated, −1 dBTP (§15.3) | −16.6 LUFS on `base + layer`, peaks under −2 dBFS |
 
 **If you replace it, replace it as one session exported three times.** That is the whole brief. The
 stems are played *together*, so three separate renders — however good each one is — will phase against

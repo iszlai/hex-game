@@ -677,6 +677,11 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       thresholds, because one at 40% would fade the layer in and out on every placement made near it.
       Endless brings the third stem in at 5 goals and leaves it there. `make music`, and the score is
       six rows at the top of the tool.
+      **The style is lo-fi jazz (C-42).** The first pass was pads and read as an organ, which is
+      structural rather than a matter of voicing: a chord that starts and does not stop *is* an organ.
+      Every voice decays now — a Rhodes comping sevenths and ninths over an upright, tape hiss and
+      crackle under it, swung eighths throughout. Still no drums; §15.1 forbids percussion in the
+      campaign and the vinyl bed is texture that cannot be counted.
       **What it rides had to change (C-41).** §15.1 says "board fill %", and measured over the shipped
       sixty a *completed* level reaches 40% fill in 0 of 12 levels in chapter 1 and 1 of 12 in chapter
       2 — a path is a line across a hex board, not a flood of it. Taken literally, the adaptive half of

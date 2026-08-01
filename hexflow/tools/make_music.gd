@@ -8,117 +8,149 @@ extends SceneTree
 ## ## Why this exists rather than a folder of downloads
 ##
 ## §15.1 does not ask for six pieces of music. It asks for six pieces **exported
-## three times**: a `base` that always plays, a `layer` that fades in above 40%
-## board fill, and a third that endless brings in every five goals. The three have
-## to be the same performance, because they are played *together* — and two
-## renders of "the same" track are two performances. They phase, they drift, and
-## nothing makes their bars line up. That is not a quality problem a better
-## generator fixes; it is what "render" means.
+## three times**: a `base` that always plays, a `layer` that fades in as the level
+## fills, and a third that endless brings in every five goals. The three have to be
+## the same performance, because they are played *together* — and two renders of
+## "the same" piece are two performances. They phase, they drift, and nothing makes
+## their bars line up. That is not a quality problem a better generator fixes; it
+## is what "render" means.
 ##
-## The previous beds were cut from two finished recordings, which is why the layer
-## never arrived: there was no session to go back to. A generator will happily
-## produce another variation and cannot produce *the same take with the pads
-## muted*, because it never had takes.
+## The beds before these were cut from two finished recordings, which is why the
+## layer never arrived: there was no session to go back to. A generator will
+## happily produce another variation and cannot produce *the same take with the
+## piano muted*, because it never had takes.
 ##
-## So the music is written down here as a **score** — chords, a bar grid, one
-## entry per part — and rendered by the synthesiser below. Muting a part is then
-## exactly what it sounds like: the same clock, the same chords, the same decay
-## tails, one fewer voice. Three stems out of one pass over one score, aligned by
-## construction rather than by luck.
+## So the music is written down here as a **score** — chords, a bar grid, one entry
+## per part — and rendered by the synthesiser below. Muting a part is then exactly
+## what it sounds like: the same clock, the same chords, the same decay tails, one
+## fewer voice. Three stems out of one pass over one score, aligned by construction
+## rather than by luck.
 ##
-## It is placeholder music in the sense that a composer would do better, and
-## finished in the sense that §15.1's adaptive behaviour is fully playable with it
-## — which is more than a beautiful loop with no stems can say. When a commission
-## lands (C-6), it must ship as **one session exported three times**; that is the
-## whole of the brief this file is standing in for.
+## ## What it sounds like, and why
+##
+## Lo-fi jazz: a Rhodes comping sevenths and ninths over an upright bass, tape
+## noise underneath, everything on a swung eighth grid.
+##
+## The first version of this file was **pads** — sustained sine stacks held for a
+## whole bar — and the note that came back was that it sounded like an organ. It
+## did, for a structural reason worth writing down: a chord that starts and does not
+## stop *is* an organ, whatever it is voiced with. What makes a Rhodes a Rhodes is
+## that every note decays, so the harmony is re-struck rather than held, and the gap
+## between strikes is where the room and the hiss live.
+##
+## The other half is the chords. Triads are hymns; sevenths and ninths, voiced
+## without their root — the bass has that — and spread over an octave, are the
+## sound the note was asking for.
+##
+## §15.1 forbids percussion in the campaign, so there are no drums: the swing is
+## carried by the comping and the bass. The vinyl bed is texture rather than a
+## beat, which is what keeps it on the right side of that rule and also what makes
+## it work.
 ##
 ## ## What comes out
 ##
-## `assets/music/<track>_<stem>.wav`, 44.1 kHz stereo, seamlessly loopable, and
-## the Makefile encodes them to `.ogg` with ffmpeg — Godot cannot write Vorbis and
-## a 2-minute stereo WAV is 21 MB.
+## `assets/music/<track>_<stem>.wav`, 44.1 kHz stereo, seamlessly loopable, and the
+## Makefile encodes them to `.ogg` with ffmpeg — Godot cannot write Vorbis and a
+## 2-minute stereo WAV is 21 MB.
 ##
 ## Not part of the shipped game.
 
 const RATE := 44100
 const OUT_DIR := "res://assets/music/"
 
-## §15.1: `base` always, `layer` above 40% board fill, and a third for endless.
+## §15.1: `base` always, `layer` as the level fills, and a third for endless.
 const STEMS: Array[String] = ["base", "layer", "extra"]
 
-## Bars per loop. §15.1 asks for 2–3 minutes; at these tempos 40 bars lands
-## between 2:00 and 2:20, and 40 is 5 turns of an 8-bar progression, so the loop
-## point never falls mid-phrase.
+## Bars per loop. §15.1 asks for 2–3 minutes; at these tempos 40 bars lands between
+## 2:00 and 2:20, and 40 is 5 turns of an 8-bar progression, so the loop point never
+## falls mid-phrase.
 const BARS := 40
 const BEATS_PER_BAR := 4
 
 ## How long the last bar is allowed to ring past the end before being folded back
-## over the beginning. Longer than the longest release below, or a pad would be
-## cut off at the seam — which is the click a loop is judged by.
+## over the beginning. Longer than the longest decay below, or a chord would be cut
+## off at the seam — which is the click a loop is judged by.
 const TAIL_SECONDS := 6.0
 
 ## Equal temperament from A4, which is the only tuning fact in the file.
 const A4 := 440.0
 
-## The scales, as semitone offsets. Named after what they are for rather than
-## after their modes: the chapter beds want colour, not theory.
-const SCALES := {
-	"minor": [0, 2, 3, 5, 7, 8, 10],
-	"dorian": [0, 2, 3, 5, 7, 9, 10],
-	"lydian": [0, 2, 4, 6, 7, 9, 11],
-	"major": [0, 2, 4, 5, 7, 9, 11],
-	"phrygian": [0, 1, 3, 5, 7, 8, 10],
+## How far the second eighth of each beat is pushed, as a fraction of the beat. 0.5
+## is straight and 0.667 is a hard triplet swing; 0.60 is the lazy, behind-the-beat
+## feel this is after, and it is applied to *every* part — swing is not an effect on
+## one instrument, it is where the whole band agrees the off-beat is.
+const SWING := 0.60
+
+## Chord qualities, as semitones from the chord's root. Every one of them has its
+## seventh, because a triad in this style is a hymn.
+const QUALITIES := {
+	"min7":  [0, 3, 7, 10],
+	"min9":  [0, 3, 7, 10, 14],
+	"maj7":  [0, 4, 7, 11],
+	"maj9":  [0, 4, 7, 11, 14],
+	"dom9":  [0, 4, 7, 10, 14],
+	"m7b5":  [0, 3, 6, 10],
+	"min11": [0, 3, 7, 10, 17],
 }
 
-## The six beds. One row is a whole piece: where it sits, how fast, and the eight
-## chords it turns on.
+## What the melody draws from, relative to the *key*: the minor pentatonic, which
+## is the safe pool over a ii–V–i and can be leaned on precisely because the line
+## is slow and sparse.
+const PENTATONIC: Array[int] = [0, 3, 5, 7, 10]
+
+## The six beds. One row is a whole piece: what key it is in, how fast, and the
+## eight chords it turns on — `[semitones above the key root, quality]`.
 ##
-## `root` is a MIDI note number, `chords` are scale degrees (0-based), and
-## `colour` decides how bright the pads are voiced — chapter 5 is the tense one
-## and gets the narrowest, chapter 1 the widest and softest.
-##
-## Tempos stay inside §15.1's 70–85 BPM and rise across the campaign, which is the
-## cheapest way for five ambient beds to feel like a sequence rather than a set.
+## They are ii–V–i loops with the odd substitution, which is the harmony this style
+## is made of. Tempos stay inside §15.1's 70–85 BPM and rise across the campaign,
+## which is the cheapest way for five beds to feel like a sequence rather than a
+## set. `bright` is how much tine the Rhodes has: chapter 5 is the tense one and
+## gets the least.
 const TRACKS := {
 	"menu": {
-		"root": 57, "scale": "dorian", "bpm": 72, "colour": 0.55,
-		"chords": [0, 5, 3, 4, 0, 5, 6, 4],
+		"root": 57, "bpm": 74, "bright": 0.55,          # A minor
+		"chords": [[2, "m7b5"], [7, "dom9"], [0, "min9"], [0, "min9"],
+			[5, "maj9"], [7, "dom9"], [0, "min9"], [10, "maj9"]],
 	},
 	"chapter_1": {
-		"root": 60, "scale": "lydian", "bpm": 74, "colour": 0.70,
-		"chords": [0, 4, 5, 3, 0, 4, 1, 3],
+		"root": 60, "bpm": 72, "bright": 0.70,          # C major, warm
+		"chords": [[0, "maj9"], [9, "min9"], [2, "min9"], [7, "dom9"],
+			[0, "maj9"], [9, "min9"], [5, "maj7"], [7, "dom9"]],
 	},
 	"chapter_2": {
-		"root": 62, "scale": "dorian", "bpm": 76, "colour": 0.60,
-		"chords": [0, 3, 6, 4, 0, 3, 5, 4],
+		"root": 58, "bpm": 76, "bright": 0.60,          # B♭ major
+		"chords": [[2, "min9"], [7, "dom9"], [0, "maj9"], [5, "maj7"],
+			[2, "min9"], [7, "dom9"], [0, "maj9"], [9, "min7"]],
 	},
 	"chapter_3": {
-		"root": 57, "scale": "minor", "bpm": 78, "colour": 0.50,
-		"chords": [0, 5, 2, 6, 0, 5, 3, 4],
+		"root": 55, "bpm": 78, "bright": 0.50,          # G minor
+		"chords": [[0, "min9"], [5, "dom9"], [10, "maj9"], [3, "maj7"],
+			[2, "m7b5"], [7, "dom9"], [0, "min9"], [0, "min11"]],
 	},
 	"chapter_4": {
-		"root": 52, "scale": "phrygian", "bpm": 80, "colour": 0.42,
-		"chords": [0, 1, 5, 4, 0, 1, 6, 4],
+		"root": 52, "bpm": 80, "bright": 0.42,          # E minor, darker
+		"chords": [[0, "min9"], [0, "min9"], [8, "maj9"], [10, "dom9"],
+			[2, "m7b5"], [7, "dom9"], [0, "min9"], [3, "maj7"]],
 	},
 	"chapter_5": {
-		"root": 55, "scale": "minor", "bpm": 84, "colour": 0.34,
-		"chords": [0, 6, 4, 5, 0, 6, 2, 4],
+		"root": 50, "bpm": 84, "bright": 0.34,          # D minor, tense
+		"chords": [[0, "min9"], [7, "m7b5"], [10, "dom9"], [0, "min11"],
+			[5, "min7"], [10, "dom9"], [0, "min9"], [7, "dom9"]],
 	},
 }
 
-## §15.3's integrated target, reached the only way a renderer can reach it without
-## a loudness meter: RMS, with the offset between the two measured on this
-## material. Pads at these tempos sit +2.2 LU above their RMS, so −18.2 dBFS RMS
-## lands at −16 LUFS — checked against `ffmpeg -af ebur128` on all six beds.
+## §15.3's integrated target, reached the only way a renderer can reach it without a
+## loudness meter: RMS, with the offset between the two measured on this material.
+## −18.2 dBFS RMS lands at −16 LUFS — checked with `ffmpeg -af ebur128` on all six.
 ##
-## Measured on `base + layer`, because that is the mix a player hears for most of
-## a level; the base alone is quieter on purpose and the third stem is endless-only.
+## Measured on `base + layer`, because that is the mix a player hears for most of a
+## level; the base alone is quieter on purpose and the third stem is endless-only.
 const MIX_RMS_DB := -18.2
 
-## And the ceiling, on all three at once. §15.3 wants −1 dBTP; −2 leaves the
-## encoder room to overshoot a sample peak on the way to Vorbis. Loudness gives way
-## to this rather than the other way round: a bed 1 dB quiet is nobody's problem
-## and a clipped one is everybody's.
+## And the ceiling, on all three at once. §15.3 wants −1 dBTP; −2 leaves the encoder
+## room to overshoot a sample peak on the way to Vorbis. Loudness gives way to this
+## rather than the other way round: a bed 1 dB quiet is nobody's problem and a
+## clipped one is everybody's.
 const SUM_PEAK_DB := -2.0
 
 var _bar_samples: int = 0
@@ -149,7 +181,6 @@ func _render_track(name: String, spec: Dictionary) -> void:
 	_tail_samples = int(TAIL_SECONDS * float(RATE))
 	_total = _bar_samples * BARS
 
-	# Stereo, interleaved, with room for the tail that will be folded back.
 	var stems: Dictionary = {}
 	for stem: String in STEMS:
 		var buffer := PackedFloat32Array()
@@ -163,25 +194,27 @@ func _render_track(name: String, spec: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _fnv1a(name)
 
-	var scale: Array = SCALES[str(spec["scale"])]
 	var root: int = int(spec["root"])
-	var colour: float = float(spec["colour"])
+	var bright: float = float(spec["bright"])
 	var chords: Array = spec["chords"]
 
-	for bar: int in range(BARS):
-		var degree: int = int(chords[bar % chords.size()])
-		var at: int = bar * _bar_samples
-		var notes: Array[float] = _triad(root, scale, degree)
+	# The tape underneath everything, laid down first because it is continuous and
+	# has no bars.
+	_write_vinyl(stems["base"], rng)
 
-		_write_pad(stems["base"], at, notes, beat, colour)
-		_write_bass(stems["base"], at, notes[0], beat)
-		_write_plucks(stems["layer"], at, notes, beat, rng)
-		_write_bell(stems["layer"], at, notes, beat, bar)
-		if bar % 2 == 1:
-			_write_counter(stems["extra"], at, notes, scale, root, beat, bar)
+	for bar: int in range(BARS):
+		var chord: Array = chords[bar % chords.size()]
+		var chord_root: int = root + int(chord[0])
+		var quality: String = str(chord[1])
+		var at: int = bar * _bar_samples
+
+		_write_comp(stems["base"], at, chord_root, quality, beat, bright, bar, rng)
+		_write_bass(stems["base"], at, chord_root, quality, beat, bar, rng)
+		_write_melody(stems["layer"], at, root, chord_root, quality, beat, bar, rng)
+		_write_counter(stems["extra"], at, chord_root, quality, beat, bar)
 
 	for stem: String in STEMS:
-		stems[stem] = _fold_tail(stems[stem])
+		stems[stem] = _saturate(_fold_tail(stems[stem]))
 	_normalise(stems)
 
 	for stem: String in STEMS:
@@ -192,138 +225,256 @@ func _render_track(name: String, spec: Dictionary) -> void:
 
 # --- the parts ------------------------------------------------------------------
 
-## The chord under everything: three voices held for the whole bar, plus their
-## octave. Slow in, slow out, so one chord dissolves into the next rather than
-## being replaced by it.
+## The Rhodes, comping the chord: on the beat and on the swung "and" of two, which
+## is the plainest jazz comping figure there is and the one that never gets in the
+## way. Every fourth bar drops the second hit, so the figure breathes.
 ##
-## Voiced as a small stack of harmonics rather than a filtered saw, because a
-## filter is a state variable per voice and this is a table of sine sums — the
-## brightness knob is *how many harmonics*, which is `colour`.
-func _write_pad(buffer: PackedFloat32Array, at: int, notes: Array[float],
-		beat: float, colour: float) -> void:
-	var length: int = int(beat * float(BEATS_PER_BAR) * 1.35 * float(RATE))
-	var partials: int = 2 + int(round(colour * 4.0))
-	for i: int in range(notes.size()):
-		var hz: float = notes[i]
-		# Each voice sits a little off-centre and a little detuned from its pair,
-		# which is the whole of the stereo width here. Any more and a pad starts
-		# arriving from a direction, which an ambient bed should not do.
-		var pan: float = -0.4 + 0.4 * float(i)
-		_voice(buffer, at, length, hz * 0.9985, partials, 0.052, 0.45, 0.55, pan)
-		_voice(buffer, at, length, hz * 1.0015, partials, 0.052, 0.45, 0.55, -pan)
-		# The octave above, quiet: it is what stops a three-note pad sounding like
-		# an organ chord.
-		_voice(buffer, at, length, hz * 2.0, 2, 0.020, 0.5, 0.6, pan * 0.5)
+## The voicing has no root in it — the bass has that — and no octave doubling. What
+## is left is the third, the seventh and whatever colour the quality carries, which
+## is the sound of the *chord* rather than the sound of a keyboard.
+func _write_comp(buffer: PackedFloat32Array, at: int, chord_root: int, quality: String,
+		beat: float, bright: float, bar: int, rng: RandomNumberGenerator) -> void:
+	var voicing: Array[int] = _voicing(chord_root, quality)
+	var hits: Array[float] = [0.0]
+	if bar % 4 != 3:
+		hits.append(_eighth(beat, 3))
+	for h: int in range(hits.size()):
+		var start: int = at + int(hits[h] * float(RATE))
+		var gain: float = 0.115 if h == 0 else 0.075
+		var ring: float = beat * (3.4 if h == 0 else 2.2)
+		for i: int in range(voicing.size()):
+			# Notes of a chord are never struck at exactly the same instant by a
+			# hand. A few milliseconds of spread is most of what separates a played
+			# chord from a triggered one.
+			var spread: int = int((0.004 * float(i) + rng.randf() * 0.006) * float(RATE))
+			var pan: float = -0.22 + 0.44 * (float(i) / maxf(1.0, float(voicing.size() - 1)))
+			_rhodes(buffer, start + spread, _hz(voicing[i]), ring, gain, bright, pan)
 
 
-## A sub under the root, an octave and a half down. Two harmonics, because a pure
-## sine at 55 Hz disappears on a laptop and the second partial is what carries it.
-func _write_bass(buffer: PackedFloat32Array, at: int, root_hz: float, beat: float) -> void:
-	var length: int = int(beat * float(BEATS_PER_BAR) * 1.1 * float(RATE))
-	_voice(buffer, at, length, root_hz * 0.25, 2, 0.075, 0.25, 0.4, 0.0)
+## The upright, on one and three, a hair behind the beat — the whole feel of the
+## style is the bass being late and the chord being later. Every other bar it walks
+## a note into the chord that is coming, which is the difference between a bass
+## line and a drone.
+func _write_bass(buffer: PackedFloat32Array, at: int, chord_root: int, quality: String,
+		beat: float, bar: int, rng: RandomNumberGenerator) -> void:
+	var root_hz: float = _hz(_in_octave(chord_root, 36, 47))
+	var late: float = 0.012 * float(RATE)
+	_pluck_bass(buffer, at + int(late), root_hz, beat * 1.5, 0.30)
+	_pluck_bass(buffer, at + int(beat * 2.0 * float(RATE) + late), root_hz, beat * 1.2, 0.24)
+	if bar % 2 == 1:
+		var intervals: Array = QUALITIES[quality]
+		var step: int = int(intervals[rng.randi_range(1, 2)])
+		var walk: float = _hz(_in_octave(chord_root + step, 36, 47))
+		_pluck_bass(buffer, at + int(_eighth(beat, 7) * float(RATE)), walk, beat * 0.8, 0.19)
 
 
-## §15.1's "soft plucks", on the layer stem: a sparse pentatonic figure over the
-## chord, different every bar and the same on every run.
+## §15.1's layer: the tune. Three or four notes a bar at most, on the swung grid,
+## from the key's pentatonic, with an echo a dotted eighth later.
 ##
-## Sparse on purpose — a note on every eighth is a sequence, and a bed a player
-## hears for an hour must not have a sequence in it. Four of eight slots, chosen
-## by the seeded generator, land somewhere between a rhythm and a drift.
-func _write_plucks(buffer: PackedFloat32Array, at: int, notes: Array[float],
-		beat: float, rng: RandomNumberGenerator) -> void:
-	var slot: float = beat * 0.5
-	for eighth: int in range(BEATS_PER_BAR * 2):
-		if rng.randf() > 0.34:
+## It never enters on a downbeat. This stem arrives *mid-level*, while the player is
+## thinking about a move, and a melody that starts on the "one" announces itself as
+## something new; one that starts off the beat is taken as something that was
+## already there.
+func _write_melody(buffer: PackedFloat32Array, at: int, key_root: int, chord_root: int,
+		quality: String, beat: float, bar: int, rng: RandomNumberGenerator) -> void:
+	var pool: Array[int] = []
+	for step: int in PENTATONIC:
+		pool.append(key_root + step + 12)
+		pool.append(key_root + step + 24)
+	# The chord's own top note, so the line lands on the harmony rather than beside
+	# it.
+	var intervals: Array = QUALITIES[quality]
+	pool.append(_in_octave(chord_root + int(intervals[intervals.size() - 1]), 72, 84))
+
+	for slot: int in range(1, BEATS_PER_BAR * 2):
+		if rng.randf() > (0.30 if bar % 2 == 0 else 0.22):
 			continue
-		var octave: int = 1 if rng.randf() < 0.75 else 2
-		var degree: int = int(rng.randi_range(0, notes.size() - 1))
-		var hz: float = notes[degree] * float(octave)
-		var start: int = at + int(float(eighth) * slot * float(RATE))
-		var length: int = int(beat * 1.6 * float(RATE))
-		var pan: float = -0.35 + 0.7 * rng.randf()
-		_voice(buffer, start, length, hz, 3, 0.16, 0.004, 0.9, pan)
-		# The delay is written as a second, quieter note rather than run as a
-		# feedback line: one pass, no state, and a dotted eighth is where a delay
-		# on an ambient pluck belongs.
-		var echo: int = start + int(beat * 0.75 * float(RATE))
-		if echo < buffer.size() / 2:
-			_voice(buffer, echo, length, hz, 2, 0.055, 0.004, 0.9, -pan)
+		var midi: int = pool[rng.randi_range(0, pool.size() - 1)]
+		var start: int = at + int(_eighth(beat, slot) * float(RATE))
+		var length: float = beat * (1.8 if rng.randf() < 0.4 else 0.9)
+		var pan: float = -0.25 + 0.5 * rng.randf()
+		_reed(buffer, start, _hz(midi), length, 0.085, pan)
+		_reed(buffer, start + int(beat * 0.75 * float(RATE)), _hz(midi),
+			length * 0.8, 0.030, -pan)
 
 
-## A single high bell on the downbeat of every fourth bar. The only event in the
-## piece a player could set their watch by, and it is what makes the layer feel
-## like it *arrived* rather than like the volume went up.
-func _write_bell(buffer: PackedFloat32Array, at: int, notes: Array[float],
+## §15.1's third stem, for endless: a second voice under the tune, moving half as
+## often. It has to be recognisable on its own — the player is told a fifth goal
+## happened by hearing it — and plain enough that it never argues with the melody.
+func _write_counter(buffer: PackedFloat32Array, at: int, chord_root: int, quality: String,
 		beat: float, bar: int) -> void:
-	if bar % 4 != 0:
+	if bar % 2 == 1:
 		return
-	_voice(buffer, at, int(beat * 3.0 * float(RATE)), notes[2] * 4.0, 2, 0.035, 0.002, 0.95, 0.15)
+	var intervals: Array = QUALITIES[quality]
+	var third: int = _in_octave(chord_root + int(intervals[1]), 60, 71)
+	var seventh: int = _in_octave(chord_root + int(intervals[intervals.size() - 2]), 60, 71)
+	_reed(buffer, at + int(_eighth(beat, 2) * float(RATE)), _hz(third), beat * 2.4, 0.075, -0.3)
+	_reed(buffer, at + int(_eighth(beat, 5) * float(RATE)), _hz(seventh), beat * 2.0, 0.060, 0.3)
 
 
-## §15.1's third stem, for endless: a slow line above the chord, every other bar.
-## It has to be recognisable on its own — the player is told a fifth goal happened
-## by hearing it — and quiet enough that five of them do not stack into a melody
-## fighting the pad.
-func _write_counter(buffer: PackedFloat32Array, at: int, notes: Array[float],
-		scale: Array, root: int, beat: float, bar: int) -> void:
-	var step: int = [4, 6, 2, 5][(bar / 2) % 4]
-	var hz: float = _hz(root + int(scale[step % scale.size()]) + 12)
-	var length: int = int(beat * 2.6 * float(RATE))
-	_voice(buffer, at + int(beat * 0.5 * float(RATE)), length, hz, 3, 0.075, 0.08, 0.8, -0.2)
-	_voice(buffer, at + int(beat * 2.5 * float(RATE)), length, notes[1] * 2.0, 2, 0.05, 0.08, 0.8, 0.25)
-
-
-# --- the synthesiser --------------------------------------------------------------
-
-## One voice: [param partials] harmonics of [param hz], with an attack/release
-## envelope, written into the stereo buffer at [param pan].
+## The tape the whole thing is playing off: a dull hiss with a slow wobble in it,
+## and a crackle every so often.
 ##
-## Additive rather than a filtered oscillator because there is no filter here and
-## no need for one: the harmonic count *is* the brightness, a sine sum cannot
-## alias, and every partial is a `sin()` the CPU does once per sample offline.
-func _voice(buffer: PackedFloat32Array, at: int, length: int, hz: float,
-		partials: int, gain: float, attack: float, release: float, pan: float) -> void:
-	if at < 0 or hz <= 0.0 or length <= 0:
-		return
+## This is most of what the word "lo-fi" points at, and it costs one pass of noise.
+## It is texture rather than percussion — nothing here is on the grid and nothing
+## here can be counted — which is what keeps it on the right side of §15.1's "no
+## percussion in campaign".
+func _write_vinyl(buffer: PackedFloat32Array, rng: RandomNumberGenerator) -> void:
 	var frames: int = buffer.size() / 2
-	var attack_n: int = maxi(1, int(float(length) * attack))
-	var release_n: int = maxi(1, int(float(length) * release))
+	var smoothed: float = 0.0
+	for n: int in range(frames):
+		var t: float = float(n) / float(RATE)
+		# One pole of smoothing turns white noise into the dull hiss of a room,
+		# which is what a record sounds like and white noise does not.
+		smoothed = smoothed * 0.86 + (rng.randf() * 2.0 - 1.0) * 0.14
+		var hiss: float = smoothed * 0.030 * (0.7 + 0.3 * sin(TAU * 0.13 * t))
+		buffer[n * 2] += hiss
+		buffer[n * 2 + 1] += hiss * 0.92
+	# The crackle: a few hundred short pops over two minutes, placed by the same
+	# seeded generator so they land in the same places every run.
+	for _i: int in range(int(float(frames) / float(RATE) * 7.0)):
+		var at: int = rng.randi_range(0, frames - 200)
+		var gain: float = 0.02 + rng.randf() * 0.05
+		var pan: float = rng.randf() * 2.0 - 1.0
+		for n: int in range(120):
+			var v: float = (rng.randf() * 2.0 - 1.0) * exp(-float(n) / 22.0) * gain
+			buffer[(at + n) * 2] += v * (0.5 - pan * 0.5)
+			buffer[(at + n) * 2 + 1] += v * (0.5 + pan * 0.5)
+
+
+# --- the instruments --------------------------------------------------------------
+
+## A Rhodes-ish tine: a sine body that decays slowly, a bell partial two octaves up
+## that decays four times faster, and a short FM "bark" at the strike.
+##
+## The bark is the whole trick. A sine under an envelope is a flute; the same sine
+## with a fast, high, quickly-collapsing modulation over its first 30 ms is a struck
+## metal tine, and the ear names the instrument from that alone.
+func _rhodes(buffer: PackedFloat32Array, at: int, hz: float, seconds: float,
+		gain: float, bright: float, pan: float) -> void:
+	var length: int = int(seconds * float(RATE))
+	var frames: int = buffer.size() / 2
 	var left: float = gain * sqrt(clampf(0.5 - pan * 0.5, 0.0, 1.0))
 	var right: float = gain * sqrt(clampf(0.5 + pan * 0.5, 0.0, 1.0))
+	var attack: int = maxi(1, int(0.004 * float(RATE)))
 
 	for n: int in range(length):
 		var index: int = at + n
-		if index >= frames:
-			break
-		var env: float = 0.0
-		if n < attack_n:
-			env = float(n) / float(attack_n)
-		elif n > length - release_n:
-			env = float(length - n) / float(release_n)
-		else:
-			env = 1.0
-		# Equal-power in and out, so a pad swelling under another pad does not dip
-		# where the two envelopes cross.
-		env = sin(env * PI * 0.5)
-
+		if index >= frames or index < 0:
+			continue
 		var t: float = float(n) / float(RATE)
-		var sample: float = 0.0
-		for p: int in range(1, partials + 1):
-			# 1/p² rather than 1/p: a warm pad, not a saw. The spec's word is
-			# "warm" and this is the whole of it.
-			sample += sin(TAU * hz * float(p) * t) / float(p * p)
-		sample *= env
+		# Wow and flutter: the pitch drifts by a fraction of a percent, slowly.
+		# Inaudible as pitch, audible as *tape*.
+		var drift: float = 1.0 + 0.0016 * sin(TAU * 0.6 * t) + 0.0007 * sin(TAU * 5.7 * t)
+		var phase: float = TAU * hz * drift * t
+		var bark: float = exp(-t * 34.0) * (1.2 + bright)
+		var sample: float = sin(phase + bark * sin(phase * 7.0)) * exp(-t * 1.15)
+		sample += sin(phase * 4.0) * exp(-t * 4.6) * (0.10 + 0.14 * bright)
+		if n < attack:
+			sample *= float(n) / float(attack)
 		buffer[index * 2] += sample * left
 		buffer[index * 2 + 1] += sample * right
 
+
+## The upright: a fundamental with a little second harmonic, a fast attack, a
+## rounded decay and the thump of a finger on a wound string.
+func _pluck_bass(buffer: PackedFloat32Array, at: int, hz: float, seconds: float,
+		gain: float) -> void:
+	var length: int = int(seconds * float(RATE))
+	var frames: int = buffer.size() / 2
+	var attack: int = maxi(1, int(0.010 * float(RATE)))
+	for n: int in range(length):
+		var index: int = at + n
+		if index >= frames or index < 0:
+			continue
+		var t: float = float(n) / float(RATE)
+		var env: float = exp(-t * 2.1)
+		var sample: float = sin(TAU * hz * t) * env
+		sample += sin(TAU * hz * 2.0 * t) * env * 0.16
+		sample += sin(TAU * hz * 5.0 * t) * exp(-t * 60.0) * 0.10
+		if n < attack:
+			sample *= float(n) / float(attack)
+		# The one voice kept in the middle: a low note panned off-centre is a low
+		# note half the speakers cannot help with.
+		buffer[index * 2] += sample * gain * 0.707
+		buffer[index * 2 + 1] += sample * gain * 0.707
+
+
+## The melody voice: breathy and soft-edged, between a flute and a muted horn. A
+## slow attack and a little vibrato, so it sits behind the Rhodes rather than
+## announcing itself.
+func _reed(buffer: PackedFloat32Array, at: int, hz: float, seconds: float,
+		gain: float, pan: float) -> void:
+	var length: int = int(seconds * float(RATE))
+	var frames: int = buffer.size() / 2
+	var attack: int = maxi(1, int(0.055 * float(RATE)))
+	var release: int = maxi(1, int(float(length) * 0.55))
+	var left: float = gain * sqrt(clampf(0.5 - pan * 0.5, 0.0, 1.0))
+	var right: float = gain * sqrt(clampf(0.5 + pan * 0.5, 0.0, 1.0))
+	for n: int in range(length):
+		var index: int = at + n
+		if index >= frames or index < 0:
+			continue
+		var t: float = float(n) / float(RATE)
+		var vibrato: float = 1.0 + 0.004 * sin(TAU * 4.8 * t) * minf(1.0, t * 3.0)
+		var phase: float = TAU * hz * vibrato * t
+		var sample: float = sin(phase) + sin(phase * 2.0) * 0.18 + sin(phase * 3.0) * 0.06
+		var env: float = 1.0
+		if n < attack:
+			env = float(n) / float(attack)
+		elif n > length - release:
+			env = float(length - n) / float(release)
+		buffer[index * 2] += sample * env * left
+		buffer[index * 2 + 1] += sample * env * right
+
+
+# --- the grid and the harmony -------------------------------------------------------
+
+## When the [param slot]-th eighth of a bar happens, in seconds, swung.
+func _eighth(beat: float, slot: int) -> float:
+	var whole: int = slot / 2
+	return float(whole) * beat + (SWING * beat if slot % 2 == 1 else 0.0)
+
+
+## A rootless voicing: everything above the root, packed into the octave and a half
+## where a keyboard's right hand actually sits.
+##
+## Rootless because the bass is playing the root, and two instruments on the same
+## note an octave apart is the muddiest sound in this style.
+func _voicing(chord_root: int, quality: String) -> Array[int]:
+	var intervals: Array = QUALITIES[quality]
+	var out: Array[int] = []
+	for i: int in range(1, intervals.size()):
+		out.append(_in_octave(chord_root + int(intervals[i]), 58, 76))
+	out.sort()
+	return out
+
+
+## Moves [param midi] by octaves until it lands inside [param low]..[param high].
+## Voicings are written as intervals and have to be *played* somewhere; this is the
+## "somewhere", and it is why a chord never leaps an octave between bars.
+func _in_octave(midi: int, low: int, high: int) -> int:
+	var out: int = midi
+	while out < low:
+		out += 12
+	while out > high:
+		out -= 12
+	return out
+
+
+func _hz(midi: int) -> float:
+	return A4 * pow(2.0, float(midi - 69) / 12.0)
+
+
+# --- the loop, the level and the file ------------------------------------------------
 
 ## Folds the ring-out back over the opening bar and returns the loop.
 ##
 ## This is what makes the file seamless. The last chord is still sounding when the
 ## loop point arrives, so the tail past the end is added to the beginning — where
-## the same chord is starting again, because the progression divides into the bar
-## count. The seam then has nothing to click on, and nothing was cross-faded: the
-## music is not ducked at the join, it simply continues.
+## the next turn of the progression is starting, because the progression divides
+## into the bar count. The seam then has nothing to click on, and nothing was
+## cross-faded: the music is not ducked at the join, it simply continues.
 func _fold_tail(buffer: PackedFloat32Array) -> PackedFloat32Array:
 	var out := PackedFloat32Array()
 	out.resize(_total * 2)
@@ -334,14 +485,35 @@ func _fold_tail(buffer: PackedFloat32Array) -> PackedFloat32Array:
 	return out
 
 
+## Tape, as arithmetic: a gentle `tanh` curve that rounds the peaks and adds a
+## little warmth.
+##
+## Here for a reason that is half sound and half level. A struck piano has a far
+## higher crest factor than the pads this replaced — the peaks are several times the
+## average — so §15.3's peak ceiling was reached nearly 2 LU before its −16 LUFS
+## target and the bed came out quiet. Rounding the peaks is what a tape machine does
+## about exactly that, and it is also the sound the style is named after.
+##
+## Per stem rather than on the sum, because there is no sum to work on: the three
+## are separate files. A real multitrack does the same — each part hits its own tape
+## — and the stems stay aligned, because this is a memoryless curve applied sample
+## by sample.
+func _saturate(buffer: PackedFloat32Array) -> PackedFloat32Array:
+	var drive: float = 1.6
+	var correction: float = 1.0 / tanh(drive)
+	for i: int in range(buffer.size()):
+		buffer[i] = tanh(buffer[i] * drive) * correction
+	return buffer
+
+
 ## Scales all three stems by **one** factor, so the mix is what the score says and
 ## every bed is as loud as every other.
 ##
 ## Normalising each stem to its own level would be the obvious thing and would
-## silently rewrite the arrangement: the bass-and-pad `base` and the four-pluck
-## `layer` do not have the same energy, and making them equal would bring the layer
-## in at the pad's level. And normalising each *track* to its own peak — which is
-## what the first version did — leaves six beds up to 1.5 LU apart, so changing
+## silently rewrite the arrangement: the piano-and-bass `base` and the sparse
+## `layer` do not have the same energy, and making them equal would bring the
+## melody in at the piano's level. And normalising each *track* to its own peak —
+## which the first version did — leaves six beds up to 1.5 LU apart, so changing
 ## chapter sounds like the volume moved rather than like the scene did.
 ##
 ## So: loudness first, measured on the campaign mix, and the peak of all three as a
@@ -371,23 +543,6 @@ func _normalise(stems: Dictionary) -> void:
 			buffer[i] *= scale
 
 
-# --- notes and files ---------------------------------------------------------------
-
-## The triad on [param degree] of the scale: root, third and fifth *of the mode*,
-## so a chord is always in key and never has to be spelled out.
-func _triad(root: int, scale: Array, degree: int) -> Array[float]:
-	var out: Array[float] = []
-	for step: int in [0, 2, 4]:
-		var index: int = degree + step
-		var octave: int = 12 * (index / scale.size())
-		out.append(_hz(root + int(scale[index % scale.size()]) + octave))
-	return out
-
-
-func _hz(midi: int) -> float:
-	return A4 * pow(2.0, float(midi - 69) / 12.0)
-
-
 ## The same hash the generator seeds off (§19, C-12), so a track's music is as
 ## reproducible as its levels.
 func _fnv1a(text: String) -> int:
@@ -398,8 +553,8 @@ func _fnv1a(text: String) -> int:
 	return hash
 
 
-## 44.1 kHz, 16-bit, **stereo** — §15.3 asks for mono SFX and says nothing about
-## the music, and a pad with no width is a pad in a phone speaker.
+## 44.1 kHz, 16-bit, **stereo** — §15.3 asks for mono SFX and says nothing about the
+## music, and a piano with no width is a piano in a phone speaker.
 func _write_wav(path: String, samples: PackedFloat32Array) -> void:
 	var pcm := PackedByteArray()
 	pcm.resize(samples.size() * 2)
