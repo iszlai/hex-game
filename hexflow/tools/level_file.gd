@@ -27,6 +27,29 @@
 ## Not part of the shipped game.
 class_name LevelFile
 
+## Where a board that is not one of the sixty goes (MAP-EDITOR §6.1).
+##
+## Outside `src/`, so it is not shipped, and named in the export preset's exclude
+## filter rather than merely happening to be somewhere the filter covers. Drafts
+## are committable on purpose: a board someone is halfway through is worth keeping
+## across a week, and `user://` would put it in a directory nobody can find.
+const DRAFT_DIR := "res://drafts"
+
+## The tree the game reads as frozen campaign data.
+const CAMPAIGN_DIR := "res://src/data/levels"
+
+
+## Whether [param path] is one of the sixty — the thing §6's refusal protects.
+##
+## The rule is about the **destination**, not about which button was pressed.
+## Save-as exists so an unfinished board has somewhere to live, and if it could
+## also aim at `chapter_3/level_07.json` it would be a way around the refusal
+## rather than an alternative to it.
+static func is_campaign_path(path: String) -> bool:
+	var full: String = ProjectSettings.globalize_path(path).simplify_path()
+	var campaign: String = ProjectSettings.globalize_path(CAMPAIGN_DIR).simplify_path()
+	return full.begins_with(campaign + "/")
+
 
 ## Reads a level file without the validating loader's cache or its assertions —
 ## what a tool wants when it is about to rewrite the file rather than play it.

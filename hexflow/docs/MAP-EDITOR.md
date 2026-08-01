@@ -218,6 +218,27 @@ later, in CI, after the commit.
 Saving stamps `metrics.routes` and `metrics.forgiving` from the Validate that passed, so a hand-drawn
 level carries the same authoring record as a swept one and CI's curve check covers both.
 
+### 6.1 Save as — a board that is not one of the sixty
+
+**Added after first use.** Every save above writes into a campaign slot, which means every save
+overwrites a shipped level. There was nowhere to put a board that is not ready to be one of the
+sixty, and that is most boards for most of the time they exist.
+
+**save as…** writes anywhere, defaulting to `drafts/` — outside `src/`, named in the export
+preset's exclude filter, and never read at runtime. **open…** reads one back.
+
+> **The refusal follows the destination, not the button.** Writing into `src/data/levels/` requires
+> a passing Validate whichever button got there; writing anywhere else does not require one at all.
+> A scratch folder that only accepts finished work is not a scratch folder — the whole point is to
+> park a board that is *not* finished. If Save-as could aim at `chapter_3/level_07.json` it would
+> be a way around §6 rather than an alternative to it, so the guard is by path.
+
+A draft still needs a **start**, because without one there is no `Level` to serialise. That is the
+whole of the constraint.
+
+Promoting a draft is: open it, set chapter and level, Validate, save to slot. It keeps its `uid`,
+so §7.1's rule holds across the move.
+
 ---
 
 ## 7. Levels: pick and reorder

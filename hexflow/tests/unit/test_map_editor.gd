@@ -360,6 +360,58 @@ func test_a_hand_drawn_board_survives_being_saved() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
+# --- §6.1, drafts ------------------------------------------------------------------
+
+## §6's refusal follows the destination, not the button. If Save-as could aim at
+## `chapter_3/level_07.json` it would be a way *around* the guard rather than an
+## alternative to it, so the guard has to recognise the sixty by path.
+func test_the_campaign_tree_is_recognised_by_path() -> void:
+	assert_true(LevelFile.is_campaign_path(LevelRepository.path_for(3, 7)))
+	assert_true(LevelFile.is_campaign_path("res://src/data/levels/chapter_1/level_01.json"))
+	assert_false(LevelFile.is_campaign_path(LevelFile.DRAFT_DIR + "/idea.json"))
+	assert_false(LevelFile.is_campaign_path("user://scratch.json"))
+	assert_false(LevelFile.is_campaign_path("/tmp/elsewhere/level_01.json"))
+
+
+## A draft is not one of the sixty, so it is not frozen data, so it does not have
+## to be finished. It only needs a start — without one there is no [Level] to
+## serialise at all.
+func test_an_unfinished_board_can_still_be_written_as_a_draft() -> void:
+	var draft := _hexagon()
+	assert_eq(draft.tiles, [] as Array[int], "no sequence: this would fail Validate")
+	assert_false(MapReport.of(draft).ok)
+
+	var path := "user://test_map_editor_draft.json"
+	var level := draft.to_level()
+	assert_not_null(level, "a start is all a draft needs")
+	assert_true(LevelFile.write(level, path))
+
+	var reloaded := LevelFile.read(path)
+	assert_eq(reloaded.board.start, draft.start)
+	assert_eq(reloaded.board.goals, draft.goals())
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+## The thirty-second constraint, stated: a board with nothing on it is not a
+## level and there is nothing to write.
+func test_a_board_with_no_start_is_not_a_draft_either() -> void:
+	var bare := MapDraft.new()
+	bare.apply_shape("hexagon", 2, 0)
+	assert_null(bare.to_level())
+
+
+## Promoting a draft into a slot keeps its name, so a board that was played as a
+## draft does not hand its stars to whatever it replaces (C-34).
+func test_promoting_a_draft_keeps_its_name() -> void:
+	var draft := _hexagon()
+	draft.uid = "draftname1"
+	draft.chapter = 2
+	draft.index = 5
+	var level := draft.to_level()
+	assert_eq(level.uid, "draftname1")
+	assert_eq(level.id, LevelRepository.id_for(2, 5), "but it takes the slot's id")
+
+
 ## Solvable is the floor, not the result. The curve numbers are the point and are
 ## reported whether or not the author asked for them (§5).
 func test_validate_scores_a_shipped_level_against_its_slot() -> void:

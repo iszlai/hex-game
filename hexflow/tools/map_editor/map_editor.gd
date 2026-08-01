@@ -198,8 +198,10 @@ func _build_panel() -> Control:
 	_index.value_changed.connect(func(v: float) -> void: _draft.index = int(v); _invalidate())
 
 	rail.add_child(_button("validate  (F5)", _validate))
-	_save_button = _button("save  (Ctrl+S)", _save)
+	_save_button = _button("save to slot  (Ctrl+S)", _save)
 	rail.add_child(_save_button)
+	rail.add_child(_button("save as…  (Ctrl+Shift+S)", _save_as))
+	rail.add_child(_button("open…  (Ctrl+O)", _open_file))
 	rail.add_child(_button("levels…", _open_browser))
 	return rail
 
@@ -273,7 +275,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_validate()
 		accept_event()
 	elif key.keycode == KEY_S and key.is_command_or_control_pressed():
-		_save()
+		if key.shift_pressed:
+			_save_as()
+		else:
+			_save()
+		accept_event()
+	elif key.keycode == KEY_O and key.is_command_or_control_pressed():
+		_open_file()
 		accept_event()
 
 
@@ -325,16 +333,30 @@ func _validate() -> void:
 	_status.text = _report.summary()
 
 
-## §6: a failed Validate is a **refusal**. The one thing this tool must never do is
-## put an unsolvable level into frozen data — the property test that would catch it
-## runs later, in CI, after the commit.
 func _save() -> void:
+	_save_to(LevelRepository.path_for(_draft.chapter, _draft.index))
+
+
+## Save, wherever it is going.
+##
+## §6's refusal follows the **destination**, not the button. Into one of the sixty
+## it is absolute: the one thing this tool must never do is put an unsolvable
+## level into frozen data, because the property test that would catch it runs
+## later, in CI, after the commit. Anywhere else it does not apply at all — a
+## draft is for parking a board that is not finished yet, and a scratch folder
+## that only accepts finished work is not a scratch folder.
+##
+## What a draft still needs is a start, because without one there is no [Level] to
+## serialise. That is the whole of the constraint, and it is thirty seconds of
+## work rather than a rule to design around.
+func _save_to(path: String) -> void:
 	if _filling:
 		return
-	if _report == null:
-		_note("validate first — save will not write a board nobody has checked")
+	var to_campaign := LevelFile.is_campaign_path(path)
+	if to_campaign and _report == null:
+		_note("validate first — a campaign slot will not take a board nobody has checked")
 		return
-	if not _report.ok:
+	if to_campaign and not _report.ok:
 		_note("refusing to save: " + ", ".join(_report.problems))
 		return
 
@@ -342,17 +364,73 @@ func _save() -> void:
 	# arrived with (§7.1) and only a level that never had one gets a new name.
 	if _draft.uid == "":
 		_draft.uid = _mint_uid()
-	var level := _report.stamp(_draft)
+	# A validated board is written as its report measured it; an unvalidated draft
+	# is written as it stands, with whatever `par` and metrics it already carried.
+	# It has to be one or the other — stamping a report onto a board that has moved
+	# since is how a level acquires a par nobody can reproduce.
+	var level := _report.stamp(_draft) if _report != null and _report.ok else _draft.to_level()
 	if level == null:
-		_note("refusing to save: the report does not match this board")
+		_note("nothing to save yet — a board needs a start before it is a level")
 		return
 
-	var path := LevelRepository.path_for(_draft.chapter, _draft.index)
 	if not LevelFile.write(level, path):
 		_note("could not write %s" % path)
 		return
 	LevelRepository.clear_cache()
-	_note("wrote %s (%s)" % [path, level.uid])
+	_note("wrote %s (%s)%s" % [
+		path, level.uid,
+		"" if to_campaign else "  — a draft, not one of the sixty",
+	])
+
+
+## §6.1's Save as. Defaults to `drafts/` and will go anywhere, including — with a
+## passing Validate — straight into a campaign slot.
+func _save_as() -> void:
+	if _filling:
+		return
+	DirAccess.make_dir_recursive_absolute(
+		ProjectSettings.globalize_path(LevelFile.DRAFT_DIR))
+	var dialog := _file_dialog(FileDialog.FILE_MODE_SAVE_FILE, _save_to)
+	dialog.current_file = "%s.json" % (_draft.uid if _draft.uid != "" else "draft")
+	dialog.popup_centered_ratio(0.7)
+
+
+## Opens any level file, draft or campaign. Save-as without this would be a
+## one-way door: a board parked in `drafts/` with no way back is not parked.
+func _open_file() -> void:
+	if _filling:
+		return
+	DirAccess.make_dir_recursive_absolute(
+		ProjectSettings.globalize_path(LevelFile.DRAFT_DIR))
+	_file_dialog(FileDialog.FILE_MODE_OPEN_FILE, _load_path).popup_centered_ratio(0.7)
+
+
+func _load_path(path: String) -> void:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not (parsed is Dictionary):
+		_note("%s is not a level file" % path)
+		return
+	_on_level_chosen(parsed as Dictionary, path)
+
+
+## Built per use and freed after. A `FileDialog` kept around remembers the folder
+## it was last in, which sounds like a convenience and means Save-as quietly aims
+## at wherever Open last looked.
+func _file_dialog(mode: FileDialog.FileMode, action: Callable) -> FileDialog:
+	var dialog := FileDialog.new()
+	dialog.file_mode = mode
+	# The whole filesystem, not just `res://`: §6.1 says a custom folder, and an
+	# author who wants their drafts outside the repository should not be argued
+	# with. `drafts/` is only where it starts.
+	dialog.access = FileDialog.ACCESS_FILESYSTEM
+	dialog.current_dir = ProjectSettings.globalize_path(LevelFile.DRAFT_DIR)
+	dialog.add_filter("*.json", "Level files")
+	dialog.use_native_dialog = false
+	dialog.file_selected.connect(action)
+	dialog.close_requested.connect(dialog.queue_free)
+	dialog.file_selected.connect(func(_p: String) -> void: dialog.queue_free())
+	add_child(dialog)
+	return dialog
 
 
 ## A permanent name for a level, minted once and never reused (C-34). Checked
@@ -365,12 +443,15 @@ func _mint_uid() -> String:
 	var taken: Dictionary = {}
 	for chapter: int in range(1, LevelRepository.CHAPTERS + 1):
 		for index: int in range(1, LevelRepository.LEVELS_PER_CHAPTER + 1):
-			var path := LevelRepository.path_for(chapter, index)
-			if not FileAccess.file_exists(path):
-				continue
-			var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-			if parsed is Dictionary:
-				taken[str((parsed as Dictionary).get("uid", ""))] = true
+			_claim_uid(LevelRepository.path_for(chapter, index), taken)
+	# Drafts count. Two drafts sharing a name would be harmless right up until both
+	# were promoted into slots, at which point they share a row of progress — which
+	# is the exact bug uids exist to prevent (C-34).
+	var drafts := DirAccess.open(LevelFile.DRAFT_DIR)
+	if drafts != null:
+		for name: String in drafts.get_files():
+			if name.ends_with(".json"):
+				_claim_uid(LevelFile.DRAFT_DIR + "/" + name, taken)
 	while true:
 		var out: String = ""
 		for _i: int in range(UID_LENGTH):
@@ -378,6 +459,14 @@ func _mint_uid() -> String:
 		if not taken.has(out):
 			return out
 	return ""
+
+
+func _claim_uid(path: String, taken: Dictionary) -> void:
+	if not FileAccess.file_exists(path):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if parsed is Dictionary:
+		taken[str((parsed as Dictionary).get("uid", ""))] = true
 
 
 # --- the levels list --------------------------------------------------------------
