@@ -123,6 +123,13 @@ func apply_typography() -> void:
 func _on_setting_changed(key: String, _value: Variant) -> void:
 	if key == "text_scale":
 		apply_typography()
+	elif key == "language":
+		# The engine's locale, then the screen that is up. A `tr()` is read when a
+		# label is *written*, so every string already on screen keeps the language
+		# it was built in until something rewrites it — and the screen that changed
+		# the setting is the one screen the player is looking at.
+		SettingsService.apply_language()
+		EventBus.language_changed.emit()
 
 
 # --- screens -----------------------------------------------------------------

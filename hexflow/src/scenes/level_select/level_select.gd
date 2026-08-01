@@ -14,10 +14,11 @@ const TOP_BAR := 56.0
 const FOOTER := 88.0
 const TOUCH_TARGET := 44.0
 
-## §9's chapter names. Data, so the map and any future chapter card read the same
-## list; the levels themselves are frozen JSON and carry no name of their own.
+## §9's chapter names, as §22 keys. Data, so the map and any future chapter card
+## read the same list; the levels themselves are frozen JSON and carry no name of
+## their own.
 const CHAPTER_NAMES: Array[String] = [
-	"Flow", "Walls", "Branches", "Gates & Portals", "Pressure",
+	"chapter.1", "chapter.2", "chapter.3", "chapter.4", "chapter.5",
 ]
 
 @onready var flower: HexFlower = %Flower
@@ -39,6 +40,7 @@ var _backdrop: Backdrop = null
 
 func _ready() -> void:
 	InputBindings.activate(InputBindings.SET_MENU)
+	EventBus.language_changed.connect(_refresh)
 	_palette = Palette.current()
 	flower.palette = _palette
 	_backdrop = Backdrop.install(self, _chapter)
@@ -195,7 +197,7 @@ func _open(index: int) -> void:
 	if level == null:
 		# §17.1: one bad file never bricks a campaign, so a level that will not load
 		# hands over the reference board rather than a screen that never arrives.
-		hint_label.text = "Level %d is unavailable" % index
+		hint_label.text = tr("select.unavailable").format({"index": index})
 		level = LevelRepository.fallback_level()
 	AudioDirector.play_sfx("ui.confirm")
 	# Resumes rather than restarts when this is the level §18.1 has been writing —
@@ -206,11 +208,13 @@ func _open(index: int) -> void:
 
 func _locked_reason(index: int) -> String:
 	if not Campaign.chapter_unlocked(_chapter):
-		return "Chapter %d opens at %d of %d in chapter %d" % [
-			_chapter, Campaign.CHAPTER_UNLOCK_THRESHOLD,
-			Campaign.LEVELS_PER_CHAPTER, _chapter - 1,
-		]
-	return "Finish level %d first" % (index - 1)
+		return tr("select.locked_chapter").format({
+			"chapter": _chapter,
+			"need": Campaign.CHAPTER_UNLOCK_THRESHOLD,
+			"total": Campaign.LEVELS_PER_CHAPTER,
+			"prev": _chapter - 1,
+		})
+	return tr("select.locked_level").format({"index": index - 1})
 
 
 # --- painting -----------------------------------------------------------------
@@ -240,13 +244,16 @@ func _refresh() -> void:
 	_router.set_candidates(open, positions, flower.size * 0.5)
 	flower.set_cursor(_index_of(_router.cursor))
 
-	chapter_label.text = "Chapter %d · %s" % [_chapter, CHAPTER_NAMES[_chapter - 1]]
-	progress_label.text = "%d / %d   ★ %d / %d" % [
-		Campaign.completed_in_chapter(_chapter), Campaign.LEVELS_PER_CHAPTER,
-		Campaign.stars_in_chapter(_chapter),
-		Campaign.LEVELS_PER_CHAPTER * Scoring.MAX_STARS,
-	]
-	back_button.text = "← Back  %s" % InputGlyphs.label_for("menu_back")
+	chapter_label.text = tr("select.chapter").format({
+		"chapter": _chapter, "name": tr(CHAPTER_NAMES[_chapter - 1]),
+	})
+	progress_label.text = tr("select.progress").format({
+		"done": Campaign.completed_in_chapter(_chapter),
+		"total": Campaign.LEVELS_PER_CHAPTER,
+		"stars": Campaign.stars_in_chapter(_chapter),
+		"max": Campaign.LEVELS_PER_CHAPTER * Scoring.MAX_STARS,
+	})
+	back_button.text = tr("select.back").format({"glyph": InputGlyphs.label_for("menu_back")})
 	prev_button.text = "‹ %s" % InputGlyphs.label_for("menu_cycle_prev")
 	next_button.text = "%s ›" % InputGlyphs.label_for("menu_cycle_next")
 	prev_button.disabled = _chapter <= 1
@@ -257,20 +264,21 @@ func _refresh() -> void:
 func _refresh_detail() -> void:
 	var index: int = flower.cursor()
 	if not Campaign.level_unlocked(_chapter, index):
-		detail_label.text = "Level %d   locked" % index
+		detail_label.text = tr("select.locked").format({"index": index})
 		hint_label.text = _locked_reason(index)
 		return
 	var level: Level = LevelRepository.load_level(_chapter, index)
 	var par: int = level.par if level != null else 0
 	var best: int = Campaign.best_placements(_chapter, index)
-	detail_label.text = "Level %d   ideal %d%s" % [
-		index, par, "   best %d" % best if best > 0 else "",
-	]
-	hint_label.text = "%s open   %s chapter   %s back" % [
-		InputGlyphs.label_for("menu_accept"),
-		InputGlyphs.label_for("menu_cycle_next"),
-		InputGlyphs.label_for("menu_back"),
-	]
+	detail_label.text = tr("select.detail").format({
+		"index": index, "par": par,
+		"best": tr("select.best").format({"best": best}) if best > 0 else "",
+	})
+	hint_label.text = tr("select.footer").format({
+		"open": InputGlyphs.label_for("menu_accept"),
+		"chapter": InputGlyphs.label_for("menu_cycle_next"),
+		"back": InputGlyphs.label_for("menu_back"),
+	})
 
 
 func _index_of(cell: Vector3i) -> int:

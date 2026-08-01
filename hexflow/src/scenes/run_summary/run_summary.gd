@@ -20,6 +20,7 @@ var _result: Dictionary = {}
 
 func _ready() -> void:
 	InputBindings.activate(InputBindings.SET_MENU)
+	EventBus.language_changed.connect(_refresh)
 	_palette = Palette.current()
 	menu.palette = _palette
 	Backdrop.install(self)
@@ -49,23 +50,23 @@ func _refresh() -> void:
 	var endless: Dictionary = SaveService.data.get("endless", {})
 	var best: int = int(endless.get("best_goals", 0))
 
-	title_label.text = "Run over"
+	title_label.text = tr("run.title")
 	# §7.2: "Score = goals_reached". The placement count is the tie-break (§5.10),
 	# so it is shown next to the score rather than as a score of its own.
-	score_label.text = "%d goals" % goals
+	score_label.text = tr("run.score").format({"goals": goals})
 	if bool(_result.get("best", false)):
 		score_label.add_theme_color_override("font_color", _palette.goal_cell)
-		best_label.text = "new personal best · %d placements" % placements
+		best_label.text = tr("run.best_new").format({"placements": placements})
 	else:
 		score_label.add_theme_color_override("font_color", _palette.path_core)
-		best_label.text = "best %d · this run %d placements" % [best, placements]
+		best_label.text = tr("run.best").format({"best": best, "placements": placements})
 
-	board_label.text = "Leaderboards need Steam" if not SteamService.available \
+	board_label.text = tr("run.no_steam") if not SteamService.available \
 		else "endless_best_goals"
 
 	menu.set_rows([
-		{"id": "retry", "label": "Retry", "value": "", "enabled": true},
-		{"id": "menu", "label": "Menu", "value": "", "enabled": true},
+		{"id": "retry", "label": tr("run.retry"), "value": "", "enabled": true},
+		{"id": "menu", "label": tr("run.menu"), "value": "", "enabled": true},
 	])
 
 

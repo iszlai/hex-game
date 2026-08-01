@@ -43,7 +43,10 @@ static func family() -> String:
 static func label_for(action: String) -> String:
 	var label := _bare_label(action)
 	if label != "" and InputBindings.is_hold(action):
-		return "hold %s" % label
+		# The word is translated; the key name is not — §22 does not own what the
+		# operating system calls a key, and a player looking for Escape on their
+		# keyboard needs what is printed on it.
+		return "%s %s" % [TranslationServer.translate("glyph.hold"), label]
 	return label
 
 

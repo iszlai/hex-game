@@ -270,9 +270,9 @@ doing before the store build; nowhere near §20's 250 MB budget today.
 
 | | Status | Notes |
 |---|---|---|
-| English strings | **Config** | Still literals in code. Extraction to `assets/i18n/en.csv` is M10; it also switches on a CI check that fails any literal left in a scene |
-| Translations | **Missing** | Keys are namespaced (`menu.campaign`, `hud.par`, `tutorial.T4`). Nothing is translated |
-| Tutorial copy | **Missing** | 11 beats over five teaching boards, **≤12 words each**, diegetic (§10.3). The beats are data, in `src/data/tutorial/beats.json` |
+| English strings | **Provided** | Extracted: every player-visible string is a key in `assets/i18n/strings.csv`. The CI check that fails a literal left in a scene is live |
+| Translations | **Provided (2 of n)** | English and Hungarian, a column each in `strings.csv`. A third language is one more column and nothing else — keys are namespaced (`menu.campaign`, `hud.moves`, `tutorial.T4`, `binding.board_undo`) |
+| Tutorial copy | **Provided** | 11 beats over five teaching boards, **≤12 words each**, diegetic (§10.3). The beats are data, in `src/data/tutorial/beats.json`, and their words are keys in `strings.csv` |
 | Store description | **Missing** | Under 300 characters (§25) |
 
 Anything you write must survive **150% text scale without clipping** (§21) and a pseudo-locale that

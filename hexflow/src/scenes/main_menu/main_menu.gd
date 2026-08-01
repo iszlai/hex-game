@@ -31,6 +31,10 @@ func _ready() -> void:
 	_apply_type_roles()
 
 	menu.activated.connect(_on_activated)
+	# §22: the language can change under a screen that is already drawn, so the
+	# screen rewrites its own strings rather than being rebuilt — a rebuild would
+	# lose the player's place in the menu they were standing in.
+	EventBus.language_changed.connect(_refresh)
 	menu.focus_moved.connect(func(_id: String) -> void: AudioDirector.play_sfx("ui.move"))
 
 	brief.palette = _palette
@@ -175,29 +179,35 @@ func _refresh() -> void:
 
 	menu.set_rows([
 		{
-			"id": "campaign", "label": "Campaign", "enabled": true,
+			"id": "campaign", "label": tr("menu.campaign"), "enabled": true,
 			"value": "%d%%" % Campaign.completion_percent(),
 		},
 		{
-			"id": "endless", "label": "Endless", "enabled": true,
-			"value": "best %d" % best if best > 0 else "new",
+			"id": "endless", "label": tr("menu.endless"), "enabled": true,
+			"value": tr("menu.best").format({"goals": best}) if best > 0 else tr("menu.new"),
 		},
 		{
-			"id": "daily", "label": "Daily", "enabled": true,
+			"id": "daily", "label": tr("menu.daily"), "enabled": true,
 			"value": "%s %s · %s" % [
-				_streak_pips(), "streak %d" % streak if streak > 0 else
-					("done" if played_today else "new"),
+				_streak_pips(),
+				tr("menu.streak").format({"days": streak}) if streak > 0 else
+					(tr("menu.done_today") if played_today else tr("menu.new")),
 				_hms(seconds_to_reset()),
 			],
 		},
-		{"id": "settings", "label": "Settings", "enabled": true, "value": ""},
-		{"id": "quit", "label": "Quit", "enabled": true, "value": ""},
+		{"id": "settings", "label": tr("menu.settings"), "enabled": true, "value": ""},
+		{"id": "quit", "label": tr("menu.quit"), "enabled": true, "value": ""},
 	])
 
+	# The brand is a name, not a word, so it is the one string on this screen with
+	# no translation behind it (§22).
 	title_label.text = "HEXFLOW"
-	subtitle_label.text = "%d of %d levels · ★ %d" % [
-		Campaign.completed_levels(), Campaign.TOTAL_LEVELS, Campaign.total_stars(),
-	]
-	footer_label.text = "%s select   %s choose" % [
-		InputGlyphs.label_for("menu_down"), InputGlyphs.label_for("menu_accept"),
-	]
+	subtitle_label.text = tr("menu.subtitle").format({
+		"done": Campaign.completed_levels(),
+		"total": Campaign.TOTAL_LEVELS,
+		"stars": Campaign.total_stars(),
+	})
+	footer_label.text = tr("menu.footer").format({
+		"down": InputGlyphs.label_for("menu_down"),
+		"accept": InputGlyphs.label_for("menu_accept"),
+	})

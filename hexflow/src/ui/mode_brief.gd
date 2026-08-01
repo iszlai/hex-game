@@ -26,28 +26,17 @@ extends PanelContainer
 signal confirmed(mode_id: String)
 signal dismissed()
 
-## The copy, per mode. Three lines each, in the order a player needs them: what it
-## is, what ends it, and what is different from the campaign.
+## The copy, per mode: a title and three lines, in the order a player needs them —
+## what it is, what ends it, and what is different from the campaign.
 ##
-## Here rather than in a `.tscn`, because §22 extracts strings from code and a
-## literal in a scene file survives that (the gate greps for both).
+## Keys rather than sentences (§22). The words live in `assets/i18n/strings.csv`
+## with a column per language, so a mode brief in Hungarian is a data drop rather
+## than an edit here.
 const COPY := {
-	"endless": {
-		"title": "Endless",
-		"lines": [
-			"One run that keeps getting harder.",
-			"Reach the goal and the board grows a wall.",
-			"It ends when no route is left. No undo here.",
-		],
-	},
-	"daily": {
-		"title": "Daily puzzle",
-		"lines": [
-			"One board a day, the same for everyone.",
-			"A new board at midnight UTC — retry all you like.",
-			"No undo here — restart instead, so scores compare.",
-		],
-	},
+	"endless": {"title": "mode.endless.title", "stat": "mode.endless.best", "empty": "mode.endless.none",
+		"lines": ["mode.endless.line1", "mode.endless.line2", "mode.endless.line3"]},
+	"daily": {"title": "mode.daily.title", "stat": "mode.daily.streak", "empty": "mode.daily.none",
+		"lines": ["mode.daily.line1", "mode.daily.line2", "mode.daily.line3"]},
 }
 
 @export var palette: Palette = null
@@ -138,19 +127,20 @@ func open(mode_id: String) -> void:
 		return
 	_mode = mode_id
 	var copy: Dictionary = COPY[mode_id]
-	_title.text = str(copy["title"])
+	_title.text = tr(str(copy["title"]))
 	var lines: Array = copy["lines"]
 	for i: int in range(_lines.size()):
-		_lines[i].text = str(lines[i]) if i < lines.size() else ""
+		_lines[i].text = tr(str(lines[i])) if i < lines.size() else ""
 		_lines[i].visible = i < lines.size()
 	_stat.text = _stat_line(mode_id)
 	_menu.set_rows([
-		{"id": "play", "label": "Play", "value": "", "enabled": true},
-		{"id": "back", "label": "Back", "value": "", "enabled": true},
+		{"id": "play", "label": tr("mode.play"), "value": "", "enabled": true},
+		{"id": "back", "label": tr("mode.back"), "value": "", "enabled": true},
 	])
-	_hint.text = "%s play   ·   %s back" % [
-		InputGlyphs.label_for("modal_accept"), InputGlyphs.label_for("modal_back"),
-	]
+	_hint.text = tr("mode.hint").format({
+		"accept": InputGlyphs.label_for("modal_accept"),
+		"back": InputGlyphs.label_for("modal_back"),
+	})
 	visible = true
 	_menu.focus_id("play")
 	# §11.1: a modal owns input while it is up, which is what stops the menu
@@ -173,12 +163,14 @@ func mode() -> String:
 ## What this mode has to show for itself so far. A first-time player gets the
 ## sentence that says there is nothing yet, rather than a zero.
 func _stat_line(mode_id: String) -> String:
+	var copy: Dictionary = COPY[mode_id]
 	if mode_id == "endless":
 		var best: int = int((SaveService.data.get("endless", {}) as Dictionary).get("best_goals", 0))
-		return "Your best: %d goals" % best if best > 0 else "You have not run this one yet"
-	var daily: Dictionary = SaveService.data.get("daily", {})
-	var streak: int = int(daily.get("streak", 0))
-	return "Streak: %d days" % streak if streak > 0 else "No streak going yet"
+		return tr(str(copy["stat"])).format({"goals": best}) if best > 0 \
+			else tr(str(copy["empty"]))
+	var streak: int = int((SaveService.data.get("daily", {}) as Dictionary).get("streak", 0))
+	return tr(str(copy["stat"])).format({"days": streak}) if streak > 0 \
+		else tr(str(copy["empty"]))
 
 
 ## Called by the screen this sits on, before its own handling, exactly as the level

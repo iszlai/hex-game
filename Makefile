@@ -86,7 +86,7 @@ import: check ## Import assets and refresh the global class cache
 
 ## ---------------------------------------------------------------- play
 
-run: check ## Play the game at the 1280x800 Deck reference resolution
+run: check import ## Play the game at the 1280x800 Deck reference resolution
 	@$(RUN_CMD) --resolution 1280x800
 
 editor: check ## Open the project in the Godot editor
@@ -128,7 +128,13 @@ measure: check ## Frame cost per renderer (C-3). METHOD=forward_plus|mobile|gl_c
 
 ## ---------------------------------------------------------------- test
 
-test: check ## Run the whole suite: @core, @property and @e2e. JOBS=1 to run it serially
+# Every test target imports first. Godot only imports when it is *asked* to — a
+# run of the project uses whatever is in the cache — and the CSV translations
+# (§22) are generated files that `.gitignore` deliberately does not carry, so a
+# fresh clone has a `project.godot` naming two resources that do not exist yet.
+# Two seconds on an up-to-date tree, and it is the difference between a clone
+# that runs and one that greets you with a missing-resource error.
+test: check import ## Run the whole suite: @core, @property and @e2e. JOBS=1 to run it serially
 	@GODOT="$(GODOT_CMD)" ./$(PROJECT)/tools/run_tests.sh
 
 test-core: check ## Pure logic only — fast, no scenes
@@ -144,7 +150,7 @@ test-file: check ## One script. FILE=tests/unit/test_rules.gd
 	@test -n "$(FILE)" || { echo "usage: make test-file FILE=tests/unit/test_rules.gd"; exit 1; }
 	@$(RUN_CMD) $(GUT) -gtest=res://$(FILE)
 
-gate: check ## Everything CI runs — do this before pushing
+gate: check import ## Everything CI runs — do this before pushing
 	@GODOT="$(GODOT_CMD)" ./$(PROJECT)/tools/ci_gate.sh
 
 ## ---------------------------------------------------------------- content

@@ -36,7 +36,7 @@
 19. [Determinism](#19-determinism)
 20. [Performance budget](#20-performance-budget)
 21. [Accessibility](#21-accessibility)
-22. [Localization readiness](#22-localization-readiness)
+22. [Localization](#22-localization)
 23. [Steamworks integration](#23-steamworks-integration)
 24. [Testing and acceptance criteria](#24-testing-and-acceptance-criteria)
 25. [Build, CI and release](#25-build-ci-and-release)
@@ -1220,7 +1220,7 @@ hexflow/
 │       ├── tutorial/beats.json + level_01..05.json
 │       ├── achievements.json
 │       └── schemas/*.md
-├── assets/  fonts/  sfx/  music/  icons/  glyphs/
+├── assets/  fonts/  sfx/  music/  icons/  glyphs/  i18n/strings.csv
 └── tests/
     ├── unit/                     # core module tests
     ├── property/                 # generator/solver invariants
@@ -1391,19 +1391,28 @@ Non-negotiable, all shipping in 1.0:
 
 ---
 
-## 22. Localization readiness
+## 22. Localization
 
-Ship English-only; make later languages a data drop.
+The game ships in **English and Hungarian**, and a further language is a data drop: one more column in
+one CSV (C-39).
 
-- All player-visible strings live in `assets/i18n/en.csv` and are referenced by key. Zero literal strings
-  in scenes or scripts — add a CI check that fails on suspicious literals in `.tscn`/`.gd` UI files.
-- Keys are namespaced: `menu.campaign`, `hud.par`, `tutorial.T4`, `achievement.first_flow.name`.
+- All player-visible strings live in `assets/i18n/strings.csv` — one row per key, one column per
+  language — imported to a `.translation` per locale and listed in `project.godot`. Zero literal
+  strings in scenes; the gate fails on `text = "…"` in any `.tscn`, and
+  `tests/unit/test_localization.gd` fails on a key the table does not have.
+- Keys are namespaced: `menu.campaign`, `hud.moves`, `tutorial.T4`, `binding.board_undo`.
+- The language is a setting (Gameplay → Language, first row), applied by `SettingsService` before the
+  first screen exists. Changing it rewrites the strings on the screen the player is standing in rather
+  than rebuilding it — `EventBus.language_changed`.
+- `en` is the fallback: a key with no translation shows the English, and a key with no row at all shows
+  itself. A missing string costs a word, never a screen.
 - Layouts must survive +40% string length (German) without clipping — test with a pseudo-locale that
-  pads every string.
-- No text baked into images. No concatenated sentences; use format placeholders (`hud.placements` =
-  `"placements {count} / par {par}"`).
+  pads every string. Hungarian already runs 10–30% longer than the English and is the live check.
+- No text baked into images. No concatenated sentences; use format placeholders (`hud.moves` =
+  `"{moves} moves · ideal {par}"`), and every translation of a row must use the same ones.
 - Numerals use tabular figures (§13.4) and locale-aware formatting.
-- Font subsets currently cover Latin-Extended; note in the README that CJK will need a font swap.
+- Font subsets cover Latin-Extended, which is what Hungarian's ő and ű need; the README notes that CJK
+  will need a font swap.
 
 ---
 
@@ -1772,7 +1781,7 @@ green.
 | **M7** | Art & feel | Shaders (§13.3), palette tokens, typography, all §14 animations, all §15 audio | A blind side-by-side against the grey-box shows every §12.4 feedback requirement met; frame budget (§20) met at 1280×800 |
 | **M8** | Tutorial | Five teaching boards, data-driven beats, replay and skip | A first-time player completes the course and chapter 1 with no external explanation (verified by an actual naive playtest, not a self-assessment) |
 | **M9** | Modes & Steam | Endless, Daily, achievements, leaderboards, cloud | Mode `@e2e` scenarios pass, including the Steam-unavailable path |
-| **M10** | Accessibility & i18n | 4 alternate palettes, text scaling, Reduce Motion, string extraction, pseudo-locale | Accessibility `@e2e` scenarios pass; greyscale playthrough verified; 150% scale shows no clipping |
+| **M10** | Accessibility & i18n | 4 alternate palettes, text scaling, Reduce Motion, string extraction, English + Hungarian | Accessibility `@e2e` scenarios pass; greyscale playthrough verified; 150% scale shows no clipping; every screen readable in both languages |
 | **M11** | Release | Deck self-audit, store page, trailer, depots, `beta` branch soak | §23.4 checklist fully ticked on hardware; 3 platform builds from CI; a clean install completes chapter 1 without incident |
 
 Reasonable sequencing note: M7 (art) intentionally lands *after* M6 (content), because polishing a game
@@ -1912,6 +1921,7 @@ option was taken and recorded here rather than invented silently.
 | C-36 | C-31's pulse read as a **highlight sliding along** the stroke rather than as anything electric, and it arrived nowhere: a symmetric band travelled the route at a constant rate, was present somewhere on it at every instant, and then simply started again. Light that travels has a direction and an end. Two changes, one effect. (1) The pulse becomes a **jolt**: nothing ahead of the tip beyond a short leader, a hot point, an exponential drain behind it, and a dark gap before the next one — the gap being what makes it a strike rather than a metronome. Its shape is *drawn, not lit*: while the bolt is passing, the bar's own geometry kinks into a triangle wave and swells, because the ribbon is a few pixels across and a thread of light wandering inside it can only ever be a shimmer. `BAR_SEGMENTS` doubled to 16 to give the corners vertices to land on; at eight the bolt tore into fragments. Both tails are measured in **lattice steps** rather than in fractions of the route, or a bolt on a twenty-cell path would be twenty times the length of the same bolt on a two-cell one. The zigzag rides C-31's own `sin(pi*t)` envelope, so however far the stroke throws itself sideways it still meets its neighbours at the tile centres they share — a bolt is not allowed to tell the player something false about their route. (2) The bolt **lands**. The cell the stroke ends at — the goal, once the route has reached it — takes a discharge: a flash, a thin ring leaving the point of impact, and forked arcs chasing it outward, added to *emission* so the board's existing bloom burns the core out toward white without a colour literal §13.2 does not allow. The tile is picked by position against one uniform rather than by a fifth custom channel there is no room for, and it runs on the ribbon's own `pulse_seconds` — one `fract`, no synchronisation to keep, and §14.5 stops the bolt and its landing together. §14.1's placement band fires the same discharge as a one-shot when it reaches the end of the route, which is detected as the head crossing 1.0 rather than scheduled: the tween is eased, so no caller can work out in advance what fraction of the duration the far end is at | Keep it. `JOLT_*`, `ZIGZAG_*` and `STRIKE_*` are chosen numbers that say so, the way `PULSE_SECONDS` is — §14.1 tabulates the timings the spec requires and its table may not grow a fifteenth row |
 | C-37 | §10 wove the tutorial through chapter 1 and one beat per modifier at its introducing level, which put the first lesson and the last several hours apart. Three things followed from that and none of them was fixable inside the design: the wild charge was taught on a board that also had walls, gates, a par and twelve levels of context on it, so the beat competed with the level; a beat that "merely highlights and lets the player ignore it" over a level with a real solution is a hint, not a lesson, and the two beats that mattered most fired only if the player happened to walk into a wall or pick up a charge; and seeing it again meant replaying the campaign to the level it was pinned to | **The tutorial is a course of five teaching boards of its own**, decided 2026-08-01. Six to nine cells each, one idea per board, a minute end to end, played out of the boot screen on the first launch and never again. Three consequences worth stating. **Every beat gates** — a teaching board's route is the only route, so holding input to the cell the words are about is the difference between a lesson and a suggestion, and §10.1's "non-blocking after the first beat" was written for guidance laid over a level someone was there to play. **Two boards are unsolvable without the mechanic they teach** (`tools/author_tutorial.gd` proves it with the solver before it will write the file), because a portal that can be walked around teaches that portals are decoration. And the words moved off the dead-state banner onto a card beside the board: the course speaks on every board, and the last 56 px under the rail is where a first-time player looks once. Two things had to give underneath: [constant Board.MIN_CELLS] came down from 12 to 6, with the campaign's own floor moved into the level-file property test, and §5.8's optimistic flood now follows portal twins — without it a board whose goal is only reachable through a portal is declared dead on the frame it opens, which is a real rule bug the third lesson simply happened to be the first thing to hit |
 | C-38 | §12.2's main menu names Endless and the Daily and puts a number beside each, and nothing in the game says what either one *is*. Both differ from the campaign on the first move — §5.9 takes undo away in both — so the way a player found that out was to press undo on a board they could not take back. The tutorial cannot help: §10's course is five boards about the rules, and neither mode is a rule | **Each mode explains itself before it starts**, decided 2026-08-01. Three lines and a Play button, in a modal on the menu: what it is, what ends it, and the one rule that is not the campaign's. Three, because neither mode is complicated and a fourth line would be about scoring, which is what the run summary is for. It is a panel rather than a screen — §12.1's map has no state for it, and a brief that fades the menu out and back in is one nobody wants to see twice — and the focus opens on Play, so a player who has read it gets through with the same press that opened it. The mode's own record rides along ("Your best: 7 goals"), because it is the reason to press Play and the menu row it came from is now covered up |
+| C-39 | §22 planned for localization rather than doing it: strings were written where they were shown, the CI check for literals was skipped because the file it looked for did not exist, and the one language was baked into 88 places across ten files. Adding Hungarian meant either a second copy of every screen or the extraction that had been deferred to M10 | **The game ships in two languages, and the extraction is done**, decided 2026-08-01. One CSV with a column per language, imported to a `.translation` per locale; every string in `src/` is a key looked up where the label is written. Four things worth stating. The **table is the interface**: the legend's rows, the settings' labels, the tutorial's beats and the bindable actions all hold keys rather than sentences, so a translator edits one file and touches no code. The **language is applied before the first screen exists** — `SettingsService` is the second autoload — because a menu that has to be told its language afterwards flashes English first. Changing it **rewrites the screen rather than rebuilding it** (`EventBus.language_changed`), so the player keeps their place in the menu they are standing in. And the check that was skipped is **live**: the gate fails on a literal in any `.tscn`, and `tests/unit/test_localization.gd` reads the scripts for keys, fails on one the table lacks, on a row nothing uses, and on a translation whose placeholders do not match its English. The source file is `strings.csv` rather than §22's `en.csv`, because a file holding every language should not be named after one of them |
 
 ---
 

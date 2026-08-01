@@ -21,6 +21,7 @@ var _result: Dictionary = {}
 
 func _ready() -> void:
 	InputBindings.activate(InputBindings.SET_MENU)
+	EventBus.language_changed.connect(_refresh)
 	_palette = Palette.current()
 	menu.palette = _palette
 	Backdrop.install(self, int(GameDirector.last_result.get("chapter", 0)))
@@ -83,13 +84,17 @@ func _refresh() -> void:
 	var par: int = int(_result.get("par", 0))
 
 	if mode == GameDirector.Mode.DAILY:
-		title_label.text = "Daily · %s" % str(_result.get("daily_date", ""))
+		title_label.text = tr("results.title_daily").format({
+			"date": str(_result.get("daily_date", "")),
+		})
 	elif chapter > 0:
-		title_label.text = "Chapter %d · Level %d" % [chapter, index]
+		title_label.text = tr("results.title_level").format({
+			"chapter": chapter, "level": index,
+		})
 	else:
-		title_label.text = "Complete"
+		title_label.text = tr("results.complete")
 
-	score_label.text = "%d moves \u00b7 ideal %d" % [placements, par]
+	score_label.text = tr("results.score").format({"moves": placements, "par": par})
 	detail_label.text = _band_text(placements, par)
 	(stars_row.get_node("HintDot") as Label).visible = bool(_result.get("hinted", false))
 
@@ -99,9 +104,9 @@ func _refresh() -> void:
 	if mode == GameDirector.Mode.CAMPAIGN and chapter > 0:
 		next = Campaign.after(chapter, index)
 	menu.set_rows([
-		{"id": "next", "label": "Next level", "value": "", "enabled": next.x > 0},
-		{"id": "replay", "label": "Replay", "value": "", "enabled": true},
-		{"id": "map", "label": "Map", "value": "", "enabled": true},
+		{"id": "next", "label": tr("results.next"), "value": "", "enabled": next.x > 0},
+		{"id": "replay", "label": tr("results.replay"), "value": "", "enabled": true},
+		{"id": "map", "label": tr("results.map"), "value": "", "enabled": true},
 	])
 
 
@@ -115,10 +120,10 @@ func _refresh() -> void:
 func _band_text(placements: int, par: int) -> String:
 	var over: int = placements - par
 	if _stars_earned() >= Scoring.MAX_STARS:
-		return "perfect"
+		return tr("results.perfect")
 	if placements <= par + Scoring.MAX_STARS:
-		return "%d over \u00b7 %d fewer for three stars" % [over, over]
-	return "%d over" % over
+		return tr("results.over_and_three").format({"over": over, "fewer": over})
+	return tr("results.over").format({"over": over})
 
 
 ## §14.1: 3 × 260 ms, `BACK`/`EASE_OUT`, staggered 140 ms, a chord note each.

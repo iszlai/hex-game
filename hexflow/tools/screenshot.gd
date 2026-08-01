@@ -67,6 +67,13 @@ func _initialize() -> void:
 ## started before the scene exists, so `level.gd` finds one already going and
 ## leaves its own standalone default alone.
 func _setup() -> void:
+	# §22: `HEXFLOW_LANG=hu make shot …` photographs a screen in the other language.
+	# A translated layout is something you have to *see* — the same argument §21's
+	# text-scale audit rests on — and the alternative is editing settings.json by
+	# hand before every capture.
+	var lang: String = OS.get_environment("HEXFLOW_LANG")
+	if lang != "":
+		TranslationServer.set_locale(lang)
 	var director: Node = root.get_node_or_null("GameDirector")
 	_seed_progress()
 	if _at.size() == 2 and director != null:

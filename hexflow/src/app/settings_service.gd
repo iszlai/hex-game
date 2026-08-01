@@ -6,6 +6,13 @@ signal changed(key: String, value: Variant)
 
 const PATH := "user://settings.json"
 
+## §22's languages, in the order the Settings screen offers them, and what each
+## one is called **in itself**. A player who has landed in the wrong language
+## cannot read "Hungarian" to get out of it, and every list of languages that has
+## ever worked knows this.
+const LANGUAGES: Array[String] = ["en", "hu"]
+const LANGUAGE_NAMES: Array[String] = ["English", "Magyar"]
+
 const DEFAULTS := {
 	"music_volume": 70,
 	"sfx_volume": 85,
@@ -33,6 +40,20 @@ var _values: Dictionary = {}
 func _ready() -> void:
 	_values = DEFAULTS.duplicate(true)
 	load_from_disk()
+	apply_language()
+
+
+## Puts §22's chosen language on the engine, which is what every `tr()` in the
+## game reads.
+##
+## Here rather than in [GameDirector] with §21's text scale, because this is the
+## *first* autoload that knows which language it is: a screen built before the
+## locale is set would draw English once and then have to be told. Godot loads
+## autoloads in `project.godot` order and this one is second, before anything has
+## a label on it.
+func apply_language() -> void:
+	var chosen: String = str(get_value("language"))
+	TranslationServer.set_locale(chosen if LANGUAGES.has(chosen) else LANGUAGES[0])
 
 
 func get_value(key: String) -> Variant:

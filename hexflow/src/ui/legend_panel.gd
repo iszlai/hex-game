@@ -28,31 +28,32 @@ extends PanelContainer
 ## Path, Target and Cursor share the hexagon, because what tells them apart on the
 ## board is fill and stroke weight rather than shape — so the cue column says so,
 ## and that is the channel §21 asks for.
+## The name and the cue are §22 keys rather than sentences, so the panel that
+## explains the board explains it in the player's language.
 const ROWS := [
-	[Icon.Kind.GOAL, "Goal", "inner ring + target glyph", "goal_cell"],
-	[Icon.Kind.WALL, "Wall", "45° hatching, never enterable", "wall_stroke"],
-	[Icon.Kind.GATE, "Gate", "single ring; needs two path neighbours", "gate"],
-	[Icon.Kind.PORTAL, "Portal", "two concentric rings, dashed tether to its twin", "portal"],
-	[Icon.Kind.WILD, "Wild", "star glyph; grants a charge when entered", "wild"],
-	[Icon.Kind.HEXAGON, "Path", "filled, gradient deepening from the start", "path_core"],
-	[Icon.Kind.HEXAGON, "Target", "heavier stroke — a legal move for this tile",
-		"cell_candidate_stroke"],
-	[Icon.Kind.HEXAGON, "Cursor", "outline standing outside the cell", "focus"],
+	[Icon.Kind.GOAL, "legend.goal", "legend.goal_cue", "goal_cell"],
+	[Icon.Kind.WALL, "legend.wall", "legend.wall_cue", "wall_stroke"],
+	[Icon.Kind.GATE, "legend.gate", "legend.gate_cue", "gate"],
+	[Icon.Kind.PORTAL, "legend.portal", "legend.portal_cue", "portal"],
+	[Icon.Kind.WILD, "legend.wild", "legend.wild_cue", "wild"],
+	[Icon.Kind.HEXAGON, "legend.path", "legend.path_cue", "path_core"],
+	[Icon.Kind.HEXAGON, "legend.target", "legend.target_cue", "cell_candidate_stroke"],
+	[Icon.Kind.HEXAGON, "legend.cursor", "legend.cursor_cue", "focus"],
 ]
 
 ## `[name, action]`, or `[name, modifier, action]` for a chord. The glyph column
 ## is filled from [InputGlyphs], so a rebind or a different controller family
 ## changes what is shown here without touching this table (§11.4).
 const CONTROLS := [
-	["Move", "board_move_up"],
-	["Cycle", "board_cycle_prev", "board_cycle_next"],
-	["Place", "board_confirm"],
-	["Wild", "board_wild_modifier", "board_confirm"],
+	["legend.move", "board_move_up"],
+	["legend.cycle", "board_cycle_prev", "board_cycle_next"],
+	["legend.place", "board_confirm"],
+	["legend.wild", "board_wild_modifier", "board_confirm"],
 	# C-18 gave the board six 60° stops and M4 bound the two actions that turn it,
 	# and nothing in the game has ever said so. A control the player cannot discover
 	# is a control that does not exist for them — and turning the board is how you
 	# see behind a tall wall, so it is not a garnish.
-	["Turn board", "board_rotate_ccw", "board_rotate_cw"],
+	["legend.turn", "board_rotate_ccw", "board_rotate_cw"],
 ]
 
 @export var palette: Palette = null
@@ -64,6 +65,19 @@ func _ready() -> void:
 	if palette == null:
 		palette = Palette.current()
 	visible = false
+	_build()
+	# §22: every row here is a translated name and a translated cue, and they are
+	# written once when the panel is built. A language change therefore has to
+	# throw the rows away — there is nothing else in them to update.
+	EventBus.language_changed.connect(rebuild)
+
+
+## Builds the rows again, in whatever language is live now.
+func rebuild() -> void:
+	for child: Node in get_children():
+		remove_child(child)
+		child.queue_free()
+	_rows = null
 	_build()
 
 
@@ -88,7 +102,7 @@ func _build() -> void:
 	margin.add_child(_rows)
 
 	var title := Label.new()
-	title.text = "LEGEND"
+	title.text = tr("legend.title")
 	title.add_theme_color_override("font_color", palette.text_secondary)
 	_rows.add_child(title)
 
@@ -98,7 +112,7 @@ func _build() -> void:
 
 	_rows.add_child(HSeparator.new())
 	var controls := Label.new()
-	controls.text = "CONTROLS"
+	controls.text = tr("legend.controls")
 	controls.add_theme_color_override("font_color", palette.text_secondary)
 	_rows.add_child(controls)
 	for entry: Variant in CONTROLS:
@@ -117,13 +131,13 @@ func _row(row: Array) -> HBoxContainer:
 	box.add_child(glyph)
 
 	var name_label := Label.new()
-	name_label.text = str(row[1])
+	name_label.text = tr(str(row[1]))
 	name_label.custom_minimum_size = Vector2(76.0, 0.0)
 	name_label.add_theme_color_override("font_color", palette.text_primary)
 	box.add_child(name_label)
 
 	var cue := Label.new()
-	cue.text = str(row[2])
+	cue.text = tr(str(row[2]))
 	cue.add_theme_color_override("font_color", palette.text_secondary)
 	box.add_child(cue)
 	return box
@@ -147,7 +161,7 @@ func _control_row(name: String, actions: Array) -> HBoxContainer:
 	box.add_child(spacer)
 
 	var name_label := Label.new()
-	name_label.text = name
+	name_label.text = tr(name)
 	name_label.custom_minimum_size = Vector2(76.0, 0.0)
 	name_label.add_theme_color_override("font_color", palette.text_primary)
 	box.add_child(name_label)

@@ -62,13 +62,21 @@ count=$(sed -n '/^\[autoload\]/,/^\[[a-z]/p' project.godot | grep -cE '^[A-Za-z]
 if [ "$count" -ne 6 ]; then fail "expected 6 autoloads, found $count (§16.5)"; fi
 
 echo "== §22 localization: no literal UI strings in scene files =="
-# Permissive until the M10 string extraction: once assets/i18n/en.csv exists,
-# every player-visible string must be a key, not a literal.
-if [ -f assets/i18n/en.csv ]; then
-  hits=$(grep -rn 'text = "' src/scenes/ src/ui/ 2>/dev/null | grep -v 'text = ""')
+# Live since the strings were extracted (C-39). Every player-visible string is a
+# key in `assets/i18n/strings.csv`, looked up where the label is written — so a
+# `text = "…"` in a scene is a string that can never be translated, and the one
+# that would be found by a Hungarian player rather than by anyone here.
+# Scenes only, which is what this check has always said: a `.tscn` is where a
+# string goes to be invisible, because nothing there passes through `tr()` and no
+# test reads it. Scripts are covered instead by `tests/unit/test_localization.gd`,
+# which scans them for keys and fails on one the table does not have — the check a
+# grep for quotes cannot do, since a script's literals are also its star glyphs,
+# its chevrons and the brand.
+if [ -f assets/i18n/strings.csv ]; then
+  hits=$(grep -rn 'text = "' --include="*.tscn" src/ 2>/dev/null | grep -v 'text = ""')
   if [ -n "$hits" ]; then echo "$hits"; fail "literal UI string in a scene (§22)"; fi
 else
-  echo "   skipped: assets/i18n/en.csv does not exist yet (M10)"
+  fail "assets/i18n/strings.csv is missing — every string in the game lives there"
 fi
 
 # The boot smoke test is started here and collected at the end: it is a whole

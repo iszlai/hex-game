@@ -34,6 +34,19 @@ AudioDirector="*res://src/app/audio_director.gd"
 SteamService="*res://src/app/steam_service.gd"
 GameDirector="*res://src/app/game_director.gd"
 
+; §22's strings, as a data drop: one CSV with a column per language, imported to
+; a `.translation` per locale. The list is here rather than loaded in code because
+; the engine needs it before the first screen exists — a menu that has to wait for
+; an autoload to install its own language flashes English first.
+;
+; `en` is the fallback, so a key nobody has translated yet shows the English
+; rather than the key: a missing translation must cost the player a word, never a
+; screen (C-39).
+[internationalization]
+
+locale/translations=PackedStringArray("res://assets/i18n/strings.en.translation", "res://assets/i18n/strings.hu.translation")
+locale/fallback="en"
+
 [display]
 
 window/size/viewport_width=1280

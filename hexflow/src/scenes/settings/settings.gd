@@ -23,55 +23,66 @@ const KIND_BIND := "bind"
 
 ## Every row of every tab. `key` is the [SettingsService] key, except for
 ## [constant KIND_ACTION] rows, which do something instead of storing something.
+##
+## Labels and value names are §22 keys, not sentences. A name with no key behind
+## it — "30", "115%" — comes back unchanged, which is what makes a number and a
+## word able to sit in the same list.
 const ROWS := {
 	"Gameplay": [
-		{"key": "cursor_mode", "label": "Cursor", "kind": KIND_CHOICE,
-			"values": ["snap", "free"], "names": ["snap to targets", "free"]},
-		{"key": "hold_to_confirm", "label": "Destructive actions", "kind": KIND_TOGGLE,
-			"names": ["press twice", "hold"]},
-		{"key": "show_glyphs", "label": "Controller glyphs", "kind": KIND_TOGGLE},
-		{"key": "", "label": "Reset gameplay to defaults", "kind": KIND_ACTION,
+		# First, because a player who has landed in a language they cannot read has
+		# exactly one thing to look for and should not have to read a tab to find it.
+		{"key": "language", "label": "settings.language", "kind": KIND_CHOICE,
+			"values": SettingsService.LANGUAGES, "names": SettingsService.LANGUAGE_NAMES},
+		{"key": "cursor_mode", "label": "settings.cursor", "kind": KIND_CHOICE,
+			"values": ["snap", "free"], "names": ["settings.cursor.snap", "settings.cursor.free"]},
+		{"key": "hold_to_confirm", "label": "settings.destructive", "kind": KIND_TOGGLE,
+			"names": ["gesture.press_twice", "gesture.hold"]},
+		{"key": "show_glyphs", "label": "settings.glyphs", "kind": KIND_TOGGLE},
+		{"key": "", "label": "settings.reset_gameplay", "kind": KIND_ACTION,
 			"action": "reset_tab"},
 		# §10.1's "Replay tutorial", which "resets the tutorial flags **only**".
-		{"key": "", "label": "Replay tutorial", "kind": KIND_ACTION, "action": "replay_tutorial"},
+		{"key": "", "label": "settings.replay_tutorial", "kind": KIND_ACTION,
+			"action": "replay_tutorial"},
 	],
 	"Controls": [
-		{"key": "haptics", "label": "Haptics", "kind": KIND_RANGE,
+		{"key": "haptics", "label": "settings.haptics", "kind": KIND_RANGE,
 			"min": 0, "max": 100, "step": 5, "suffix": "%"},
-		{"key": "", "label": "Reset controls to defaults", "kind": KIND_ACTION,
+		{"key": "", "label": "settings.reset_controls", "kind": KIND_ACTION,
 			"action": "reset_bindings"},
 	],
 	"Video": [
-		{"key": "vsync", "label": "V-Sync", "kind": KIND_TOGGLE},
-		{"key": "fps_cap", "label": "Frame cap", "kind": KIND_CHOICE,
-			"values": [30, 60, 90, 120, 0], "names": ["30", "60", "90", "120", "uncapped"]},
-		{"key": "", "label": "Reset video to defaults", "kind": KIND_ACTION,
+		{"key": "vsync", "label": "settings.vsync", "kind": KIND_TOGGLE},
+		{"key": "fps_cap", "label": "settings.fps", "kind": KIND_CHOICE,
+			"values": [30, 60, 90, 120, 0],
+			"names": ["30", "60", "90", "120", "settings.fps.uncapped"]},
+		{"key": "", "label": "settings.reset_video", "kind": KIND_ACTION,
 			"action": "reset_tab"},
 	],
 	"Audio": [
-		{"key": "music_volume", "label": "Music", "kind": KIND_RANGE,
+		{"key": "music_volume", "label": "settings.music", "kind": KIND_RANGE,
 			"min": 0, "max": 100, "step": 5, "suffix": "%"},
-		{"key": "sfx_volume", "label": "Effects", "kind": KIND_RANGE,
+		{"key": "sfx_volume", "label": "settings.sfx", "kind": KIND_RANGE,
 			"min": 0, "max": 100, "step": 5, "suffix": "%"},
-		{"key": "ui_volume", "label": "Interface", "kind": KIND_RANGE,
+		{"key": "ui_volume", "label": "settings.ui", "kind": KIND_RANGE,
 			"min": 0, "max": 100, "step": 5, "suffix": "%"},
-		{"key": "", "label": "Reset audio to defaults", "kind": KIND_ACTION,
+		{"key": "", "label": "settings.reset_audio", "kind": KIND_ACTION,
 			"action": "reset_tab"},
 	],
 	"Accessibility": [
 		# §21's four alternates plus the default. It was deliberately absent while
 		# only one palette shipped — a picker with one entry is not a picker — and
 		# it is here now that there are six to pick from.
-		{"key": "palette", "label": "Colours", "kind": KIND_CHOICE,
+		{"key": "palette", "label": "settings.colours", "kind": KIND_CHOICE,
 			"values": ["cairn_warm", "neon_dark", "deuter", "protan", "tritan", "high_contrast"],
-			"names": ["warm", "neon dark", "deuteranopia", "protanopia", "tritanopia",
-				"high contrast"]},
-		{"key": "text_scale", "label": "Text size", "kind": KIND_CHOICE,
+			"names": ["settings.palette.warm", "settings.palette.neon",
+				"settings.palette.deuter", "settings.palette.protan",
+				"settings.palette.tritan", "settings.palette.high_contrast"]},
+		{"key": "text_scale", "label": "settings.text_size", "kind": KIND_CHOICE,
 			"values": [1.0, 1.15, 1.25, 1.4, 1.5],
 			"names": ["100%", "115%", "125%", "140%", "150%"]},
-		{"key": "reduce_motion", "label": "Reduce motion", "kind": KIND_TOGGLE},
-		{"key": "flat_board", "label": "Flat board", "kind": KIND_TOGGLE},
-		{"key": "", "label": "Reset accessibility to defaults", "kind": KIND_ACTION,
+		{"key": "reduce_motion", "label": "settings.reduce_motion", "kind": KIND_TOGGLE},
+		{"key": "flat_board", "label": "settings.flat_board", "kind": KIND_TOGGLE},
+		{"key": "", "label": "settings.reset_accessibility", "kind": KIND_ACTION,
 			"action": "reset_tab"},
 	],
 }
@@ -98,6 +109,8 @@ func _ready() -> void:
 	Surface.apply_to(self, _palette)
 	_apply_type_roles()
 	menu.activated.connect(_on_activated)
+	# The screen that changes the language is the first one that has to speak it.
+	EventBus.language_changed.connect(_refresh)
 	menu.focus_moved.connect(func(_id: String) -> void: AudioDirector.play_sfx("ui.move"))
 	_refresh()
 
@@ -132,13 +145,11 @@ func rows_of(tab: String) -> Array:
 	return out
 
 
-## `board_move_up` → "Board · move up". The action name is the id everything else
-## uses, so it is also the only place a label can come from without a second table
-## to keep in step.
+## `board_move_up` → "Board · move up", or its Hungarian. The action name is the
+## id everything else uses, so it is also the key the words hang off — one table
+## in `strings.csv` rather than a second one here to keep in step (§22).
 static func _action_label(action: String) -> String:
-	var parts: PackedStringArray = action.split("_")
-	var group: String = str(parts[0]).capitalize()
-	return "%s · %s" % [group, " ".join(parts.slice(1))]
+	return TranslationServer.translate("binding.%s" % action)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -291,9 +302,10 @@ func _begin_capture(action: String) -> void:
 		return
 	_capturing = action
 	AudioDirector.play_sfx("ui.move")
-	hint_label.text = "Press an input for %s   ·   %s to cancel" % [
-		_action_label(action), OS.get_keycode_string(KEY_ESCAPE),
-	]
+	hint_label.text = tr("settings.capture").format({
+		"action": _action_label(action),
+		"escape": OS.get_keycode_string(KEY_ESCAPE),
+	})
 	_refresh()
 
 
@@ -333,7 +345,7 @@ func _end_capture(collision: String) -> void:
 		# creates by accident is a control they find unresponsive later with no way
 		# to know why. Refused, and named.
 		AudioDirector.play_sfx("ui.reject")
-		hint_label.text = "Already used by %s" % _action_label(collision)
+		hint_label.text = tr("settings.collision").format({"action": _action_label(collision)})
 
 
 ## §21: "a reset-to-default is always one press away". The Controls tab has had
@@ -354,7 +366,9 @@ func _reset_tab() -> void:
 		_apply(spec)
 	AudioDirector.play_sfx("ui.confirm")
 	_refresh()
-	hint_label.text = "%s restored" % tab_name()
+	hint_label.text = tr("settings.restored").format({
+		"tab": tr("settings.tab.%s" % tab_name().to_lower()),
+	})
 
 
 func _focused_row() -> Dictionary:
@@ -379,22 +393,24 @@ func _refresh() -> void:
 		var spec: Dictionary = row
 		rows.append({
 			"id": _id_of(spec),
-			"label": str(spec["label"]),
+			"label": tr(str(spec["label"])),
 			"value": value_text(spec),
 			"enabled": true,
 		})
 	menu.set_rows(rows)
 	menu.focus_id(keep)
 
-	title_label.text = "Settings"
+	title_label.text = tr("settings.title")
 	tab_label.text = "  ·  ".join(_tab_strip())
 	if _capturing != "":
 		return
-	hint_label.text = "%s %s change   %s %s tab   %s back" % [
-		InputGlyphs.label_for("menu_left"), InputGlyphs.label_for("menu_right"),
-		InputGlyphs.label_for("menu_cycle_prev"), InputGlyphs.label_for("menu_cycle_next"),
-		InputGlyphs.label_for("menu_back"),
-	]
+	hint_label.text = tr("settings.footer").format({
+		"left": InputGlyphs.label_for("menu_left"),
+		"right": InputGlyphs.label_for("menu_right"),
+		"prev": InputGlyphs.label_for("menu_cycle_prev"),
+		"next": InputGlyphs.label_for("menu_cycle_next"),
+		"back": InputGlyphs.label_for("menu_back"),
+	})
 
 
 ## Which tab is live, said without colour: the current one is bracketed, so §21's
@@ -402,7 +418,8 @@ func _refresh() -> void:
 func _tab_strip() -> Array[String]:
 	var out: Array[String] = []
 	for i: int in range(TABS.size()):
-		out.append("[ %s ]" % TABS[i] if i == _tab else TABS[i])
+		var name: String = tr("settings.tab.%s" % TABS[i].to_lower())
+		out.append("[ %s ]" % name if i == _tab else name)
 	return out
 
 
@@ -415,22 +432,23 @@ func value_text(row: Dictionary) -> String:
 	if kind == KIND_BIND:
 		var action: String = str(row["action"])
 		if action == _capturing:
-			return "press an input…"
+			return tr("settings.press_input")
 		var keys: Array[int] = InputBindings.keys_of(action)
-		return OS.get_keycode_string(keys[0] as Key) if not keys.is_empty() else "unbound"
+		return OS.get_keycode_string(keys[0] as Key) if not keys.is_empty() \
+			else tr("settings.unbound")
 	var value: Variant = SettingsService.get_value(str(row["key"]))
 	var names: Array = row.get("names", [])
 	match kind:
 		KIND_TOGGLE:
 			if names.size() == 2:
-				return str(names[1] if bool(value) else names[0])
-			return "on" if bool(value) else "off"
+				return tr(str(names[1] if bool(value) else names[0]))
+			return tr("settings.on") if bool(value) else tr("settings.off")
 		KIND_CHOICE:
 			var values: Array = row["values"]
 			var at: int = values.find(value)
 			if at < 0:
 				return str(value)
-			return str(names[at]) if at < names.size() else str(values[at])
+			return tr(str(names[at])) if at < names.size() else str(values[at])
 		KIND_RANGE:
 			return "%d%s" % [int(value), str(row.get("suffix", ""))]
 	return str(value)

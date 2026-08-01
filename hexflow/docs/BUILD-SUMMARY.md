@@ -113,8 +113,9 @@ The greps ignore comments, so a rule stated in a doc comment does not trip the r
 The gate was verified to actually bite by introducing a `randi()` call into `scoring.gd` and
 watching it go red.
 
-Not yet enforced: the §22 string-literal check is scaffolded but skips until `assets/i18n/en.csv`
-exists, since UI strings are still literals pending the M10 string extraction.
+The §22 string-literal check is live: `assets/i18n/strings.csv` holds every player-visible string in
+English and Hungarian, and a `text = "…"` left in any `.tscn` fails the gate. Scripts are covered by
+`tests/unit/test_localization.gd`, which reads them for keys and checks each one against the table.
 
 ---
 

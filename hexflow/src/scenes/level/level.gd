@@ -135,6 +135,7 @@ func _ready() -> void:
 	_holds.cancelled.connect(_on_hold_cancelled)
 
 	EventBus.state_reset.connect(_on_state_reset)
+	EventBus.language_changed.connect(_refresh_hud)
 	# §5.8's dead state is recoverable, so the board's colour has to come back with
 	# it — an undo out of a dead end is exactly when a grey board would lie.
 	EventBus.legal_targets_changed.connect(_on_targets_for_life)
@@ -284,10 +285,10 @@ func _hold_input(event: InputEvent) -> bool:
 ## must not wipe a dead-state prompt the player still needs to read (§5.8).
 func _begin_hold(action: String) -> void:
 	_holds.begin(action, InputBindings.hold_seconds(action))
-	hold_label.text = "Hold %s to %s" % [
-		InputGlyphs.label_for(action),
-		"restart" if action == "board_restart" else "show a hint",
-	]
+	hold_label.text = tr("hud.hold").format({
+		"glyph": InputGlyphs.label_for(action),
+		"action": tr("hud.hold_restart") if action == "board_restart" else tr("hud.hold_hint"),
+	})
 	hold_bar.value = 0.0
 	hold_panel.visible = true
 
@@ -417,11 +418,11 @@ func _show_hint() -> void:
 		return
 	var result := Solver.solve_state(state, 40_000)
 	if not result.is_solvable() or result.moves.is_empty():
-		_flash_banner("No hint available")
+		_flash_banner(tr("banner.no_hint"))
 		return
 	GameDirector.hints_used += 1
 	_router.point_at(result.moves[0])
-	_flash_banner("Hint: %v" % result.moves[0])
+	_flash_banner(tr("banner.hint").format({"cell": result.moves[0]}))
 
 
 # --- touch (§11.4) -----------------------------------------------------------
@@ -561,11 +562,11 @@ func _rail_box(palette: Palette, state: String) -> StyleBox:
 func _on_wild_button() -> void:
 	var state: GameState = GameDirector.state
 	if state == null or state.wild_charges <= 0:
-		_flash_banner("No wild charge")
+		_flash_banner(tr("banner.no_wild"))
 		return
 	_wild_armed = not _wild_armed
 	if _wild_armed:
-		_flash_banner("Wild armed — choose a cell")
+		_flash_banner(tr("banner.wild_armed"))
 	else:
 		banner.visible = false
 	_refresh_candidates()
@@ -689,10 +690,10 @@ func _on_cursor_rejected() -> void:
 ## §11.2 — three cone rejections in a row means the player is fighting the
 ## geometry, so name the input that always works.
 func _on_cycling_hint_wanted() -> void:
-	_flash_banner("Try %s / %s to step through the targets" % [
-		InputGlyphs.label_for("board_cycle_prev"),
-		InputGlyphs.label_for("board_cycle_next"),
-	])
+	_flash_banner(tr("banner.cycle").format({
+		"prev": InputGlyphs.label_for("board_cycle_prev"),
+		"next": InputGlyphs.label_for("board_cycle_next"),
+	}))
 
 
 func _on_cell_joined(target: Vector3i, _anchor: Vector3i, _dir: int) -> void:
@@ -769,7 +770,7 @@ func _on_auto_skipped(dir: int) -> void:
 	# Deliberately not a failure beat: no charge is spent (§5.7).
 	_haptics.play("auto_discard")
 	_play_flyaway(dir)
-	_flash_banner("No move — %s skipped, no cost" % Direction.name_of(dir))
+	_flash_banner(tr("banner.auto_skip").format({"dir": Direction.name_of(dir)}))
 
 
 ## The arc itself. §14.5 turns it off rather than shortening it into a twitch: at
@@ -811,9 +812,9 @@ func _on_illegal(cell: Vector3i) -> void:
 	# moment it is worth saying. The tutorial's second board is about this, and it
 	# is also the answer here on every board that has a wall on it.
 	if GameDirector.level != null and GameDirector.level.board.is_wall(cell):
-		_flash_banner("Walls never open")
+		_flash_banner(tr("banner.wall"))
 		return
-	_flash_banner("Not a legal target")
+	_flash_banner(tr("banner.illegal"))
 
 
 ## A finished endless stage waits for the player (C-35). Any confirm, any tap,
@@ -841,20 +842,24 @@ func _on_level_won(placements: int, par: int, stars: int) -> void:
 		# worth saying is what happens next.
 		_hide_coach()
 		var last: bool = GameDirector.tutorial_index() >= Tutorial.COURSE_LENGTH
-		_flash_banner("Tutorial complete — into the game" if last
-			else "Done — %s for the next one" % InputGlyphs.label_for("board_confirm"))
+		_flash_banner(tr("banner.tutorial_done") if last
+			else tr("banner.lesson_done").format({
+				"accept": InputGlyphs.label_for("board_confirm"),
+			}))
 		return
 	if GameDirector.mode == GameDirector.Mode.ENDLESS:
 		# A run has no results card, so the banner is the only thing that marks the
 		# stage ending — and it has to say the wait is the player's to end.
-		_flash_banner("Goal %d — %s to carry on" % [
-			GameDirector.endless_goals(), InputGlyphs.label_for("board_confirm"),
-		])
+		_flash_banner(tr("banner.endless_goal").format({
+			"goals": GameDirector.endless_goals(),
+			"accept": InputGlyphs.label_for("board_confirm"),
+		}))
 		return
-	_flash_banner("Complete — %d moves, ideal %d, %s · %s to carry on" % [
-		placements, par, "★".repeat(stars) + "☆".repeat(Scoring.MAX_STARS - stars),
-		InputGlyphs.label_for("board_confirm"),
-	])
+	_flash_banner(tr("banner.complete").format({
+		"moves": placements, "par": par,
+		"stars": "★".repeat(stars) + "☆".repeat(Scoring.MAX_STARS - stars),
+		"accept": InputGlyphs.label_for("board_confirm"),
+	}))
 
 
 ## §5.8 makes this recoverable, so the banner's job is to tell the player *which*
@@ -862,10 +867,10 @@ func _on_level_won(placements: int, par: int, stars: int) -> void:
 ## at the board — which is the wrong half of the screen when what actually ran out
 ## is the tile queue.
 const DEAD_REASONS := {
-	GameState.Dead.BUDGET: "Budget spent",
-	GameState.Dead.UNREACHABLE_GOAL: "A goal is walled off",
-	GameState.Dead.PATH_FROZEN: "The path is boxed in",
-	GameState.Dead.OUT_OF_TILES: "Out of tiles",
+	GameState.Dead.BUDGET: "dead.budget",
+	GameState.Dead.UNREACHABLE_GOAL: "dead.unreachable",
+	GameState.Dead.PATH_FROZEN: "dead.frozen",
+	GameState.Dead.OUT_OF_TILES: "dead.out_of_tiles",
 }
 
 
@@ -876,11 +881,17 @@ func _on_level_dead(reason: int) -> void:
 	# fewer way out, because the player presses it and concludes the game is stuck.
 	_haptics.play("dead")
 	board_view.play_dead()
-	var reason_text: String = DEAD_REASONS.get(reason, "No route left")
-	var restart: String = "%s restart" % InputGlyphs.label_for("board_restart")
-	_flash_banner("%s — %s undo · %s" % [
-		reason_text, InputGlyphs.label_for("board_undo"), restart
-	] if GameDirector.undo_available() else "%s — %s" % [reason_text, restart])
+	var reason_text: String = tr(str(DEAD_REASONS.get(reason, "dead.none")))
+	var restart: String = "%s %s" % [
+		InputGlyphs.label_for("board_restart"), tr("hud.hold_restart"),
+	]
+	_flash_banner(tr("banner.dead_undo").format({
+		"reason": reason_text,
+		"undo": InputGlyphs.label_for("board_undo"),
+		"restart": restart,
+	}) if GameDirector.undo_available() else tr("banner.dead").format({
+		"reason": reason_text, "restart": restart,
+	}))
 
 
 # --- tutorial (§10) -----------------------------------------------------------
@@ -1006,9 +1017,10 @@ func _show_coach(text: String) -> void:
 	coach_label.text = text
 	# What to press, in the player's own glyphs (§11.4), and the way out. A tutorial
 	# that cannot be left is the reason players distrust tutorials.
-	coach_hint.text = "%s place   ·   %s skip the tutorial" % [
-		InputGlyphs.label_for("board_confirm"), InputGlyphs.label_for("board_back"),
-	]
+	coach_hint.text = tr("tutorial.hint").format({
+		"accept": InputGlyphs.label_for("board_confirm"),
+		"back": InputGlyphs.label_for("board_back"),
+	})
 	if coach.visible:
 		# A second beat while the first card is still up replaces the words and
 		# leaves the card where it is: re-running the arrival reads as two cards
@@ -1145,8 +1157,8 @@ func _set_banner_rise(px: float) -> void:
 ## · ideal 2" reads as a failure in progress. What they have done, and no more.
 func _moves_read_out(state: GameState, level: Level) -> String:
 	if GameDirector.mode == GameDirector.Mode.TUTORIAL:
-		return "%d moves" % state.placements
-	return "%d moves · ideal %d" % [state.placements, level.par]
+		return tr("hud.moves_only").format({"moves": state.placements})
+	return tr("hud.moves").format({"moves": state.placements, "par": level.par})
 
 
 func _refresh_hud() -> void:
@@ -1161,27 +1173,32 @@ func _refresh_hud() -> void:
 	# through to printing their id raw. Each says what it is instead.
 	match GameDirector.mode:
 		GameDirector.Mode.ENDLESS:
-			title_label.text = "Endless · %d goals" % GameDirector.endless_goals()
+			title_label.text = tr("hud.title_endless").format({
+				"goals": GameDirector.endless_goals(),
+			})
 		GameDirector.Mode.DAILY:
-			title_label.text = "Daily · %s" % GameDirector.daily_date()
+			title_label.text = tr("hud.title_daily").format({"date": GameDirector.daily_date()})
 		GameDirector.Mode.TUTORIAL:
 			# How far through, because five twenty-second boards with no end in
 			# sight is a tutorial a player starts looking for the exit from.
-			title_label.text = "Tutorial · %d of %d" % [
-				GameDirector.tutorial_index(), Tutorial.COURSE_LENGTH,
-			]
+			title_label.text = tr("hud.title_tutorial").format({
+				"index": GameDirector.tutorial_index(),
+				"total": Tutorial.COURSE_LENGTH,
+			})
 		_:
 			var at: Vector2i = LevelRepository.locate(level.id)
-			title_label.text = "Chapter %d · Level %d" % [at.x, at.y] if at.x > 0 \
-				else (level.id if level.id != "" else "Hexflow")
+			title_label.text = tr("hud.title_chapter").format({
+				"chapter": at.x, "level": at.y,
+			}) if at.x > 0 else (level.id if level.id != "" else tr("hud.title_fallback"))
 
 	# §7.2 scores a run by goals and breaks ties on placements, so a run has no par
 	# and the campaign's counter says nothing about it. It read "placements 7 /
 	# par 0", which is not a smaller number than the player's — it is a category
 	# error dressed as one.
-	score_label.text = "goals %d · placements %d" \
-		% [GameDirector.endless_goals(), GameDirector.endless_placements()] \
-		if GameDirector.mode == GameDirector.Mode.ENDLESS \
+	score_label.text = tr("hud.endless_score").format({
+		"goals": GameDirector.endless_goals(),
+		"placements": GameDirector.endless_placements(),
+	}) if GameDirector.mode == GameDirector.Mode.ENDLESS \
 		else _moves_read_out(state, level)
 	# The star band is live and has a label of its own: it shows what the run is
 	# worth *now*, so a player one placement from dropping a star can see it before
@@ -1205,10 +1222,11 @@ func _refresh_hud() -> void:
 	# `Direction.NONE` is a sentinel, not a direction. Printing "NONE" told the
 	# player the name of a constant when what they needed to know was that the queue
 	# is empty — which is the same information the banner now leads with.
-	now_label.text = "NOW   %s" % (Direction.name_of(state.current_tile())
-		if state.current_tile() >= 0 else "—")
-	next_label.text = "NEXT" if state.stream.remaining() < 0 \
-		else "NEXT  %d left" % state.stream.remaining()
+	now_label.text = tr("hud.now").format({
+		"dir": Direction.name_of(state.current_tile()) if state.current_tile() >= 0 else "—",
+	})
+	next_label.text = tr("hud.next") if state.stream.remaining() < 0 \
+		else tr("hud.next_left").format({"count": state.stream.remaining()})
 	now_stack.show_tiles([state.current_tile()] as Array[int])
 	next_stack.show_tiles(state.preview(next_stack.slots))
 
@@ -1216,27 +1234,30 @@ func _refresh_hud() -> void:
 	# halves are set here rather than in the scene, so the scene holds no literal
 	# for §22's check to catch at M10 and a rebind shows up without the rail
 	# knowing rebinding exists.
-	_row(undo_button, "Undo", "board_undo")
+	_row(undo_button, tr("hud.undo"), "board_undo")
 	undo_button.disabled = not GameDirector.undo_available()
-	_row(discard_button, "Discard %d" % state.discards_left, "board_discard")
-	_row(wild_button, "Wild %d" % state.wild_charges, "board_wild_modifier")
+	_row(discard_button, tr("hud.discard").format({"count": state.discards_left}), "board_discard")
+	_row(wild_button, tr("hud.wild").format({"count": state.wild_charges}), "board_wild_modifier")
 	# The armed wild is the one row whose *state* has to show: §11.3's "Wild button,
 	# then cell" is a mode, and a mode with no indicator is a mode nobody trusts.
 	(_icons[wild_button] as Icon).colour = board_view.palette.wild if _wild_active() \
 		else board_view.palette.text_primary
-	_row(hint_button, "Hint", "board_hint")
+	_row(hint_button, tr("hud.hint"), "board_hint")
 	# §12.3's rail is four action rows. Legend and Restart are not among them and
 	# do not fit — six rows plus a 140 px NOW tile overflow the 400 px rail, which
 	# is how they came to be there in M3 with the key hints displaced into the
 	# legend to make room. Legend moves to the top bar; Restart keeps its hold on
 	# every device *and* its row in the pause menu, so touch still reaches it
 	# without a rail row (§11.4).
-	legend_button.text = "≡ %s" % InputGlyphs.label_for("board_legend")
-	menu_button.text = "Menu %s" % InputGlyphs.label_for("board_pause")
+	legend_button.text = tr("hud.legend").format({
+		"glyph": InputGlyphs.label_for("board_legend"),
+	})
+	menu_button.text = tr("hud.menu").format({"glyph": InputGlyphs.label_for("board_pause")})
 
 	# The rail keeps what is *state* — the budget of §6, which nothing else shows.
 	# The key hints that used to sit here moved into the legend when the tile stack
 	# took the room; §12.3's rail has no block of them either.
-	rail_label.text = "budget      %d / %d" % [state.placements, level.budget] \
-		if level.has_budget() else ""
+	rail_label.text = tr("hud.budget").format({
+		"used": state.placements, "total": level.budget,
+	}) if level.has_budget() else ""
 	board_view.rebuild()

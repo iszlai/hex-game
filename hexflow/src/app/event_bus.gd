@@ -42,3 +42,11 @@ signal pause_requested()
 ## a stage is the board being replaced — which happens on top of the goal sequence
 ## that was celebrating it.
 signal advance_requested()
+
+## §22: the language changed under a screen that is already drawn.
+##
+## A `tr()` is read when a label is *written*, so nothing on screen moves by
+## itself — every screen that has text on it rebuilds its own strings from this.
+## The alternative, rebuilding the scene, would throw away the player's place in
+## the menu they are standing in to change it.
+signal language_changed()

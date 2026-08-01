@@ -37,6 +37,7 @@ func _ready() -> void:
 	_holds.cancelled.connect(func(_a: String) -> void: _bar.visible = false)
 	GameDirector.screen_changed.connect(_on_screen_changed)
 	EventBus.pause_requested.connect(_on_pause_requested)
+	EventBus.language_changed.connect(_refresh)
 
 
 func _build() -> void:
@@ -96,19 +97,19 @@ func open() -> void:
 	_restart_armed = false
 	_bar.visible = false
 	visible = true
-	_title.text = "Paused"
+	_title.text = tr("pause.title")
 	_refresh()
 	_menu.focus_id("resume")
 
 
 func _refresh() -> void:
 	_menu.set_rows([
-		{"id": "resume", "label": "Resume", "value": "", "enabled": true},
-		{"id": "restart", "label": "Restart", "value": _restart_gesture(), "enabled": true},
-		{"id": "settings", "label": "Settings", "value": "", "enabled": true},
-		{"id": "quit", "label": "Quit to map", "value": "", "enabled": true},
+		{"id": "resume", "label": tr("pause.resume"), "value": "", "enabled": true},
+		{"id": "restart", "label": tr("pause.restart"), "value": _restart_gesture(), "enabled": true},
+		{"id": "settings", "label": tr("pause.settings"), "value": "", "enabled": true},
+		{"id": "quit", "label": tr("pause.quit"), "value": "", "enabled": true},
 	])
-	_hint.text = "%s back" % InputGlyphs.label_for("modal_back")
+	_hint.text = tr("pause.hint").format({"back": InputGlyphs.label_for("modal_back")})
 
 
 ## §21's hold-to-confirm toggle, said out loud on the row: whichever gesture is
@@ -116,8 +117,8 @@ func _refresh() -> void:
 ## a button that was never going to fill.
 func _restart_gesture() -> String:
 	if not bool(SettingsService.get_value("hold_to_confirm")):
-		return "press twice" if not _restart_armed else "press to confirm"
-	return "hold"
+		return tr("gesture.press_twice") if not _restart_armed else tr("gesture.press_confirm")
+	return tr("gesture.hold")
 
 
 func _on_focus_moved(_id: String) -> void:

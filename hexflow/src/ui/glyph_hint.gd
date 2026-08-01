@@ -99,7 +99,7 @@ func _size_px() -> int:
 
 func _build() -> void:
 	_prefix = Label.new()
-	_prefix.text = "hold"
+	_prefix.text = tr("glyph.hold")
 	_prefix.theme_type_variation = Typography.variation_for(ROLE)
 	_prefix.add_theme_color_override("font_color", palette.text_secondary)
 	_prefix.visible = false

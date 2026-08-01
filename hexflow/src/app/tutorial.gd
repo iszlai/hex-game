@@ -270,27 +270,27 @@ static func arms_wild(spec: Dictionary) -> bool:
 	return bool(spec.get("arm_wild", false))
 
 
-## The words, with the one substitution the table needs. §10.2 writes the opening
+## The words, with the one substitution the table needs. §10.3 writes the opening
 ## beat as "Your tile points north-east", which is true of the board that ships
 ## today and would quietly become a lie the first time it was re-drawn. The
 ## direction is filled in from the tile the player is actually holding.
+##
+## The table holds a §22 *key*, not a sentence, so the course speaks whatever
+## language the player set — including the direction, which is a word in the
+## middle of a sentence and not a code.
 static func text_of(spec: Dictionary, direction: int = Direction.NONE) -> String:
-	var raw: String = str(spec.get("text", ""))
+	var words: String = TranslationServer.translate(str(spec.get("text", "")))
 	if direction >= 0:
-		raw = raw.replace("{direction}", _spoken_name(direction))
-	return raw
+		words = words.replace("{direction}", spoken_name(direction))
+	return words
 
 
 ## Appendix A's names are compass abbreviations; a player reading a sentence gets
 ## the words. Twelve of them at most, so the long form has to earn its room — it
 ## does, because "NE" is a thing you learn from the game and this is the sentence
 ## teaching it.
-static func _spoken_name(direction: int) -> String:
-	match direction:
-		Direction.NW: return "north-west"
-		Direction.NE: return "north-east"
-		Direction.E: return "east"
-		Direction.SE: return "south-east"
-		Direction.SW: return "south-west"
-		Direction.W: return "west"
-	return ""
+static func spoken_name(direction: int) -> String:
+	if direction < 0 or direction >= Direction.COUNT:
+		return ""
+	return TranslationServer.translate(
+		"direction.%s" % Direction.name_of(direction).to_lower())

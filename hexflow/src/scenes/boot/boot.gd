@@ -26,6 +26,10 @@ func _ready() -> void:
 	Backdrop.install(self)
 	(%Background as ColorRect).color = Color(palette.bg_deep, 0.0)
 	var title := %Title as Label
+	# The brand, not a word: it is the one string in the game with no translation
+	# behind it, and it lives here rather than in the scene so §22's check on scene
+	# literals stays a check rather than an exception (C-39).
+	title.text = "HEXFLOW"
 	title.add_theme_color_override("font_color", palette.text_primary)
 	title.theme_type_variation = Typography.variation_for(Typography.Role.DISPLAY)
 	_fade_in(title)
