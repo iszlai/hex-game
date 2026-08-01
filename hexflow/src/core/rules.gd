@@ -70,6 +70,14 @@ static func path_neighbour_count(path: Dictionary, c: Vector3i) -> int:
 ## Optimistic reachability: every open cell the path could still grow into if
 ## every future draw were perfect. Ignores direction and ignores gates, which
 ## makes it an upper bound — so a goal outside it is provably unreachable (§5.8).
+##
+## **A portal is part of the walk.** §5.5.3 joins the twin the instant the near
+## end is entered, so a cell on the far side of a wall the path can never cross is
+## still reachable when a portal leads there — and the flood has to say so, or
+## §5.8 declares the board dead on the frame it opens. That is not hypothetical:
+## it is the whole of the tutorial's portal board, where the portal is the *only*
+## way across. Over-approximating is safe here by construction; this is an upper
+## bound, and only a goal *outside* it is a claim.
 static func reachable(board: Board, path: Dictionary) -> Dictionary:
 	var seen: Dictionary = {}
 	var frontier: Array[Vector3i] = []
@@ -84,6 +92,12 @@ static func reachable(board: Board, path: Dictionary) -> Dictionary:
 				continue
 			seen[n] = true
 			frontier.append(n)
+		if not board.is_portal(c):
+			continue
+		var twin: Vector3i = board.portal_twin(c)
+		if twin != c and board.is_open(twin) and not seen.has(twin):
+			seen[twin] = true
+			frontier.append(twin)
 	return seen
 
 

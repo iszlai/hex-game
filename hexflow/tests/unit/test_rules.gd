@@ -94,6 +94,36 @@ func test_reachability_is_optimistic_and_ignores_direction() -> void:
 	assert_eq(reach.size(), board.size(), "an open board is entirely reachable")
 
 
+## Scenario: A goal behind an uncrossable wall is reachable through a portal.
+##
+## §5.5.3 joins a portal's twin the instant the near end is entered, so the far
+## side of a wall the path can never cross is still somewhere the path can get to.
+## The flood fill did not follow portals, so §5.8 declared any such board dead on
+## the frame it opened — which is the whole of the tutorial's portal lesson, where
+## the portal is the *only* way across (C-37).
+func test_a_goal_reachable_only_through_a_portal_is_not_a_dead_board() -> void:
+	# Three by two: the middle column walled off end to end, so no route crosses.
+	var cells: Array[Vector3i] = Hex.shape("corridor", 3, 2)
+	var start := Vector3i(0, 0, 0)
+	var far := Vector3i(2, -1, -1)
+	var near_portal := Vector3i(0, 1, -1)
+	var far_portal := Vector3i(2, -2, 0)
+	var walls: Array[Vector3i] = [Vector3i(1, 0, -1), Vector3i(1, -1, 0)]
+	assert_true(cells.has(far), "the fixture is the board the lesson is drawn on")
+
+	var severed := Board.build(3, start, [far] as Array[Vector3i], walls, [],
+		[] as Array[Vector3i], [] as Array[Vector3i], "corridor", 2)
+	assert_true(Rules.has_unreachable_goal(severed, _path([start])),
+		"with no portal the goal really is walled off")
+
+	var linked := Board.build(3, start, [far] as Array[Vector3i], walls,
+		[[near_portal, far_portal]], [] as Array[Vector3i], [] as Array[Vector3i],
+		"corridor", 2)
+	assert_false(Rules.has_unreachable_goal(linked, _path([start])),
+		"the portal is a way across, and the optimistic bound has to say so")
+	assert_true(Rules.reachable(linked, _path([start])).has(far))
+
+
 func test_hops_to_measures_the_optimistic_route_length() -> void:
 	var board := Fixtures.reference_board()
 	assert_eq(Rules.hops_to(board, _path([Fixtures.START]), Fixtures.GOAL), 6)
