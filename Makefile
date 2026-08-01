@@ -45,7 +45,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels sfx art icon glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
+        test-file gate levels sheet sfx art icon glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
         playtest playtest-restore \
         clean clean-levels legacy-branch status
 
@@ -107,6 +107,19 @@ shot: check ## Screenshot a screen. PRESSES=cceccc OUT=board.png LEVEL=5.1 SCREE
 	    "$(abspath $(or $(OUT),board.png))" "$(or $(PRESSES),)" "$(or $(LEVEL),)" \
 	    "$(or $(SCREEN),)" "$(or $(PROGRESS),)"
 	@echo "wrote $(or $(OUT),board.png)"
+
+sheet: check ## One image of all 60 boards, tiled with ffmpeg. OUT=campaign.png MOVES=4
+	@home=$$(mktemp -d); trap 'rm -rf "$$home"' EXIT; \
+	  dir=$$(mktemp -d); \
+	  cd $(PROJECT) && HOME="$$home" XDG_DATA_HOME="$$home/data" \
+	    XDG_CONFIG_HOME="$$home/config" XDG_CACHE_HOME="$$home/cache" \
+	    "$(GODOT_CMD)" --resolution 1280x800 -s res://tools/contact_sheet.gd -- \
+	    "$$dir" "$(or $(MOVES),4)" >/dev/null; \
+	  ffmpeg -y -loglevel error -pattern_type glob -i "$$dir/*.png" \
+	    -filter_complex "crop=880:690:0:56,scale=440:345,tile=6x10:padding=4:color=0x1a1410" \
+	    -frames:v 1 "$(abspath $(or $(OUT),campaign.png))"; \
+	  rm -rf "$$dir"
+	@echo "wrote $(or $(OUT),campaign.png)"
 
 measure: check ## Frame cost per renderer (C-3). METHOD=forward_plus|mobile|gl_compatibility
 	@$(RUN_CMD) --resolution 1280x800 \
