@@ -95,7 +95,10 @@ func bind(state: GameState, play_area: Vector2) -> void:
 	# what makes container coordinates and viewport coordinates the same numbers.
 	# Never set the viewport's size directly — with stretch on, Godot refuses it.
 	size = play_area
-	layout = HexLayout.new(float(BoardCamera.fit_projected(_board.radius, play_area,
+	# Measured against the board's own cells rather than its radius (C-32): a
+	# corridor's bounding radius counts its length, and fitting the hexagon that
+	# would contain one draws it at a fraction of the room it has.
+	layout = HexLayout.new(float(BoardCamera.fit_cells(_board.cells(), play_area,
 		TILE_TOP_RATIO)))
 	camera.frame_play_area(play_area)
 	tiles.bind(state, layout)

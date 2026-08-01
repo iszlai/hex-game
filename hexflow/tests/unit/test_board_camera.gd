@@ -306,3 +306,23 @@ func _extent_at(layout: HexLayout, radius: int, yaw: float) -> Vector2:
 			half.x = maxf(half.x, absf(v.dot(b.x)))
 			half.y = maxf(half.y, absf(v.dot(b.y)))
 	return half
+
+
+## C-32: the fit measures the cells a board has, not the hexagon that would hold
+## it. A hexagon is unchanged — every one of the sixty shipped levels is one — and
+## a shape that is not square-ish gets the room it actually has.
+func test_the_fit_measures_the_board_rather_than_its_bounding_hexagon() -> void:
+	var box := Vector2(880.0, 688.0)
+	for radius: int in [2, 3, 4]:
+		assert_eq(BoardCamera.fit_cells(Hex.hexagon(radius), box),
+			BoardCamera.fit_projected(radius, box),
+			"a hexagon must fit exactly as it always did")
+
+	# A corridor reaches far along one axis and barely at all across it, so the
+	# hexagon containing it is mostly empty. Measuring the hexagon shrinks the
+	# board for no reason.
+	var corridor: Array[Vector3i] = Hex.shape("corridor", 9, 3)
+	var by_cells: int = BoardCamera.fit_cells(corridor, box)
+	var by_radius: int = BoardCamera.fit_projected(Hex.bounding_radius(corridor), box)
+	assert_gt(by_cells, by_radius,
+		"a corridor drawn at its bounding radius is smaller than it needs to be")

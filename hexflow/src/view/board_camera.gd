@@ -87,8 +87,19 @@ func frame_play_area(box: Vector2) -> void:
 ## fraction of the cell circumradius — tile thickness, once the prisms exist. It
 ## scales with the cells, so the whole fit stays linear in the size being solved for.
 static func fit_projected(radius: int, box: Vector2, top_ratio: float = 0.0) -> int:
+	return fit_cells(Hex.hexagon(radius), box, top_ratio)
+
+
+## The same fit, measured against the cells a board actually has (C-32).
+##
+## §4.4 sizes a board by radius, which is right for the only shape the game used
+## to have. It is wrong for every other one: a corridor's bounding radius counts
+## its length, so fitting the hexagon that would contain it draws the corridor at
+## a fraction of the room it has. Measuring the cells is the same answer for a
+## hexagon and the right one for the rest.
+static func fit_cells(cells: Array[Vector3i], box: Vector2, top_ratio: float = 0.0) -> int:
 	var usable := box - Vector2(HexLayout.MARGIN, HexLayout.MARGIN) * 2.0
-	var half := unit_extents(radius, top_ratio)
+	var half := unit_extents_of(cells, top_ratio)
 	var by_width: float = usable.x / (2.0 * half.x)
 	var by_height: float = usable.y / (2.0 * half.y)
 	return maxi(8, int(floor(minf(by_width, by_height))))
@@ -98,9 +109,12 @@ static func fit_projected(radius: int, box: Vector2, top_ratio: float = 0.0) -> 
 ## worst case over the rotation. Everything scales linearly in the cell size, so
 ## one evaluation answers for every size.
 static func unit_extents(radius: int, top_ratio: float = 0.0) -> Vector2:
+	return unit_extents_of(Hex.hexagon(radius), top_ratio)
+
+
+static func unit_extents_of(cells: Array[Vector3i], top_ratio: float = 0.0) -> Vector2:
 	var layout := HexLayout.new(1.0)
 	var corners := layout.corners()
-	var cells := Hex.hexagon(radius)
 	var half := Vector2.ZERO
 	for i: int in range(FIT_SAMPLES):
 		var b := basis_at(YAW_STOP_RADIANS * float(i) / float(FIT_SAMPLES - 1))

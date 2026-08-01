@@ -15,6 +15,10 @@ const DAILY_SALT := "hexflow-daily"
 class Params:
 	extends RefCounted
 	var radius: int = 3
+	## C-32's silhouette. `radius` is the size handed to it, which for a hexagon is
+	## its radius and for every other shape is whatever that shape calls its size.
+	var shape: String = "hexagon"
+	var shape_arg: int = 0
 	var wall_count: int = 0
 	var min_distance: int = 5
 	var wander: int = 1
@@ -30,6 +34,8 @@ class Params:
 	func duplicate_params() -> Params:
 		var p := Params.new()
 		p.radius = radius
+		p.shape = shape
+		p.shape_arg = shape_arg
 		p.wall_count = wall_count
 		p.min_distance = min_distance
 		p.wander = wander
@@ -173,13 +179,21 @@ static func _build_candidate(p_seed: int, params: Params) -> Level:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p_seed
 
-	var all: Array[Vector3i] = Hex.hexagon(params.radius)
+	var all: Array[Vector3i] = Hex.shape(params.shape, params.radius, params.shape_arg)
 	var all_set: Dictionary = {}
 	for c: Vector3i in all:
 		all_set[c] = true
 
 	# 2. Start on the outer ring; goals far from it and from each other.
-	var rim: Array[Vector3i] = Hex.ring(params.radius)
+	#
+	# §8.2 says "pick from the outer ring", which on a hexagon is `Hex.ring`. On a
+	# shape it is not: a ring board's outer ring is a ring, but a triangle's is its
+	# three edges and a corridor's is nearly the whole board. So the rim is derived
+	# from the cells — anything with fewer than six neighbours on this board — which
+	# is the same set for a hexagon and the right one for the rest.
+	var rim: Array[Vector3i] = _rim_of(all, all_set)
+	if rim.is_empty():
+		return null
 	var start: Vector3i = rim[rng.randi_range(0, rim.size() - 1)]
 	var goals: Array[Vector3i] = []
 	for _i: int in range(params.goal_count):
@@ -247,10 +261,27 @@ static func _build_candidate(p_seed: int, params: Params) -> Level:
 		for _i: int in range(params.slack - interleave):
 			tiles.append(rng.randi_range(0, Direction.COUNT - 1))
 
-	var board := Board.build(params.radius, start, goals, walls, portal_pairs, gates, wilds)
+	var board := Board.build(
+		params.radius, start, goals, walls, portal_pairs, gates, wilds,
+		params.shape, params.shape_arg
+	)
 	var level := Level.build(board, tiles, p_seed)
 	level.discards = params.discards
 	return level
+
+
+## The edge of a board of any shape: the cells that do not have all six
+## neighbours. On a hexagon this is exactly [method Hex.ring] of its radius, which
+## is what §8.2 assumed; on every other shape it is the outline that shape
+## actually has.
+static func _rim_of(all: Array[Vector3i], all_set: Dictionary) -> Array[Vector3i]:
+	var out: Array[Vector3i] = []
+	for c: Vector3i in all:
+		for dir: int in Direction.ALL:
+			if not all_set.has(c + Direction.delta(dir)):
+				out.append(c)
+				break
+	return out
 
 
 static func _pick_goal(
