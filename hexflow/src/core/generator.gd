@@ -9,6 +9,14 @@
 class_name Generator
 
 const MAX_ATTEMPTS := 200
+
+## How far across the board a goal has to be, as a fraction of the furthest cell
+## from the start. Three quarters: a goal nearer than that is a stroll, and the
+## routes it produces cluster in one corner of a board the player is looking at
+## all of.
+const FAR_GOAL_NUMERATOR := 3
+const FAR_GOAL_DENOMINATOR := 4
+
 const DAILY_SALT := "hexflow-daily"
 
 
@@ -237,7 +245,25 @@ static func _build_candidate(p_seed: int, params: Params) -> Level:
 	for _i: int in range(params.portal_pairs):
 		if cursor + 1 >= spare.size():
 			break
-		portal_pairs.append([spare[cursor], spare[cursor + 1]])
+		# One end taken in shuffled order, the other chosen to be *far* from it.
+		# Two consecutive cells off a shuffled list land next to each other about
+		# as often as not, and a portal to the hex next door is a mechanic that
+		# costs a placement and buys a step. Paired with the shapes of C-32 this is
+		# where a portal earns its keep — across a ring's hole, or between the two
+		# bars of a Z, where the walk around is the whole level.
+		var a: Vector3i = spare[cursor]
+		var far: int = -1
+		var partner: int = -1
+		for i: int in range(cursor + 1, spare.size()):
+			var d: int = Hex.distance(a, spare[i])
+			if d > far:
+				far = d
+				partner = i
+		if partner < 0:
+			break
+		portal_pairs.append([a, spare[partner]])
+		# Swap the partner up so the cursor's simple advance still consumes both.
+		spare[partner] = spare[cursor + 1]
 		cursor += 2
 	var gates: Array[Vector3i] = []
 	for _i: int in range(params.gates):
@@ -295,9 +321,23 @@ static func _pick_goal(
 	chosen: Array[Vector3i],
 	min_distance: int
 ) -> Array[Vector3i]:
+	# §8.4's `min_distance` is a fixed number, and a fixed number is a different
+	# demand on every board: six is the whole width of a radius-3 hexagon and a
+	# third of a corridor. Worse, it is a *floor* — the old code then picked
+	# uniformly among everything past it, so most goals landed barely over the
+	# line and the routes huddled in one corner of the board.
+	#
+	# The floor is now a fraction of how far this board actually reaches, and the
+	# pick is from the far end of what is left. A goal should be a journey across
+	# the board, not a walk to the next room.
+	var reach: int = 0
+	for c: Vector3i in all:
+		reach = maxi(reach, Hex.distance(start, c))
+	var floor_distance: int = maxi(min_distance, (reach * FAR_GOAL_NUMERATOR) / FAR_GOAL_DENOMINATOR)
+
 	var candidates: Array[Vector3i] = []
 	for c: Vector3i in all:
-		if Hex.distance(start, c) < min_distance:
+		if Hex.distance(start, c) < floor_distance:
 			continue
 		var ok: bool = true
 		for g: Vector3i in chosen:
@@ -308,7 +348,13 @@ static func _pick_goal(
 			candidates.append(c)
 	if candidates.is_empty():
 		return [] as Array[Vector3i]
-	return [candidates[rng.randi_range(0, candidates.size() - 1)]] as Array[Vector3i]
+
+	# Farthest first, then choose among the leading third — enough room for the
+	# generator to vary and not enough to wander back toward the start.
+	candidates.sort_custom(func(a: Vector3i, b: Vector3i) -> bool:
+		return Hex.distance(start, a) > Hex.distance(start, b))
+	var pool: int = maxi(1, candidates.size() / 3)
+	return [candidates[rng.randi_range(0, pool - 1)]] as Array[Vector3i]
 
 
 ## The cell a branch grows from: the reserved cell closest to the new goal, so

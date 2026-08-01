@@ -124,6 +124,7 @@ func _shape_arg(shape: String) -> int:
 		"ring": return 1
 		"corridor": return 4
 		"hourglass": return 3
+		"zed": return 3          # rows between the bars
 		_: return 0
 
 
@@ -131,6 +132,7 @@ func _shape_size(shape: String, radius: int) -> int:
 	match shape:
 		"triangle": return radius + 3   # side, not radius: side 6 is 28 cells
 		"corridor": return radius + 6   # length, and the arg is its width
+		"zed": return radius + 4        # the length of each bar
 		_: return radius
 
 

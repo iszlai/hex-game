@@ -81,6 +81,7 @@ func test_every_shape_is_a_legal_connected_board() -> void:
 		"corridor": Hex.corridor(14, 3),
 		"hourglass": Hex.hourglass(4, 3),
 		"star": Hex.star(4),
+		"zed": Hex.zed(7, 3),
 	}
 	for name: Variant in shapes:
 		var cells: Array[Vector3i] = shapes[name]
@@ -176,7 +177,10 @@ func _connected_count(cells: Array[Vector3i]) -> int:
 ## fraction of the size it could be.
 func test_a_shape_is_centred_so_it_fits_at_its_smallest_radius() -> void:
 	for kind: String in Hex.SHAPES:
-		var cells: Array[Vector3i] = Hex.shape(kind, 4, 2)
+		# The Z is built from a bar length rather than a radius, so it gets one that
+		# produces a board rather than a stub.
+		var size: int = 7 if kind == "zed" else 4
+		var cells: Array[Vector3i] = Hex.shape(kind, size, 2 if kind != "zed" else 3)
 		var r: int = Hex.bounding_radius(cells)
 		# No translation of the shape can make it any tighter than where it sits.
 		for d: int in Direction.ALL:

@@ -86,8 +86,8 @@ const SHAPES: Array = [
 	{"chapter": 1, "allowed": ["hexagon"]},
 	{"chapter": 2, "allowed": ["hexagon", "triangle"]},
 	{"chapter": 3, "allowed": ["hexagon", "triangle", "hourglass"]},
-	{"chapter": 4, "allowed": ["hexagon", "ring", "hourglass"]},
-	{"chapter": 5, "allowed": ["hexagon", "ring", "corridor", "star", "triangle"]},
+	{"chapter": 4, "allowed": ["hexagon", "ring", "hourglass", "zed"]},
+	{"chapter": 5, "allowed": ["hexagon", "ring", "zed", "star", "triangle"]},
 ]
 
 

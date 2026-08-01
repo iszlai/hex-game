@@ -188,10 +188,53 @@ static func star(radius: int) -> Array[Vector3i]:
 	return _finish(out)
 
 
+## A Z: two horizontal bars joined by a diagonal, two cells thick throughout.
+##
+## [param arm] is the length of each bar and [param height] how far apart they
+## sit. The diagonal runs one SW step per row between them, so the bottom bar
+## begins where the diagonal arrives and the whole silhouette is one piece.
+##
+## **Two cells thick on purpose.** A one-wide Z is three corridors in a trench
+## coat: every cell has two neighbours, so there is one route through it and no
+## decision anywhere along the way. That is exactly what stopped [method star]
+## from ever winning a slot in the authoring sweep, and it would stop this too.
+static func zed(arm: int, height: int) -> Array[Vector3i]:
+	var top: int = -maxi(1, height)
+	var bottom: int = maxi(1, height)
+	var skeleton: Array[Vector3i] = []
+
+	# The top bar, its right-hand end at the origin.
+	for i: int in range(arm):
+		skeleton.append(_at(-i, top))
+	# The diagonal, one row at a time.
+	for i: int in range(1, bottom - top):
+		skeleton.append(_at(-i, top + i))
+	# The bottom bar, its left-hand end where the diagonal arrives.
+	var left: int = -(bottom - top)
+	for i: int in range(arm):
+		skeleton.append(_at(left + i, bottom))
+
+	var seen: Dictionary = {}
+	var out: Array[Vector3i] = []
+	for c: Vector3i in skeleton:
+		for offset: Vector3i in [Vector3i.ZERO, Direction.delta(Direction.SE)]:
+			var cell: Vector3i = c + offset
+			if not seen.has(cell):
+				seen[cell] = true
+				out.append(cell)
+	return _finish(out)
+
+
+## A cell from its column and row. `y` is whatever keeps the three coordinates
+## summing to zero, which is the only thing it ever is (§4.1).
+static func _at(x: int, z: int) -> Vector3i:
+	return Vector3i(x, -x - z, z)
+
+
 ## The shapes by name, and the meaning of each one's second parameter.
 ## `"hexagon"` first, so a default is the shape the game has always had.
 const SHAPES: Array[String] = [
-	"hexagon", "triangle", "ring", "corridor", "hourglass", "star",
+	"hexagon", "triangle", "ring", "corridor", "hourglass", "star", "zed",
 ]
 
 
@@ -209,6 +252,7 @@ static func shape(kind: String, radius: int, arg: int = 0) -> Array[Vector3i]:
 		"corridor": return corridor(radius, maxi(2, arg))
 		"hourglass": return hourglass(radius, maxi(1, arg))
 		"star": return star(radius)
+		"zed": return zed(radius, maxi(1, arg))
 		_: return hexagon(radius)
 
 
