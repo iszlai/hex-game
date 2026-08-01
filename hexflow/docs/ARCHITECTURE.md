@@ -252,6 +252,13 @@ re-verifies every shipped file on every push: it re-runs the solver, confirms th
 reproduced, and replays the stored solution through the real `GameState` to confirm it still
 reaches `WON`.
 
+§10's five teaching boards are the same kind of file in a different tree —
+`src/data/tutorial/level_01..05.json`, written by `tools/author_tutorial.gd` (`make tutorial`) and
+re-verified by the same property test. They are drawn by hand rather than swept, because a lesson is
+not a puzzle that happens to be short: every cell is there to make one idea unmissable, and the tool's
+job is to *prove* the board rather than to invent it. It refuses to write one whose line the solver
+cannot verify, or whose par has drifted outside what a lesson can carry.
+
 Schema: [`../src/data/schemas/level.md`](../src/data/schemas/level.md).
 
 One extension beyond §17.1: `solution_script`. The spec's `solution` is a bare target list, which

@@ -271,7 +271,7 @@ doing before the store build; nowhere near §20's 250 MB budget today.
 |---|---|---|
 | English strings | **Config** | Still literals in code. Extraction to `assets/i18n/en.csv` is M10; it also switches on a CI check that fails any literal left in a scene |
 | Translations | **Missing** | Keys are namespaced (`menu.campaign`, `hud.par`, `tutorial.T4`). Nothing is translated |
-| Tutorial copy | **Missing** | 12 beats, **≤12 words each**, diegetic (§10.2). The beats are data, in `src/data/tutorial.json` |
+| Tutorial copy | **Missing** | 11 beats over five teaching boards, **≤12 words each**, diegetic (§10.3). The beats are data, in `src/data/tutorial/beats.json` |
 | Store description | **Missing** | Under 300 characters (§25) |
 
 Anything you write must survive **150% text scale without clipping** (§21) and a pseudo-locale that

@@ -589,37 +589,62 @@ files. Generated levels are then **frozen data** — never regenerate at runtime
 
 ## 10. Tutorial specification
 
-The tutorial is not a mode; it is scripted, skippable, replayable guidance woven into Chapter 1 levels
-1–5, plus one beat per new modifier at its introducing level.
+The tutorial is a **course of five teaching boards** of its own (C-37): six to nine cells each, one idea
+per board, played start to finish in about a minute. It runs once — on the first launch of a save,
+straight out of the boot screen, before the main menu — and never interrupts again. It is not part of
+the campaign, records no stars and no progress, and is replayable in full from Settings.
 
 ### 10.1 Principles
 
 - **Never more than 12 words on screen at once.** Show, don't explain.
-- **Diegetic.** Guidance renders on the board (a pulsing target ring, a ghost connector), not in a modal.
-- **Non-blocking after the first beat.** Beat 1 gates input to the single correct cell; every later beat
-  merely highlights and lets the player ignore it.
-- **Replayable** from Settings → "Replay tutorial", which resets the tutorial flags only.
-- **Skippable** at any time with a single Back press; skipping sets all flags seen.
+- **One idea per board.** A board with room for a second idea on it is teaching two.
+- **Guided, not merely annotated.** Every beat that waits on a placement holds input to the one cell it
+  is about and puts the cursor there. A teaching board's route is the only route; a player who wanders
+  off it reaches a dead board and a lesson nobody finished.
+- **Diegetic.** Guidance is a card beside the board and a lit cell on it, never a modal: nothing is
+  dimmed, nothing is covered, and the pointer is never taken.
+- **No score.** No par, no stars, no results card between boards — the next lesson simply arrives.
+- **Replayable** from Settings → "Replay tutorial", which resets the tutorial flags only and opens the
+  course immediately.
+- **Skippable** at any time with a single Back press, which leaves the course for good.
 
-### 10.2 Beats
+### 10.2 The five boards
 
-| # | Trigger | On-screen text | Interaction | Completion |
+| # | Lesson | Board | Teaches |
+|---|---|---|---|
+| 1 | First flow | 3×2, no obstacles | A tile points a direction, and the path grows one cell |
+| 2 | Around the wall | 3×2, one wall between start and goal | A wall never opens; go around it |
+| 3 | Through the portal | 3×2, cut in half by walls | A portal joins both ends — here it is the only way across |
+| 4 | Two ways in | 3×2, gate guarding the goal | A gate opens only for two path neighbours |
+| 5 | One free step | 3×3, wild charge, goal behind it | A charge goes any direction, and here nothing else reaches |
+
+Boards 3 and 5 are **unsolvable without the mechanic they teach**, which is what stops a player learning
+that the portal and the wild are decoration.
+
+### 10.3 Beats
+
+| # | Board | Trigger | On-screen text | Interaction |
 |---|---|---|---|---|
-| T1 | Ch1 L1 first frame | *"Your tile points north-east."* | Only the one legal target accepts input; it pulses | Player places |
-| T2 | After T1 commit | *"The path grows. Reach the goal."* | Goal ring pulses once | Player places again |
-| T3 | Ch1 L2 start | *"Next two tiles are shown here."* | Preview queue scales up 1.15× and settles | 2 s or first input |
-| T4 | Ch1 L3, first branch opportunity | *"Grow from any path cell."* | Two non-adjacent legal targets both pulse | Player places |
-| T5 | Ch1 L4, after any placement | *"Undo is free. Always."* | Undo button glows | Player presses Undo, or 4 s |
-| T6 | Ch1 L5, first forced auto-discard | *"No legal move — tile skipped, no cost."* | Skipped tile flies off with its own sound | Automatic |
-| T7 | Ch2 L1, cursor near a wall | *"Walls never open."* | Wall shakes 2 px when targeted | Automatic |
-| T8 | Ch2 L2 | *"Discard a tile you can't use."* | Discard button glows, count shown | Player discards, or 6 s |
-| T9 | Ch3 L1 | *"Two goals. Plan the fork."* | Both goals pulse alternately | 2 s |
-| T10 | Ch4 L1, first gate in view | *"Gates need two connections."* | Gate shows two ghost stubs | 3 s |
-| T11 | Ch4 L4, first portal | *"Portals link both ends."* | Tether line between twins brightens | 3 s |
-| T12 | Ch5 L1, first wild pickup | *"Wild: choose any direction once."* | HUD charge slot fills with a pop | 3 s |
+| T1 | 1 | first frame | *"Your tile points {direction}. Place it on the lit cell."* | Gates to the one legal target |
+| T2 | 1 | after place | *"The path grows. One more reaches the goal."* | Gates to the goal |
+| T3 | 2 | first frame | *"The dark cell is a wall. Walls never open."* | Gates to the detour's first step |
+| T4 | 2 | after place | *"So go around it — over the top, then down."* | Gates along the detour |
+| T5 | 3 | first frame | *"No way past this wall. Step into the portal."* | Gates to the near portal |
+| T6 | 3 | after place | *"Its twin joined too. Finish from over there."* | Gates to the goal, beyond the wall |
+| T7 | 4 | first frame | *"A gate opens only for two path neighbours."* | Gates to the gate's second neighbour |
+| T8 | 4 | after place | *"It has two now. Step into the gate."* | Gates to the gate |
+| T9 | 4 | after place | *"The goal is one step beyond it."* | Gates to the goal |
+| T10 | 5 | first frame | *"Take the star. It is one wild charge."* | Gates to the wild cell |
+| T11 | 5 | wild gained | *"Wild armed: it goes any direction. Reach the goal."* | Arms the charge, lights the rail row, gates to the goal |
 
-Each beat writes a boolean into `save.tutorial_flags` so it never repeats. Beats must be data-driven
-(`src/data/tutorial.json`), not hardcoded in level scripts.
+T11 is the one place in the game where a charge is armed for the player rather than by them (§6): the
+cell the beat points at cannot be taken without it, and a lit cell that refuses is not a lesson.
+
+Beats and boards are both **data** — `src/data/tutorial/beats.json` and `src/data/tutorial/level_0N.json`
+— never hardcoded in level scripts. The boards are frozen files written offline by
+`tools/author_tutorial.gd`, which solves each one and refuses to write a board whose line it cannot
+verify. `save.tutorial_flags` records the lessons finished and whether the course is done, so a player
+who quits after board two comes back to board three.
 
 ---
 
@@ -634,7 +659,7 @@ No interaction may be exclusive to one device.
 |---|---|
 | `Menu` | Boot, main menu, level select, settings, results |
 | `Board` | In a level |
-| `Modal` | Pause, confirmation dialogs, tutorial gate |
+| `Modal` | Pause, confirmation dialogs |
 
 ### 11.2 Cursor navigation on a hex grid
 
@@ -706,7 +731,10 @@ All haptics respect a Settings slider (0–100%, default 70%) and are disabled a
 ```mermaid
 stateDiagram-v2
     [*] --> Boot
+    Boot --> Tutorial : first launch
     Boot --> MainMenu
+    Tutorial --> Tutorial : next lesson
+    Tutorial --> MainMenu : finished or skipped
     MainMenu --> LevelSelect : Campaign
     MainMenu --> Endless
     MainMenu --> Daily
@@ -721,6 +749,7 @@ stateDiagram-v2
     Results --> LevelSelect : Map
     Endless --> RunSummary : DEAD
     Daily --> Results : WON
+    Settings --> Tutorial : Replay tutorial
 ```
 
 The state machine lives in one place (`GameDirector`, §16.3). No screen may push another screen directly.
@@ -760,7 +789,7 @@ The state machine lives in one place (`GameDirector`, §16.3). No screen may pus
 │                                               │  ★ Wild    0 L2      │
 │                                               │  ? Hint      R2      │
 ├───────────────────────────────────────────────┴──────────────────────┤
-│  banner area — tutorial text / dead-state prompt (hidden by default)  │ 56 px
+│  banner area — dead-state prompt / mode message (hidden by default)   │ 56 px
 └──────────────────────────────────────────────────────────────────────┘
                                                     right rail = 400 px
 ```
@@ -1183,7 +1212,7 @@ hexflow/
 │   └── data/
 │       ├── levels/chapter_1..5/level_01..12.json
 │       ├── palettes/*.tres
-│       ├── tutorial.json
+│       ├── tutorial/beats.json + level_01..05.json
 │       ├── achievements.json
 │       └── schemas/*.md
 ├── assets/  fonts/  sfx/  music/  icons/  glyphs/
@@ -1257,7 +1286,7 @@ re-running the solver reproduces `par`.
   },
   "endless": { "best_goals": 14, "best_placements_at_best": 112, "runs": 23 },
   "daily": { "history": { "2026-07-30": { "completed": true, "placements": 12 } }, "streak": 4 },
-  "tutorial_flags": { "T1": true, "T2": true },
+  "tutorial_flags": { "done": true, "t_l01": true, "t_l02": true },
   "in_progress": {
     "mode": "campaign", "level_id": "c2_l07",
     "path": [[-3,0,3], [-2,0,2]], "edges": [[[-3,0,3], "NE"]],
@@ -1518,6 +1547,13 @@ Feature: Fairness and dead states
     And the game offers Undo and Restart
     And no progress is lost
 
+  Scenario: A goal reachable only through a portal is not a dead board
+    Given a board cut in two by walls with a portal pair across the divide
+    And the goal on the far side
+    When the state is evaluated
+    Then the status is PLAYING
+    And the same board without the portal is DEAD
+
 @core
 Feature: Undo and determinism
 
@@ -1644,6 +1680,43 @@ Feature: Modes
     When I complete a level, finish an endless run and unlock an achievement
     Then all gameplay succeeds
     And achievements are recorded locally for later sync
+
+@e2e
+Feature: The tutorial course
+
+  Scenario: A first launch goes straight into the course
+    Given a save that has never seen the tutorial
+    When the boot screen ends
+    Then the first teaching board is open, not the main menu
+    And a save that has been through the course reaches the main menu as before
+
+  Scenario: A beat gates the board to the cell it is about
+    Given the first teaching board
+    Then exactly one cell accepts input, and the cursor is on it
+    And it is the next cell of the board's stored line
+    When I place there
+    Then the following beat gates the next cell of the line, not the one just filled
+
+  Scenario: Every lesson can be finished by following its words
+    Given each of the five teaching boards in turn
+    When I place on the gated cell until the board ends
+    Then the board is won
+
+  Scenario: The portal and the wild are the only ways through their boards
+    Given the portal board
+    Then no route of any length reaches the goal without the portal
+    And on the wild board the goal's only open neighbour is the charge
+
+  Scenario: Finishing the last lesson ends the course for good
+    Given the fifth teaching board
+    When I finish it
+    Then the tutorial is marked done, the main menu opens, and it never runs again
+
+  Scenario: Back leaves the whole course, not one board
+    Given any teaching board
+    When I press Back
+    Then the tutorial is marked done and the main menu opens
+    And the pause menu does not also open
 ```
 
 ### 24.3 CI gates
@@ -1692,7 +1765,7 @@ green.
 | **M5** | Persistence & settings | `save_service`, `settings_service`, all settings tabs, suspend/resume | Persistence `@e2e` scenarios pass, including corrupted-save recovery and suspend/resume identity |
 | **M6** | Campaign data | 60 generated, verified, frozen level files; level select hex-flower map; chapter unlocks | Every level file validates and reproduces its par; the whole campaign is playable start to finish |
 | **M7** | Art & feel | Shaders (§13.3), palette tokens, typography, all §14 animations, all §15 audio | A blind side-by-side against the grey-box shows every §12.4 feedback requirement met; frame budget (§20) met at 1280×800 |
-| **M8** | Tutorial | Data-driven beats T1–T12, replay and skip | A first-time player completes chapter 1 with no external explanation (verified by an actual naive playtest, not a self-assessment) |
+| **M8** | Tutorial | Five teaching boards, data-driven beats, replay and skip | A first-time player completes the course and chapter 1 with no external explanation (verified by an actual naive playtest, not a self-assessment) |
 | **M9** | Modes & Steam | Endless, Daily, achievements, leaderboards, cloud | Mode `@e2e` scenarios pass, including the Steam-unavailable path |
 | **M10** | Accessibility & i18n | 4 alternate palettes, text scaling, Reduce Motion, string extraction, pseudo-locale | Accessibility `@e2e` scenarios pass; greyscale playthrough verified; 150% scale shows no clipping |
 | **M11** | Release | Deck self-audit, store page, trailer, depots, `beta` branch soak | §23.4 checklist fully ticked on hardware; 3 platform builds from CI; a clean install completes chapter 1 without incident |
@@ -1832,6 +1905,7 @@ option was taken and recorded here rather than invented silently.
 | C-30 | §13.4 set the game in Space Grotesk and Inter — a clean geometric sans and a UI face, chosen under §13.1's "modern minimalist" direction. C-26 replaced that direction with an illustrated, warm, material one and the type never followed, so the board became carved timber and painted stone with a interface lettered like a dashboard | **Display and headings change to Belligerent Madness and Caveat** (decided 2026-07-31). Hand-drawn and handwritten: the two registers C-26's direction actually has, one for a title cut by hand and one for a note left by one. Two exceptions come with the display face and both are deliberate. It is **static** — no `wght` axis, which §13.4 asks of every family — and at one size on one screen there is nothing for an axis to do. And it is **not OFL**: the Font Monkey licence permits commercial use outright but requires the licence, an attribution to P.D. Magnus and the fontmonkey URL to travel with the files, which `LICENSE-belligerentmadness.txt` carries and `test_typography.gd` asserts, because a condition nobody verifies is a condition being breached at the next release. An intermediate attempt at Grenze Gotisch was reverted on sight: blackletter, with an X that reads as a broken glyph at the one size the game uses it. **Body and captions stay Inter and numerals stay JetBrains Mono**, and that is the constraint rather than an oversight — §13.4's 18 px floor exists because the Deck's screen is seven inches, and a handwritten face at 18 px fails the legibility audit that floor is there to pass. Character goes where it is seen and legibility keeps what is read. One consequence had already bitten before this was decided: a characterful face carries almost no symbols, and Space Grotesk's missing ★ had the results card drawing three empty boxes. The families now fall back to one another, which is what makes any of them replaceable |
 | C-31 | The game showed its name twice on the way in. The engine boot splash held `assets/art/logo.png` for 700 ms, then `boot.tscn` faded the word HEXFLOW up over the backdrop for another 1.2 s — the same name, in two different treatments, back to back. Read as a stutter rather than as an opening, and the logo was the weaker of the two: a square card on a flat colour, in a game whose whole direction (C-26) is that it takes place somewhere | **The engine splash is off and `boot.tscn` is the only one** (decided 2026-07-31). `boot_splash/show_image=false`, leaving `bg_color` at the palette's darkest surface so the window that exists while the engine loads is already the colour the game is about to be — a splash you cannot switch off, only choose the colour of. §12.2's row becomes the title over the backdrop for 3 s rather than a logo for 1.2, because it is now carrying the whole opening rather than the second half of one, and the title fades up over 700 ms so that three seconds reads as a beat and not as a hang. §14.5 reaches the fade like everything else: reduced motion gets the title already arrived, for the whole hold. `logo.png` is not discarded — it becomes `application/config/icon`, which is where a square mark on a flat colour actually belongs |
 | C-36 | C-31's pulse read as a **highlight sliding along** the stroke rather than as anything electric, and it arrived nowhere: a symmetric band travelled the route at a constant rate, was present somewhere on it at every instant, and then simply started again. Light that travels has a direction and an end. Two changes, one effect. (1) The pulse becomes a **jolt**: nothing ahead of the tip beyond a short leader, a hot point, an exponential drain behind it, and a dark gap before the next one — the gap being what makes it a strike rather than a metronome. Its shape is *drawn, not lit*: while the bolt is passing, the bar's own geometry kinks into a triangle wave and swells, because the ribbon is a few pixels across and a thread of light wandering inside it can only ever be a shimmer. `BAR_SEGMENTS` doubled to 16 to give the corners vertices to land on; at eight the bolt tore into fragments. Both tails are measured in **lattice steps** rather than in fractions of the route, or a bolt on a twenty-cell path would be twenty times the length of the same bolt on a two-cell one. The zigzag rides C-31's own `sin(pi*t)` envelope, so however far the stroke throws itself sideways it still meets its neighbours at the tile centres they share — a bolt is not allowed to tell the player something false about their route. (2) The bolt **lands**. The cell the stroke ends at — the goal, once the route has reached it — takes a discharge: a flash, a thin ring leaving the point of impact, and forked arcs chasing it outward, added to *emission* so the board's existing bloom burns the core out toward white without a colour literal §13.2 does not allow. The tile is picked by position against one uniform rather than by a fifth custom channel there is no room for, and it runs on the ribbon's own `pulse_seconds` — one `fract`, no synchronisation to keep, and §14.5 stops the bolt and its landing together. §14.1's placement band fires the same discharge as a one-shot when it reaches the end of the route, which is detected as the head crossing 1.0 rather than scheduled: the tween is eased, so no caller can work out in advance what fraction of the duration the far end is at | Keep it. `JOLT_*`, `ZIGZAG_*` and `STRIKE_*` are chosen numbers that say so, the way `PULSE_SECONDS` is — §14.1 tabulates the timings the spec requires and its table may not grow a fifteenth row |
+| C-37 | §10 wove the tutorial through chapter 1 and one beat per modifier at its introducing level, which put the first lesson and the last several hours apart. Three things followed from that and none of them was fixable inside the design: the wild charge was taught on a board that also had walls, gates, a par and twelve levels of context on it, so the beat competed with the level; a beat that "merely highlights and lets the player ignore it" over a level with a real solution is a hint, not a lesson, and the two beats that mattered most fired only if the player happened to walk into a wall or pick up a charge; and seeing it again meant replaying the campaign to the level it was pinned to | **The tutorial is a course of five teaching boards of its own**, decided 2026-08-01. Six to nine cells each, one idea per board, a minute end to end, played out of the boot screen on the first launch and never again. Three consequences worth stating. **Every beat gates** — a teaching board's route is the only route, so holding input to the cell the words are about is the difference between a lesson and a suggestion, and §10.1's "non-blocking after the first beat" was written for guidance laid over a level someone was there to play. **Two boards are unsolvable without the mechanic they teach** (`tools/author_tutorial.gd` proves it with the solver before it will write the file), because a portal that can be walked around teaches that portals are decoration. And the words moved off the dead-state banner onto a card beside the board: the course speaks on every board, and the last 56 px under the rail is where a first-time player looks once. Two things had to give underneath: [constant Board.MIN_CELLS] came down from 12 to 6, with the campaign's own floor moved into the level-file property test, and §5.8's optimistic flood now follows portal twins — without it a board whose goal is only reachable through a portal is declared dead on the frame it opens, which is a real rule bug the third lesson simply happened to be the first thing to hit |
 
 ---
 

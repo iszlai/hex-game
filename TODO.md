@@ -9,8 +9,8 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-08-01** — Godot 4.7.1, 639 tests green in ~35 s, 60 frozen level files
-re-verified.
+Last verified: **2026-08-01** — Godot 4.7.1, 654 tests green in ~35 s, 60 frozen campaign level
+files and §10's five tutorial boards re-verified.
 
 ---
 
@@ -33,9 +33,10 @@ re-verified.
 
 Legend: ✅ exit criteria met · 🟨 partially built, criteria not met · ⬜ nothing built.
 
-**Next up:** M8's tutorial, whose exit criterion is a **naive playtest nobody has run**. Everything
-for it is built, `make playtest` sets it up, and it is the last thing standing between the game and a
-first-time player — a failure there names the next thing to build better than any guess. What is
+**Next up:** M8's tutorial, whose exit criterion is a **naive playtest nobody has run**. It is a
+course of five teaching boards of its own now (C-37) rather than guidance sprinkled through chapter 1;
+everything for it is built, `make playtest` sets it up, and it is the last thing standing between the
+game and a first-time player — a failure there names the next thing to build better than any guess. What is
 left in M7 behind it: the last two beats of §14.2's goal sequence, §15.1's music stems (which need a
 pads-only export of a track that exists, not another variation), and §15.3's loudness measurement.
 
@@ -680,58 +681,60 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
 
 ## M8 — Tutorial 🟨
 
-Exit: a first-time player completes chapter 1 with no external explanation — verified by an actual
-naive playtest, not a self-assessment. **Everything is built; the exit criterion is not met**, because
-the playtest is the criterion and nobody has run one. Do not tick this milestone on the strength of
-the checklist below.
+Exit: a first-time player completes the tutorial and chapter 1 with no external explanation — verified
+by an actual naive playtest, not a self-assessment. **Everything is built; the exit criterion is not
+met**, because the playtest is the criterion and nobody has run one. Do not tick this milestone on
+the strength of the checklist below.
 
-**To run it: `make playtest`**, which moves your own save aside — every beat writes a flag the moment
-it is shown, and yours have been set by weeks of playing and by the test suite, so launching normally
-shows a tutorial that has already happened. `make playtest-restore` puts it back; nothing is deleted.
-The protocol, and what each beat has to actually *achieve* rather than merely display, is
-[`hexflow/docs/PLAYTEST.md`](hexflow/docs/PLAYTEST.md). **Write the result here when it happens** —
-including a failure, which is the more useful of the two outcomes because it names the next thing to
-build rather than leaving it to be guessed at.
+**To run it: `make playtest`**, which moves your own save aside — the course runs once per save and
+yours has been through it, so launching normally goes straight to the menu. `make playtest-restore`
+puts it back; nothing is deleted. The protocol, and what each lesson has to actually *achieve* rather
+than merely display, is [`hexflow/docs/PLAYTEST.md`](hexflow/docs/PLAYTEST.md). **Write the result
+here when it happens** — including a failure, which is the more useful of the two outcomes because it
+names the next thing to build rather than leaving it to be guessed at.
 
-- [x] `src/data/tutorial.json` — beats are **data**, never hardcoded in level scripts (§10) — twelve
-      rows in a table `tests/unit/test_tutorial.gd` diffs against §10.2, the way Appendix A's
-      directions and §14.1's timings are. `src/app/tutorial.gd` decides *which* beat is live and the
-      level screen decides what a live beat looks like; it holds no strings and no timings of its own
-- [x] T1–T12 (§10.2), each ≤12 words, diegetic, non-blocking after T1 — the word count is asserted,
-      because it is a hard number in §10.1 and the first thing to go when a beat is edited to explain
-      one more thing. A trigger arriving while a beat is up is **dropped**, not queued: §10.1 allows
-      twelve words on screen, not two beats' worth. **One divergence:** §10.2 writes T1 as "Your tile
-      points north-east", which is true of the level that ships and would become a lie the first time
-      `make levels` reseeded chapter 1 — the direction is filled in from the tile the player is
-      actually holding
-- [x] Beat flags in `save.tutorial_flags` so nothing repeats — including across a reopening of the
-      level, which is the case a screen-local variable gets wrong
-- [x] Settings → "Replay tutorial" resets the flags only — §10.1's emphasis is the spec's own, so the
-      test is that the campaign and the stats survive it
-- [x] Skippable at any time with one Back press — resolved **before** the pause branch, because
-      §11.3 puts `board_pause` and `board_back` on the same Esc and the pause would otherwise always
-      win on a keyboard. It only claims the press while a beat is actually up
+**The tutorial is a course of five boards of its own (C-37)**, not guidance sprinkled through chapter
+1. What changed and why is the decision row; what it means for this checklist is that the unit of work
+is a *board* now, and every board is a file the solver has verified.
 
-**§10.2's *Interaction* column, in part.** The four beats that point at the rail now light the row
-they are about — T3 the NEXT stack, T5 Undo, T8 Discard, T12 the wild charge. A beat that says "undo
-is free" while nothing indicates *which* thing undo is has stated a fact rather than taught anything;
-the pointing is the lesson. It borrows the board's own breathing rather than inventing a second
-idiom, so the rail and the candidates pulse on one clock, and §14.5 stops the loop and leaves the row
-**held bright** — the emphasis is feedback, and reducing motion is not removing what the player is
-being told. T1's candidate pulse, T6's flyaway and T7's wall shake come free from animations that
-already exist.
+- [x] Five teaching boards in `src/data/tutorial/level_01..05.json` — flow, wall, portal, gate, wild.
+      Frozen data like the sixty: `tools/author_tutorial.gd` (`make tutorial`) draws them by hand,
+      solves each one, and **refuses to write a board whose line it cannot verify** or whose par has
+      drifted outside what a lesson can carry
+- [x] Boards 3 and 5 are unsolvable without the mechanic they teach — asserted, because a portal that
+      can be walked around teaches that portals are decoration
+- [x] `src/data/tutorial/beats.json` — beats are **data**, never hardcoded in level scripts (§10).
+      `src/app/tutorial.gd` decides which beat is live and which board is next; it holds no strings
+      and no timings of its own
+- [x] Each beat ≤12 words — asserted, because it is a hard number in §10.1 and the first thing to go
+      when a beat is edited to explain one more thing. **One divergence:** §10.3 writes the opening
+      beat as "Your tile points north-east", and the direction is filled in from the tile the player
+      is actually holding rather than baked into the sentence
+- [x] Every beat that waits on a placement **gates** the board to the cell it is about and puts the
+      cursor there, following the stored line as the player moves along it
+- [x] The wild board arms the charge for the player — the one place in the game where §6's "spent on
+      purpose, never by accident" bends, because the cell the beat points at cannot be taken without it
+- [x] Guidance on a card beside the board rather than in the dead-state banner: the course speaks on
+      every board, and the last 56 px under the rail is where a first-time player looks once
+- [x] Runs on the first launch of a save, out of the boot screen, and never again
+- [x] Settings → "Replay tutorial" resets the flags only and opens the course immediately — a setting
+      that answers "it will run again next time" asks the player to take it on trust
+- [x] Skippable at any time with one Back press, which leaves the course for good — resolved **before**
+      the pause branch, because §11.3 puts `board_pause` and `board_back` on the same Esc and the
+      pause would otherwise always win on a keyboard
+- [x] `save.tutorial_flags` records the lessons finished and whether the course is done, so a player
+      who quits after board two comes back to board three
 
-**Still owed, beyond the playtest:** T10's two ghost stubs on a gate and T3's preview scaling 1.15×
-specifically (the NEXT stack is lit, not scaled). Both are board-side emphasis and both are worth
-waiting for a playtest to justify — if nobody is confused by gates, the stubs are decoration. T1's candidate pulse, T6's
-flyaway and T7's wall shake come free from animations that already exist.
+**Two things underneath had to give.** `Board.MIN_CELLS` came down from 12 to 6 so a lesson can be as
+small as one idea, and the campaign's own floor moved into `tests/property/test_level_files.gd` where
+it is a claim about the sixty rather than about every board that will ever exist. And §5.8's
+optimistic flood now follows portal twins: without it, a board whose goal is only reachable through a
+portal is declared dead on the frame it opens — a real rule bug that the third lesson simply happened
+to be the first thing to hit.
 
-Two things the wiring turned up. T1's gate cannot simply follow the stored optimum: chapter 1 level
-1's optimal line **opens with a discard** (which is what C-14's `solution_script` exists to record),
-and a beat reading "your tile points north-east" must not gate the player onto a cell that tile cannot
-reach — so the gate is §10.2's own narrower claim, "only the one legal target accepts input", with the
-optimum used when it is available and legal. And the tutorial does not run in endless or the daily: a
-player there has been through chapter 1, and a beat firing would be teaching nobody.
+**Still owed, beyond the playtest:** nothing on the board is *drawn* to explain a gate — §10.3's T7
+says a gate needs two neighbours and the board shows a ring, not two ghost stubs. Worth waiting for a
+playtest to justify: if nobody is confused by gates, the stubs are decoration.
 
 ## M9 — Modes & Steam 🟨
 
