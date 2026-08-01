@@ -32,6 +32,16 @@ const UID_LENGTH := 10
 
 ## §3's brush list, in order. `null` marks the board brush, which paints
 ## membership rather than contents and is the one that is not a [MapDraft.Content].
+## The mode switch. Painting a board and drawing the route through it are two
+## different jobs on the same canvas, and a click has to mean one of them.
+const MODES: Array = [
+	{"label": "paint  (1)", "mode": MapCanvas.Mode.PAINT},
+	{"label": "trace  (2)", "mode": MapCanvas.Mode.TRACE},
+]
+
+const PAINT_HINT := "left paints · right erases · middle-drag pans · wheel zooms"
+const TRACE_HINT := "left lays the next tile · right takes one back · the route is the sequence"
+
 const BRUSHES: Array = [
 	{"label": "board", "brush": MapDraft.BRUSH_BOARD},
 	{"label": "wall  #", "brush": MapDraft.Content.WALL},
@@ -47,8 +57,12 @@ var _draft: MapDraft = MapDraft.new()
 ## which is what makes §6's refusal a refusal rather than a warning.
 var _report: MapReport = null
 var _filling: bool = false
+var _mode: int = MapCanvas.Mode.PAINT
 
 var _canvas: MapCanvas = null
+var _mode_buttons: Array[Button] = []
+var _brush_buttons: Array[Button] = []
+var _hint: Label = null
 var _header: Label = null
 var _status: Label = null
 var _tiles_field: LineEdit = null
@@ -146,6 +160,27 @@ func _build_panel() -> Control:
 	# Two columns, because seven full-width rows are the tallest thing in the rail
 	# and the fields below them ended up scrolled out of sight behind it. A brush
 	# palette is a grid everywhere else for the same reason.
+	# The mode switch sits above the brushes because it decides whether they mean
+	# anything: in trace mode a click lays a tile and the brush under it is not
+	# consulted at all.
+	panel.add_child(_label("MODE"))
+	var modes := GridContainer.new()
+	modes.columns = 2
+	panel.add_child(modes)
+	var mode_group := ButtonGroup.new()
+	for entry: Variant in MODES:
+		var spec: Dictionary = entry
+		var button := Button.new()
+		button.text = str(spec["label"])
+		button.toggle_mode = true
+		button.button_group = mode_group
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var mode: int = int(spec["mode"])
+		button.pressed.connect(func() -> void: _set_mode(mode))
+		_mode_buttons.append(button)
+		modes.add_child(button)
+	_mode_buttons[MapCanvas.Mode.PAINT].button_pressed = true
+
 	panel.add_child(_label("BRUSH"))
 	var brushes := GridContainer.new()
 	brushes.columns = 2
@@ -163,14 +198,16 @@ func _build_panel() -> Control:
 		button.pressed.connect(func() -> void: _canvas.brush = brush)
 		if brush == int(MapDraft.Content.WALL):
 			button.button_pressed = true
+		_brush_buttons.append(button)
 		brushes.add_child(button)
 
 	# The one thing about the brushes that is not on a button, and the first thing
 	# anyone asks. §4.1 gives right-drag a different meaning per brush — off-board
-	# for the board brush, empty for the rest — and neither is guessable.
-	var hint := _label("left paints · right erases · middle-drag pans · wheel zooms")
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(hint)
+	# for the board brush, empty for the rest — and neither is guessable. Trace mode
+	# gives it a third meaning, so the line is rewritten rather than added to.
+	_hint = _label(PAINT_HINT)
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(_hint)
 
 	panel.add_child(_label("BOARD"))
 	var grid := GridContainer.new()
@@ -247,7 +284,62 @@ func _spin(grid: GridContainer, label: String, low: int, high: int) -> SpinBox:
 
 # --- editing --------------------------------------------------------------------
 
+## Switches what a click on the canvas means (§4.4).
+##
+## **Why there is a second mode at all.** Fill sweeps ten seeds and every one of
+## them is a random walk that can dead-end; on a board with a tight corridor or a
+## fenced-in goal all ten can, and then Fill has nothing to offer and no way to be
+## argued with. Tracing is the answer to that — and it is also the only way to get
+## a route somebody *chose*, which §4.4 wanted from the text field and never really
+## got, because a sequence of direction names is not a shape anyone can picture.
+##
+## Entering the mode replays the route against the board as it is now, because the
+## board may well have moved while the brush was out.
+func _set_mode(mode: int) -> void:
+	_mode = mode
+	_canvas.mode = mode
+	_mode_buttons[mode].button_pressed = true
+	# Greyed rather than hidden: the palette staying where it is says the brushes
+	# are still there and not applicable, and a rail that reflows on a mode switch
+	# moves every other button out from under the cursor.
+	for button: Button in _brush_buttons:
+		button.disabled = mode == MapCanvas.Mode.TRACE
+	_hint.text = TRACE_HINT if mode == MapCanvas.Mode.TRACE else PAINT_HINT
+	if mode != MapCanvas.Mode.TRACE:
+		_canvas.refresh()
+		_refresh()
+		return
+
+	var dropped: int = _draft.revalidate_trace()
+	_canvas.refresh()
+	# The replay can shorten the sequence, so the last Validate is about a level
+	# that no longer exists.
+	_invalidate()
+	if _draft.start == Hex.NONE:
+		_note("trace: place a start first — the route grows out of it")
+	elif dropped > 0:
+		_note("trace: dropped %d step%s the board no longer allows · %s"
+			% [dropped, "" if dropped == 1 else "s", _trace_status()])
+	else:
+		_note("trace: click a cell next to the route · " + _trace_status())
+
+
+## Where the route has got to, in the terms the author is thinking in: how many
+## tiles it has spent and how many goals are still out.
+func _trace_status() -> String:
+	var head: String = "%d tiles traced" % _draft.trace.size()
+	if _draft.goals().is_empty():
+		return head + " · no goal to reach yet"
+	var left: int = _draft.trace_goals_left()
+	if left == 0:
+		return head + " · every goal joined, so this sequence is a solution"
+	return head + " · %d goal%s still out" % [left, "" if left == 1 else "s"]
+
+
 func _on_painted(cell: Vector3i, erase: bool) -> void:
+	if _mode == MapCanvas.Mode.TRACE:
+		_on_traced(cell, erase)
+		return
 	var brush: int = _canvas.brush
 	if brush == MapDraft.BRUSH_BOARD:
 		if erase:
@@ -266,6 +358,29 @@ func _on_painted(cell: Vector3i, erase: bool) -> void:
 	_invalidate()
 
 
+## One step of the route, forwards or back.
+##
+## Every step is checked against the same rules the game plays by, so what comes
+## out is a **recorded legal play** and therefore a sequence the solver can win by
+## construction. That is the difference between this and the text field of §4.4:
+## typing six direction names produces a sequence that may be unplayable and only
+## says so at Validate, seconds later, with nothing to point at.
+func _on_traced(cell: Vector3i, erase: bool) -> void:
+	if erase:
+		if not _draft.undo_trace():
+			_note("trace: nothing to take back")
+			return
+	else:
+		var refusal: String = _draft.trace_step(cell)
+		if refusal != "":
+			_canvas.refresh()
+			_note(refusal)
+			return
+	_canvas.refresh()
+	_invalidate()
+	_note(_trace_status())
+
+
 func _on_shape_changed() -> void:
 	_draft.apply_shape(
 		Hex.SHAPES[_shape.selected], int(_size.value), int(_arg.value))
@@ -280,6 +395,10 @@ func _on_tiles_typed(text: String) -> void:
 		return
 	_draft.tiles = parsed[0] as Array[int]
 	_draft.tiles_stale = false
+	# A typed sequence is not the drawn one any more, and a route left on the canvas
+	# under a sequence it does not describe is the canvas lying.
+	_draft.clear_trace()
+	_canvas.refresh()
 	_invalidate()
 
 
@@ -287,7 +406,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
-	if key.keycode == KEY_F5:
+	if key.keycode == KEY_1:
+		_set_mode(MapCanvas.Mode.PAINT)
+		accept_event()
+	elif key.keycode == KEY_2:
+		_set_mode(MapCanvas.Mode.TRACE)
+		accept_event()
+	elif key.keycode == KEY_F5:
 		_validate()
 		accept_event()
 	elif key.keycode == KEY_S and key.is_command_or_control_pressed():
@@ -337,6 +462,9 @@ func _fill() -> void:
 	_draft.tiles = best.tiles
 	_draft.fill_seed = best.seed
 	_draft.tiles_stale = false
+	# Fill's route is not the drawn one — same reason as a typed sequence.
+	_draft.clear_trace()
+	_canvas.refresh()
 	_invalidate()
 	_note("kept deal %d: ideal %d · %d routes · %d%% forgiving"
 		% [best.seed, best.par, best.routes, best.forgiving])
@@ -589,7 +717,11 @@ func _refresh() -> void:
 
 	var problems := _draft.problems()
 	var parts: PackedStringArray = PackedStringArray()
-	if _draft.tiles.is_empty():
+	if _mode == MapCanvas.Mode.TRACE:
+		# While tracing, "no tile sequence" is both true and useless: the sequence is
+		# being drawn, and how far it has got is the thing worth saying.
+		parts.append(_trace_status())
+	elif _draft.tiles.is_empty():
 		parts.append("no tile sequence")
 	elif _draft.tiles_stale:
 		parts.append("the board changed since the sequence was made — re-run Fill")

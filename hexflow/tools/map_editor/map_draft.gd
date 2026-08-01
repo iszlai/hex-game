@@ -57,6 +57,30 @@ var budget: int = Level.NO_BUDGET
 ## most expensive thing to not notice.
 var tiles: Array[int] = []
 var tiles_stale: bool = false
+
+## §4.4's fourth way to get a sequence, **Trace**: the cells an author clicked, in
+## order, and the direction each one was entered from. Those directions *are*
+## [member tiles].
+##
+## A traced sequence is a recorded legal play, so it is solvable by construction —
+## which is the one thing Fill cannot promise. Fill sweeps ten seeds and each is a
+## random walk that can dead-end; on a tight board every one of them can, and then
+## there is no sequence at all and nothing to do about it. Drawing the route by
+## hand is the answer to that, and it is also the only way to get a route that was
+## *chosen* rather than found.
+##
+## Not saved, and not recoverable from a file: the level records the sequence, and
+## the route that produced it is one of the many that sequence allows.
+var trace: Array[Vector3i] = []
+var trace_dirs: Array[int] = []
+
+## The path the trace has built: the start, every traced cell, and the twin of
+## every portal stepped on (§5.5.3). Cached rather than recomputed, because the
+## canvas asks once per redraw and once per mouse move.
+var _path: Dictionary = {}
+## The same cells in the order they joined, newest last. Which anchor a step is
+## measured from decides which tile it is, so the order is not decoration.
+var _order: Array[Vector3i] = []
 ## Which of Fill's deals was kept, so re-running Fill with it reproduces the
 ## level exactly (§10 Q4). Provenance, written to `generator.seed`.
 var fill_seed: int = 0
@@ -84,6 +108,7 @@ func apply_shape(kind: String, size: int, arg: int) -> void:
 	for c: Vector3i in Hex.shape(kind, size, arg):
 		cells[c] = true
 	_drop_contents_off_board()
+	_rebuild_path()
 	tiles_stale = true
 
 
@@ -145,6 +170,7 @@ func set_content(c: Vector3i, kind: Content) -> bool:
 		Content.PORTAL:
 			_join_portal(c)
 	content[c] = kind
+	_rebuild_path()
 	tiles_stale = true
 	return true
 
@@ -157,6 +183,7 @@ func clear_content(c: Vector3i) -> bool:
 	elif content_at(c) == Content.PORTAL:
 		_unjoin_portal(c)
 	content.erase(c)
+	_rebuild_path()
 	tiles_stale = true
 	return true
 
@@ -184,6 +211,168 @@ func _drop_contents_off_board() -> void:
 	for c: Variant in content.keys():
 		if not cells.has(c):
 			clear_content(c as Vector3i)
+
+
+# --- §4.4's trace: drawing the sequence instead of sweeping for it ---------------
+
+## Whether the traced path has reached [param c] — including a portal twin it was
+## carried to without being clicked.
+func on_path(c: Vector3i) -> bool:
+	return _path.has(c)
+
+
+## The twin of a portal cell, or [param c] itself when it is not one. Only closed
+## pairs count: a lone A is not a door yet (§4.2).
+func portal_twin(c: Vector3i) -> Vector3i:
+	for pair: Variant in portals:
+		var p: Array = pair
+		if p.size() != 2:
+			continue
+		if p[0] == c:
+			return p[1] as Vector3i
+		if p[1] == c:
+			return p[0] as Vector3i
+	return c
+
+
+## Which path cell the next step onto [param c] would be measured from, or
+## [constant Hex.NONE] when the path does not reach it.
+##
+## The game grows the path from **any** cell it already has, not only from the end
+## of it (§5.4), so a click beside an older cell is legal and means a fork. The
+## newest neighbour is preferred because a cell touching two path cells is two
+## different tiles, and the one that continues the line being drawn is the one the
+## author meant.
+func trace_anchor(c: Vector3i) -> Vector3i:
+	for i: int in range(_order.size() - 1, -1, -1):
+		if Hex.distance(_order[i], c) == 1:
+			return _order[i]
+	return Hex.NONE
+
+
+## Why the next step cannot land on [param c], or [code]""[/code] when it can.
+##
+## This is [Rules] restated in the editor's words rather than reused, because the
+## two want different things from it: the game needs a boolean per candidate cell
+## and the author needs to be told which rule they just met. Every clause here has
+## its counterpart in `Rules._can_enter`, and a step that passes all of them is a
+## move the game would accept.
+func trace_refusal(c: Vector3i) -> String:
+	if start == Hex.NONE or not cells.has(start):
+		return "trace: place a start first — the route grows out of it"
+	if not cells.has(c):
+		return "trace: %v is not on the board" % c
+	if content_at(c) == Content.WALL:
+		return "trace: %v is a wall" % c
+	if _path.has(c):
+		return "trace: the route is already there"
+	if trace_anchor(c) == Hex.NONE:
+		return "trace: %v does not touch the route — a tile is laid against a cell the path already has" % c
+	if content_at(c) == Content.GATE and _path_neighbours(c) < 2:
+		return "trace: a gate opens only once the path reaches it twice (§6) — come back to it"
+	return ""
+
+
+func can_trace(c: Vector3i) -> bool:
+	return trace_refusal(c) == ""
+
+
+## Takes the next step, and with it the next tile. Returns the refusal, or
+## [code]""[/code] when the step was taken.
+func trace_step(c: Vector3i) -> String:
+	var why := trace_refusal(c)
+	if why != "":
+		return why
+	trace.append(c)
+	trace_dirs.append(Direction.between(trace_anchor(c), c))
+	_join_path(c)
+	_adopt_trace()
+	return ""
+
+
+## Takes the last step back. False when there is nothing to take back.
+func undo_trace() -> bool:
+	if trace.is_empty():
+		return false
+	trace.pop_back()
+	trace_dirs.pop_back()
+	_rebuild_path()
+	_adopt_trace()
+	return true
+
+
+## Drops the route and leaves the sequence alone. For the two things that produce
+## a sequence some other way — Fill and the text field — because a drawn route
+## that no longer matches the tiles beside it is a lie on the canvas.
+func clear_trace() -> void:
+	trace = []
+	trace_dirs = []
+	_rebuild_path()
+
+
+## Replays the route against the board as it stands and drops it from the first
+## step that is no longer legal. Returns how many steps went.
+##
+## The board can move under a route — that is the whole point of being able to
+## paint a wall after drawing one — and a route through a wall describes a
+## sequence nobody can play. Truncating is not politeness either: the prefix up to
+## the wall is still a legal play and still worth keeping.
+func revalidate_trace() -> int:
+	var wanted: Array[Vector3i] = trace.duplicate()
+	trace = []
+	trace_dirs = []
+	_rebuild_path()
+	for c: Vector3i in wanted:
+		if trace_step(c) != "":
+			break
+	return wanted.size() - trace.size()
+
+
+## How many goals the route has not joined yet. Zero on a board with goals means
+## the traced sequence is a complete solution.
+func trace_goals_left() -> int:
+	var left: int = 0
+	for g: Vector3i in goals():
+		if not _path.has(g):
+			left += 1
+	return left
+
+
+## The route *is* the sequence. Not stale by construction: it was drawn against
+## this board, one legal step at a time.
+func _adopt_trace() -> void:
+	tiles = trace_dirs.duplicate()
+	tiles_stale = false
+
+
+func _rebuild_path() -> void:
+	_path = {}
+	_order = []
+	if start != Hex.NONE and cells.has(start):
+		_join_path(start)
+	for c: Vector3i in trace:
+		_join_path(c)
+
+
+## §5.5.3 — stepping on a portal joins its twin at the same moment, so the next
+## tile may be laid against either end. A route that could not do that would be
+## drawing a different game from the one the level is played in.
+func _join_path(c: Vector3i) -> void:
+	if not _path.has(c):
+		_path[c] = true
+		_order.append(c)
+	var twin: Vector3i = portal_twin(c)
+	if twin != c and not _path.has(twin):
+		_path[twin] = true
+		_order.append(twin)
+
+
+func _path_neighbours(c: Vector3i) -> int:
+	var n: int = 0
+	for dir: int in Direction.ALL:
+		if _path.has(c + Direction.delta(dir)):
+			n += 1
+	return n
 
 
 # --- the constraints of §4.2 ---------------------------------------------------
@@ -345,6 +534,9 @@ static func from_level(level: Level) -> MapDraft:
 	# Loading a sequence is §4.4's third option, **Keep**: the board can then be
 	# edited around a deal that already works.
 	draft.tiles_stale = false
+	# The contents above were placed straight into the dictionaries rather than
+	# through `set_content`, so nothing has built the path the trace grows from.
+	draft._rebuild_path()
 	return draft
 
 

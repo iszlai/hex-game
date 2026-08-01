@@ -238,6 +238,124 @@ func test_the_carve_avoids_gates() -> void:
 			"the carved route stepped onto a gate at %v" % at)
 
 
+# --- §4.4, the traced sequence ------------------------------------------------------
+
+## The four steps from the start to the goal of a radius-2 hexagon, which is the
+## straight NE line between them.
+func _trace_to_goal(draft: MapDraft) -> void:
+	var at: Vector3i = draft.start
+	for _i: int in range(4):
+		at += Direction.delta(Direction.NE)
+		assert_eq(draft.trace_step(at), "", "step onto %v was refused" % at)
+
+
+## The point of the mode: what was drawn *is* the sequence, with no sweep in
+## between and nothing to go stale.
+func test_a_traced_route_becomes_the_sequence() -> void:
+	var draft := _hexagon()
+	_trace_to_goal(draft)
+	assert_eq(draft.tiles, [Direction.NE, Direction.NE, Direction.NE, Direction.NE] as Array[int])
+	assert_false(draft.tiles_stale, "a route drawn on this board is not stale on it")
+	assert_eq(draft.trace_goals_left(), 0, "the route reached the goal")
+
+
+## Why the mode exists at all. Fill sweeps ten seeded random walks and every one
+## of them can dead-end, and on a tight board they all do — a traced route cannot,
+## because it is a legal play that has already been played.
+func test_a_traced_route_is_a_sequence_the_solver_can_win() -> void:
+	var draft := _hexagon()
+	_trace_to_goal(draft)
+	var level := draft.to_level()
+	assert_not_null(level)
+	assert_true(Solver.solve(level).is_solvable(), "the route drawn is a route that can be played")
+
+
+## Every refusal is one of [Rules]' own, said out loud. A tile is laid against a
+## cell the path already has (§5.4), never into open space.
+func test_a_step_must_touch_the_route() -> void:
+	var draft := _hexagon()
+	var far := Vector3i(2, -2, 0)
+	assert_string_contains(draft.trace_step(far), "does not touch the route")
+	assert_true(draft.trace.is_empty(), "a refused step is not taken")
+
+
+func test_a_step_cannot_land_on_a_wall_or_off_the_board() -> void:
+	var draft := _hexagon()
+	var next := START + Direction.delta(Direction.NE)
+	draft.set_content(next, MapDraft.Content.WALL)
+	assert_string_contains(draft.trace_step(next), "is a wall")
+	assert_string_contains(draft.trace_step(Vector3i(9, 0, -9)), "not on the board")
+
+
+func test_a_step_cannot_double_back_onto_the_route() -> void:
+	var draft := _hexagon()
+	_trace_to_goal(draft)
+	assert_string_contains(draft.trace_step(START + Direction.delta(Direction.NE)),
+		"already there")
+
+
+## §6's gate needs two path neighbours before it opens, so a route that walks
+## straight into one is describing a move the game would not accept.
+func test_a_gate_is_refused_until_the_route_reaches_it_twice() -> void:
+	var draft := _hexagon()
+	var gate := START + Direction.delta(Direction.NE)
+	draft.set_content(gate, MapDraft.Content.GATE)
+	assert_string_contains(draft.trace_step(gate), "gate")
+	# Round its other side first, which leaves the gate with two path neighbours.
+	assert_eq(draft.trace_step(START + Direction.delta(Direction.E)), "")
+	assert_eq(draft.trace_step(gate), "", "the gate opens on the second approach")
+
+
+## §5.5.3 — stepping on a portal joins its twin at the same moment, so the next
+## tile may be laid at the far end. A route that could not do that would be
+## drawing a different game from the one the level is played in.
+func test_stepping_on_a_portal_carries_the_route_to_its_twin() -> void:
+	var draft := _hexagon()
+	var near := START + Direction.delta(Direction.NE)
+	var far := Vector3i(2, -1, -1)
+	draft.set_content(near, MapDraft.Content.PORTAL)
+	draft.set_content(far, MapDraft.Content.PORTAL)
+	assert_eq(draft.trace_step(near), "")
+	assert_true(draft.on_path(far), "the twin joined without being clicked")
+	assert_eq(draft.trace_step(GOAL), "", "the next tile is laid from the far end")
+	assert_eq(draft.tiles.size(), 2, "the teleport is not a tile — only the two steps are")
+
+
+func test_taking_a_step_back_shortens_the_sequence() -> void:
+	var draft := _hexagon()
+	_trace_to_goal(draft)
+	assert_true(draft.undo_trace())
+	assert_eq(draft.tiles.size(), 3)
+	assert_eq(draft.trace_goals_left(), 1, "the goal is out again")
+	assert_false(draft.on_path(GOAL))
+
+
+func test_taking_a_step_back_from_nothing_does_nothing() -> void:
+	assert_false(_hexagon().undo_trace())
+
+
+## The board can move under a route — painting a wall across one is exactly the
+## edit §4.3 wants to allow. The prefix up to the wall is still a legal play, so
+## it is kept and the rest goes.
+func test_the_route_is_replayed_against_the_board_as_it_is_now() -> void:
+	var draft := _hexagon()
+	_trace_to_goal(draft)
+	draft.set_content(START + Direction.delta(Direction.NE) * 3, MapDraft.Content.WALL)
+	assert_eq(draft.revalidate_trace(), 2, "the wall and the step past it")
+	assert_eq(draft.tiles, [Direction.NE, Direction.NE] as Array[int])
+
+
+## Fill and the text field both produce a sequence the route did not, and a line
+## left on the canvas under a sequence it does not describe is the canvas lying.
+func test_clearing_the_route_leaves_the_sequence_alone() -> void:
+	var draft := _hexagon()
+	_trace_to_goal(draft)
+	var traced: Array[int] = draft.tiles.duplicate()
+	draft.clear_trace()
+	assert_true(draft.trace.is_empty())
+	assert_eq(draft.tiles, traced, "the tiles are the level's; the route was only how they got there")
+
+
 # --- §5 and §6, validate and the refusal --------------------------------------------
 
 func test_validate_will_not_pass_a_board_with_no_sequence() -> void:

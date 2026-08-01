@@ -23,6 +23,12 @@ extends Control
 signal painted(cell: Vector3i, erase: bool)
 signal hovered(cell: Vector3i)
 
+## What a click means. The canvas only reports where; the editor decides what,
+## and the two modes are here because the *drawing* differs too — a route needs
+## to be visible, and a hover that would be refused should say so before the
+## click rather than after it.
+enum Mode { PAINT, TRACE }
+
 const MIN_ZOOM := 12.0
 const MAX_ZOOM := 90.0
 const ZOOM_STEP := 1.12
@@ -35,13 +41,25 @@ const GHOST_RINGS := 2
 ## How strongly the paintable halo is drawn, against the board's full strength.
 const GHOST_ALPHA := 0.35
 
+## The traced route's line, as a fraction of a hexagon's size, so it thickens with
+## the zoom rather than becoming a hair over a wide board.
+const ROUTE_WIDTH := 0.14
+## Below this hexagon size the step numbers are dropped. They stop being legible
+## well before they stop being drawn, and a board covered in unreadable digits is
+## worse than one with none.
+const ROUTE_NUMBERS_ABOVE := 22.0
+
 var draft: MapDraft = null
 var brush: int = MapDraft.Content.WALL
+var mode: int = Mode.PAINT
 
 var _layout: HexLayout = HexLayout.new(42.0)
 var _pan: Vector2 = Vector2.ZERO
 var _ghosts: Array[Vector3i] = []
 var _hover: Vector3i = Hex.NONE
+## Whether the hovered cell is a step the trace would accept. Answered on the
+## move rather than in [method _draw], which must not be building refusal strings.
+var _hover_ok: bool = false
 var _painting: bool = false
 var _erasing: bool = false
 var _last_painted: Vector3i = Hex.NONE
@@ -73,6 +91,10 @@ func bind(p_draft: MapDraft) -> void:
 ## to do per stroke, and the alternative is a canvas that disagrees with the model.
 func refresh() -> void:
 	_rebuild_ghosts()
+	# The cell under a *stationary* cursor changes meaning the moment a step lands
+	# on it, so the ring is recomputed here as well as on the move.
+	_hover_ok = draft != null and mode == Mode.TRACE \
+		and _hover != Hex.NONE and draft.can_trace(_hover)
 	queue_redraw()
 
 
@@ -165,14 +187,66 @@ func _draw() -> void:
 		draw_polyline(_outline, _stroke_for(palette, kind), 2.0)
 		_draw_letter(palette, c, kind)
 
+	_draw_route(palette)
+
 	# The hover ring last, so it sits over whatever it is on top of. Drawn as a
 	# heavier stroke rather than a tint: §21's rule that a state is readable
 	# without colour is the game's, but an author staring at seven fills all day
 	# benefits from it just as much.
 	if _hover != Hex.NONE and (draft.has(_hover) or _is_ghost(_hover)):
 		draw_set_transform(_layout.to_pixel(_hover))
-		draw_polyline(_outline, palette.focus, 3.0)
+		# In trace mode the ring answers the question before the click: this cell
+		# either takes the next tile or it does not, and being told after the fact
+		# is how an author ends up fighting a rule they cannot see.
+		var ring: Color = palette.focus
+		if mode == Mode.TRACE:
+			ring = palette.path_core if _hover_ok else palette.danger
+		draw_polyline(_outline, ring, 3.0)
 	draw_set_transform(Vector2.ZERO)
+
+
+## The traced route (§4.4), as the line it is.
+##
+## Drawn in every mode, not only while tracing: a route is what the sequence
+## beside it *means*, and hiding it the moment the brush changes is how an author
+## paints a wall across their own path without noticing.
+##
+## Each step's anchor is recovered from its direction rather than stored —
+## `cell - delta(dir)` is the same inverse [method Rules.anchor_for] relies on, so
+## there is one fact here and not two that can disagree.
+func _draw_route(palette: Palette) -> void:
+	if draft.trace.is_empty():
+		return
+	draw_set_transform(Vector2.ZERO)
+	var width: float = maxf(2.0, _layout.size * ROUTE_WIDTH)
+	draw_circle(_layout.to_pixel(draft.trace[0] - Direction.delta(draft.trace_dirs[0])),
+		width, palette.path_core)
+	for i: int in range(draft.trace.size()):
+		var cell: Vector3i = draft.trace[i]
+		var anchor: Vector3i = cell - Direction.delta(draft.trace_dirs[i])
+		draw_line(_layout.to_pixel(anchor), _layout.to_pixel(cell), palette.path_glow, width * 2.0)
+		draw_line(_layout.to_pixel(anchor), _layout.to_pixel(cell), palette.path_core, width)
+
+	# The tip, ringed. A route that forks is a route whose end is not where the
+	# eye assumes, and the next tile is laid from here.
+	draw_set_transform(_layout.to_pixel(draft.trace[draft.trace.size() - 1]))
+	draw_polyline(_outline, palette.path_core, 3.0)
+	draw_set_transform(Vector2.ZERO)
+	if _layout.size < ROUTE_NUMBERS_ABOVE:
+		return
+	# Which tile is which. The sequence is an ordered list and a bare line does not
+	# say where in it a cell falls, which is the whole question when the awkward
+	# tile is meant to arrive one turn early (§4.4).
+	var font_size: int = maxi(8, int(_layout.size * 0.34))
+	for i: int in range(draft.trace.size()):
+		# Twice, the second a pixel up, the same way a mark is drawn on a cell: a
+		# number sitting on its own route line is a number on a bright background,
+		# and one colour cannot be legible against both that and the cell.
+		var at: Vector2 = _layout.to_pixel(draft.trace[i]) + Vector2(-_layout.size, -_layout.size * 0.3)
+		draw_string(_font, at, str(i + 1), HORIZONTAL_ALIGNMENT_CENTER,
+			_layout.size * 2.0, font_size, palette.board_mark_outline)
+		draw_string(_font, at - Vector2(0.0, 1.0), str(i + 1), HORIZONTAL_ALIGNMENT_CENTER,
+			_layout.size * 2.0, font_size, palette.text_primary)
 
 
 func _draw_letter(palette: Palette, c: Vector3i, kind: int) -> void:
@@ -249,6 +323,7 @@ func _on_motion(event: InputEventMouseMotion) -> void:
 	var cell := _layout.from_pixel(event.position)
 	if cell != _hover:
 		_hover = cell
+		_hover_ok = draft != null and mode == Mode.TRACE and draft.can_trace(cell)
 		hovered.emit(cell)
 		queue_redraw()
 	if _painting:

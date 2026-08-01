@@ -63,7 +63,9 @@ render — the three things a MainLoop script does not get. It may use the game'
 
 ```
 ┌──────────────────────────────────────────────┬──────────────────┐
-│  ← chapter 3 · level 07 ·  ideal 11          │  BRUSH           │
+│  ← chapter 3 · level 07 ·  ideal 11          │  MODE            │
+│                                              │   [paint] [trace]│
+│                                              │  BRUSH           │
 │                                              │   ▢ board        │
 │                                              │   ▨ wall         │
 │              the hex canvas                  │   ◆ start        │
@@ -114,6 +116,23 @@ There are two different edits and conflating them is the usual way a hex editor 
 | **Contents** | what is on a cell: empty, wall, start, goal, portal, gate, wild | Only meaningful on a cell that is on the board |
 
 Left-drag paints, right-drag erases to the brush's default (off-board, or empty).
+
+### 4.1.1 Two modes above the brushes — **added after first use**
+
+A click on the canvas means one of two things, and which one is a **mode**, not a brush:
+
+| Mode | A left click | A right click |
+|---|---|---|
+| **paint** (1) | paints the selected brush | erases to the brush's default |
+| **trace** (2) | lays the next tile of the sequence | takes the last one back |
+
+The brush palette greys out in trace mode rather than disappearing, because a rail that reflows on
+a mode switch moves every other button out from under the cursor.
+
+Why a mode and not a brush: the trace is not an edit to a cell. It is an ordered walk over cells
+that are already there, it can pass the same cell's neighbours twice, and its right-click undoes
+rather than erases. A "route brush" in the §4.1 list would be the third meaning of a left-drag
+hiding inside a control that promises two. See §4.4's fourth option for what it produces.
 
 ### 4.2 The constraints the editor enforces live
 
@@ -179,9 +198,45 @@ Three ways to get one, in the order they should be offered:
    *deliberate* rhythm: three norths in a row, or the awkward tile arriving one turn early.
 3. **Keep** — loading an existing level keeps its sequence, so the board can be edited around a
    sequence that already works.
+4. **Trace** *(added after first use)* — draw the route on the board and the tiles are what it
+   spells. §4.1.1's second mode.
 
 Fill must be re-runnable after any board edit, and the editor should say so when the board has changed
 since the sequence was made.
+
+#### 4.4.1 Trace, and why Fill was not enough
+
+**Fill does not always fill, and cannot be argued with when it doesn't.** Each of its ten seeds is a
+biased random walk from the start; a walk that paints itself into a corner is thrown away whole, and
+on a board with a tight corridor or a goal behind a doorway all ten do it. What the author gets is
+*"no deal made this board solvable"* about a board that is perfectly solvable — they can see the
+route with their eye and there is no way to tell the tool about it.
+
+Trace is that way. Every click is checked against the rules the game plays by — the tile is laid
+against a cell the path already has (§5.4), never onto a wall or onto itself, a gate only opens on
+the second approach (§6), and stepping on a portal carries the path to its twin (§5.5.3). So what
+comes out is a **recorded legal play**, and therefore a sequence the solver can win *by
+construction*. That is the one promise Fill's sweep cannot make.
+
+It is also the only way to get a route somebody chose. §4.4's text field was meant to be that, and
+is not: a list of direction names is not a shape anyone can picture, and it says nothing until
+Validate, seconds later, with nothing to point at.
+
+- The route is drawn on the canvas in every mode, numbered by step, with the tip ringed. A route is
+  what the sequence beside it *means*, and hiding it when the brush comes back out is how an author
+  paints a wall across their own path without noticing.
+- The hover ring says yes or no **before** the click, because being told which rule you just met
+  after the fact is how an author ends up fighting one they cannot see.
+- Entering the mode replays the route against the board as it is now and drops it from the first
+  step that is no longer legal. The prefix up to the wall is still a legal play and still worth
+  keeping.
+- Fill and the text field both **clear** the route, because a drawn line under a sequence it does
+  not describe is the canvas lying.
+- The route is not saved. The file records the sequence; the route is one of the many plays that
+  sequence allows.
+
+A traced sequence has no decoys in it — it is exactly the tiles the route spends. Padding it is
+the text field's job, or Fill's on a board where Fill works.
 
 ---
 
