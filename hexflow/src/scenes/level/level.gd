@@ -770,7 +770,7 @@ func _on_auto_skipped(dir: int) -> void:
 	# Deliberately not a failure beat: no charge is spent (§5.7).
 	_haptics.play("auto_discard")
 	_play_flyaway(dir)
-	_flash_banner(tr("banner.auto_skip").format({"dir": Direction.name_of(dir)}))
+	_flash_banner(tr("banner.auto_skip").format({"dir": _direction_label(dir)}))
 
 
 ## The arc itself. §14.5 turns it off rather than shortening it into a twitch: at
@@ -1151,6 +1151,18 @@ func _set_banner_rise(px: float) -> void:
 	banner.offset_bottom = px
 
 
+## The compass abbreviation for a tile, in the player's language (§22).
+##
+## Appendix A's `NE` is an *id*: it is what a level file is written in and what the
+## direction table is keyed on, and neither of those may ever be translated. What
+## the rail shows is a word, and in Hungarian the compass is É-K-D-Ny — so a player
+## reading "NE" there is reading English, not a code.
+func _direction_label(dir: int) -> String:
+	if dir < 0 or dir >= Direction.COUNT:
+		return "—"
+	return tr("direction.short.%s" % Direction.name_of(dir).to_lower())
+
+
 ## The counter under the title. A teaching board has an ideal because every board
 ## has one, and showing it teaches the wrong thing first: a player nine seconds
 ## into their first game does not need a number to beat, and one that says "1 move
@@ -1223,7 +1235,7 @@ func _refresh_hud() -> void:
 	# player the name of a constant when what they needed to know was that the queue
 	# is empty — which is the same information the banner now leads with.
 	now_label.text = tr("hud.now").format({
-		"dir": Direction.name_of(state.current_tile()) if state.current_tile() >= 0 else "—",
+		"dir": _direction_label(state.current_tile()),
 	})
 	next_label.text = tr("hud.next") if state.stream.remaining() < 0 \
 		else tr("hud.next_left").format({"count": state.stream.remaining()})
