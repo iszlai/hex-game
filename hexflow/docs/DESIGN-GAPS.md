@@ -82,19 +82,38 @@ a re-authored resource (expensive, and still needs the cost-function change to m
 
 ### D2 · Chapter 4 is where the curve collapses
 
-**The problem.** Measured across the 60 shipped files:
+**Measured 2026-08-01 with a better instrument than `par`** — `tools/measure_difficulty.gd`. §9
+orders the campaign by `par`, and `par` measures *length*: a par-14 board with many optimal lines is
+a stroll, a par-8 board with one is vicious. The tool replays each level's stored optimal line and
+asks the solver what would have happened down every road not taken.
 
-| Ch | par | walls | goals | radius |
-|---|---|---|---|---|
-| 1 | 3–7 | 0–2 | 1 | 2, 3 |
-| 2 | 6–8 | 4–8 | 1 | 3 |
-| 3 | **10–14** | 5–9 | **2–3** | 3 |
-| 4 | **6–9** | 6–10 | **1** | 3 |
-| 5 | 10–15 | 8–14 | 2 | 3, 4 |
+| Ch | decisions | forgiving | on-par | knife | knife ÷ decisions |
+|---|---|---|---|---|---|
+| 1 | 3.8 | 0.81 | **0.47** | 3.5 | 0.92 |
+| 2 | 5.0 | 0.61 | 0.44 | 4.5 | 0.90 |
+| 3 | 7.9 | 0.80 | **0.36** | 6.7 | 0.85 |
+| 4 | 5.2 | 0.63 | 0.43 | 4.3 | 0.83 |
+| 5 | 9.5 | 0.78 | **0.34** | 8.2 | 0.86 |
 
-The hardest puzzle in the game is level 34 of 60. It then gets ~40% easier for twelve levels and
-drops multi-goal entirely. §9 also asks for difficulty "monotonic in `par`" *within* a chapter and it
-is not — chapter 1 peaks at par 7 and ends at 5, chapter 4 peaks at 9 and ends at 7.
+*decisions* — turns with more than one legal target. *forgiving* — fraction of those options that
+keep the level winnable. *on-par* — fraction that keep three stars reachable. *knife* — turns where
+exactly one option keeps par alive.
+
+**Four things the numbers say that `par` could not.**
+
+1. **Par is a single thread almost everywhere.** 83–92% of every decision in the game is knife-edge
+   for three stars. There is essentially never a *choice* of optimal line — which is what makes
+   ★★★ a search rather than a decision, stated as a measurement rather than as an opinion. It also
+   settles what "count the solutions" would return at par: one, nearly everywhere. The number worth
+   counting is solutions within **par + k**, not at par.
+2. **The chapter 4 dip is real and not a `par` artefact.** Decisions 7.9 → 5.2, knife 6.7 → 4.3,
+   on-par 0.36 → 0.43. Every axis agrees chapter 4 is easier than chapter 3.
+3. **The felt curve is two tiers, not five steps.** On-par groups chapters 1, 2 and 4 together
+   (~0.45) and chapters 3 and 5 together (~0.35). The campaign reads easy · easy · **hard** · easy ·
+   **hard**.
+4. **Walls punish; branches forgive.** Chapter 2 is the *least* forgiving chapter in the game (0.61)
+   despite having the second-lowest par, and the two multi-goal chapters are among the most forgiving.
+   That is a deliberate lever for pacing: walls for the spikes, branches for the recovery after one.
 
 **The genuine ambiguity, which is why this is not just a defect.** §6 says each modifier is
 "introduced by one chapter and reused thereafter", and §9 introduces multi-goal at chapter 3 — but
@@ -102,17 +121,17 @@ is not — chapter 1 peaks at par 7 and ends at 5, chapter 4 peaks at 9 and ends
 chapter 4 *should* be multi-goal is a question the spec answers twice. Per C7 that is a question, not
 a licence.
 
-**Options.** (a) §8.4 wins: chapter 4 stays single-goal and the par band is raised to 10–13 so the
-curve still climbs. (b) §9 and §6 win: chapter 4 becomes multi-goal *and* gated/portalled, par 12–16.
-(c) Reorder — move chapter 3 after 4, so mechanics arrive before the difficulty does.
+**Options.** (a) §8.4 wins: chapter 4 stays single-goal, par band raised so the curve still climbs.
+(b) §9 and §6 win: chapter 4 becomes multi-goal *and* gated/portalled. (c) Reorder — chapter 3 after
+4, so mechanics arrive before the difficulty does.
 
-**Recommendation: (b)**, with the authoring sweep in `tools/author_levels.gd` changed to enforce a
-monotonic band **per slot** rather than one band per chapter, which is what let chapters 1 and 4 end
-easier than their own middles.
+**Recommendation: (b)**, with the authoring sweep targeting **on-par and knife** rather than `par`,
+and a deliberate sawtooth — teach, ramp, spike, settle slightly above the previous floor — rather
+than §9's flat "monotonic in par", which the shipped levels do not achieve and which would not feel
+like a curve even if they did.
 
-**Cost.** Regenerating chapter 4 invalidates its stored pars and every star earned in it. That is an
-offline `make levels` step and it is fine before release and not after — so this decision has a
-deadline the others do not.
+**Cost.** Regenerating invalidates stored pars and stars. Offline `make levels`, fine before release
+and not after — so this decision has a deadline the others do not.
 
 ---
 
