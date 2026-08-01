@@ -84,10 +84,17 @@ render — the three things a MainLoop script does not get. It may use the game'
 └──────────────────────────────────────────────┴──────────────────┘
 ```
 
-The canvas draws with the game's own `BoardView3D` if that is cheap, and with a flat 2D hex draw if it
-is not. **The renderer is not the point** — the editor may look nothing like the game as long as every
-cell's contents are unambiguous. `HexLayout` is reused either way, so there is still exactly one
-hexagon formula in the repo.
+**The canvas is flat 2D — decided.** Coloured hexes, one colour per contents, with the modifier's
+letter or glyph on top. It may look nothing like the game.
+
+That is not only the cheaper option, it is the correct one: the editor is about *contents* and the
+game is about *feel*. A board drawn at the game's 55° elevation hides half of what an author needs to
+see — the far side of a tall wall, the cell behind a mark — and an editor whose job is to show every
+cell exactly should not be fighting a camera to do it.
+
+`HexLayout` is reused for the geometry, so there is still exactly one hexagon formula in the repo.
+`Palette` is reused for the colours, so an editor board and a game board are recognisably the same
+level.
 
 ---
 
@@ -121,14 +128,28 @@ Enforced as you draw, because discovering them at Validate is discovering them t
 Picking a shape from the dropdown fills the canvas with `Hex.shape(kind, size, arg)` (C-32). From
 there any cell may be added or removed.
 
-**This forces a schema decision.** A level file today stores `shape`, `radius` and `shape_arg` — three
-numbers that regenerate the board. A hand-edited board is not regenerable from three numbers.
+**This forces a schema decision, and it is really a design question wearing a schema costume.**
 
-> **Proposal:** add an optional `cells: [[x,y,z], …]` to the level schema. When present it *is* the
-> board and `shape` becomes a label for what it started as. When absent — every level today — the
-> shape fields build the board exactly as they do now. `LevelRepository.from_dict` prefers `cells`;
-> `to_dict` writes it only when the board diverges from its named shape, so a sweep-authored ring
-> stays three numbers and only hand-drawn boards pay the sixty lines.
+A level file today describes its board in three numbers — `shape`, `radius`, `shape_arg` — which the
+game reads to rebuild it. A board that has had cells added or removed by hand is not describable in
+three numbers; the file would have to list every hex, up to sixty-one lines of coordinates.
+
+So the question is whether an author may **remove cells at all**, or only ever place walls on them.
+The two are different things on screen:
+
+| | What the player sees |
+|---|---|
+| **Removed cell** | Nothing. Empty space, and §13.7's painted backdrop showing through |
+| **Wall cell** | A tile *is* there — dark, hatched, standing at C-22's wall height. Part of the board, and unusable |
+
+Walls can fake almost any silhouette, so the board brush of §4.1 is optional in a way the contents
+brush is not.
+
+> **If removal is wanted:** add an optional `cells: [[x,y,z], …]`. When present it *is* the board and
+> `shape` becomes a label for what it started as. When absent — every level today — the shape fields
+> build the board exactly as they do now. `LevelRepository.from_dict` prefers `cells`; `to_dict`
+> writes it only when the board diverges from its named shape, so a swept ring stays three numbers
+> and only hand-drawn boards pay the sixty lines.
 
 ### 4.4 The tile sequence
 
@@ -139,9 +160,17 @@ cannot paint that, and a board with the wrong sequence is unsolvable no matter h
 
 Three ways to get one, in the order they should be offered:
 
-1. **Fill** *(the default)* — run the solver on the board with an unbounded bag, take the directions
-   of its optimal route, then pad and interleave decoys exactly as `Generator` step 6 does. One
-   button, always produces a solvable level, and its `slack` and `discards` come from the panel.
+1. **Fill** *(the default)* — **sweeps seeds and keeps the best one**, exactly as
+   `tools/author_levels.gd` does for whole levels.
+
+   For each seed it builds a sequence the way `Generator` step 6 does — the directions of the
+   solver's optimal route, then padded and interleaved with decoys — then measures the resulting
+   level with `LevelMetrics` and scores it against the slot's place on the curve. The winner is kept.
+
+   This matters more than it sounds. The same board with two different deals is two different levels:
+   one where the tile you need arrives a turn early and one where it arrives a turn late. A single
+   sequence taken from the first seed that worked would throw that away, and the author would be left
+   tuning the board to compensate for a deal nobody chose.
 2. **Edit** — the sequence is a text field of direction names. Typing in it is how a level gets a
    *deliberate* rhythm: three norths in a row, or the awkward tile arriving one turn early.
 3. **Keep** — loading an existing level keeps its sequence, so the board can be edited around a
@@ -247,11 +276,13 @@ Two rules the editor has to keep:
 
 ## 10. Open questions
 
-- **Q1 — canvas renderer.** Reuse `BoardView3D` (accurate, heavier, and its `bind()` wants a live
-  `GameState` the editor does not have) or a flat 2D draw (cheap, and a second way of drawing a board
-  to keep in step)? Leaning 2D, since the editor is about *contents* and the game is about *feel*.
-- **Q2 — the `cells` schema field** of §4.3: add it now, or keep the editor to shapes-plus-walls until
-  a hand-drawn silhouette is actually wanted? Walls can fake almost any shape, and the difference is
-  visible: a removed cell has no tile, a wall has a hatched one.
-- **Q4 — where a hand-drawn level's `generator.seed` goes.** It has none. Null, or a hash of the
-  cells so the field stays non-empty and the file stays diffable?
+- **Q2 — the `cells` schema field** of §4.3: may an author *remove* cells, or only wall them? Walls
+  fake almost any silhouette, and only hand-drawn boards would pay for the field. **Open.**
+
+Answered, and kept here because the reasoning is the useful part:
+
+- **Q1 — canvas renderer.** Flat 2D. See §3.
+- **Q4 — a hand-drawn level's `generator.seed`.** Searching for a seed that *reproduces* a drawn
+  board is a lottery ticket and was the wrong question. The seed records which **tile sequence** Fill
+  chose (§4.4): the board is the author's, the seed says which of the deals was kept, and re-running
+  Fill with it reproduces the level exactly. A dead provenance field becomes a live one.
