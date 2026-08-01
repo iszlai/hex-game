@@ -2,8 +2,20 @@
 .godot/
 .import/
 export.cfg
-export_presets.cfg
 *.translation
+
+# `export_presets.cfg` is deliberately **not** ignored, against the usual advice.
+#
+# It is normally ignored because it can carry an Android keystore password. Ours
+# carries no credential of any kind, and it carries something that has to be
+# reviewable: the exclude filter that keeps `tools/` out of the build.
+# MAP-EDITOR §8 is only respected if the map editor cannot become a shipped
+# feature by accident, and a filter living on one developer's disk is not a rule —
+# `tests/unit/test_export_preset.gd` asserts it, and it can only assert a file
+# that is in the repository.
+#
+# If a preset ever needs a secret, that is the moment to move the secret out, not
+# to move the file out.
 
 # Exports
 build/

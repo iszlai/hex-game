@@ -42,7 +42,7 @@ Single developer, so there is no review to wait for and no branch protection to 
 | [`TODO.md`](TODO.md) | What is done, what is next |
 | [`hexflow/docs/ASSET-REQUIREMENTS.md`](hexflow/docs/ASSET-REQUIREMENTS.md) | Every image, colour, sound and setting someone outside the repo has to provide, and what stands in for it today |
 | [`hexflow/docs/DESIGN-GAPS.md`](hexflow/docs/DESIGN-GAPS.md) | What stands between a spec-complete build and a game someone plays twice. Separates defects from decisions that need making |
-| [`hexflow/docs/MAP-EDITOR.md`](hexflow/docs/MAP-EDITOR.md) | Brief for the hand-authoring tool. **Not built** — this is the whole spec, including why it does not violate §27's "no level editor" |
+| [`hexflow/docs/MAP-EDITOR.md`](hexflow/docs/MAP-EDITOR.md) | Brief for the hand-authoring tool — `make edit-maps`. Includes why it does not violate §27's "no level editor", and §8's rules that keep it that way |
 
 The spec outranks every other document. If code and spec disagree, the code is a bug. If the **spec**
 is wrong, log it in Appendix C and fix it there — do not silently diverge (constraint C7).
@@ -58,6 +58,7 @@ make run     # play it
 make test    # whole suite, ~50 s
 make gate    # everything CI runs — before every push
 make playtest # play as a first-time player; your save is moved aside, not deleted
+make edit-maps # draw a campaign board by hand
 make         # list targets
 ```
 
@@ -80,6 +81,9 @@ the 2016 prototype (Appendix B).
 - **Do not permute the direction table.** Its index order is baked into the bag, the solver and every
   save file. `tests/unit/test_direction.gd` will stop you.
 - **Do not add a sixth modifier.** §6 ships exactly five and says so.
+- **Nothing in `src/` may reference `tools/`.** The map editor reads the game; the game never
+  reads the editor, and `tools/` is excluded from the export preset. That one-way arrow is the
+  whole reason an authoring tool is not the level editor §27 declined (MAP-EDITOR §8).
 
 ## Adding things
 

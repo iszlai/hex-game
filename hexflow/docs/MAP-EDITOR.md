@@ -1,7 +1,8 @@
 # Map editor — specification
 
 A developer tool for drawing campaign boards by hand, checking them, and saving them
-into `src/data/levels/`. Not built yet; this is the brief.
+into `src/data/levels/`. **Built** — `make edit-maps`, `hexflow/tools/map_editor/`. This stays the
+brief: it is what the tool is meant to be, and [`TODO.md`](../../TODO.md) is what is done.
 
 ---
 

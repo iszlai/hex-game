@@ -821,7 +821,11 @@ Exit: accessibility `@e2e` scenarios pass; greyscale playthrough verified; 150% 
 Exit: §23.4 checklist ticked on hardware; three platform builds from CI; a clean install completes
 chapter 1 without incident.
 
-- [ ] Export presets: Linux/X11 x86_64 (primary), Windows x86_64, macOS universal (§25)
+- [ ] Export presets: Linux/X11 x86_64 (primary), Windows x86_64, macOS universal (§25). **The
+      Linux preset now exists** — added by MAP-EDITOR §8, which needed an exclude filter to assert
+      against — but it has never produced a build, and the other two are not written.
+      `tests/unit/test_export_preset.gd` checks the filter of *every* preset, so the two still owed
+      inherit the check rather than needing their own
 - [ ] macOS codesign + notarize, documented in `README.md`
 - [ ] Deck Verified self-audit against §23.4 — re-read Valve's live docs first (C-8)
 - [ ] Store page: capsules, 1280×800 screenshots, 30–60 s trailer, <300-char description
@@ -844,10 +848,22 @@ for why an authoring tool is not the "level editor" §27 declined.
       author has cut a hole in survives a save. It is written *only* when the board diverges from
       its named shape, so the sixty swept files stay three numbers and only a hand-drawn board pays
       the sixty lines — `tests/unit/test_hand_drawn_board.gd`
-- [ ] Map editor: canvas, brushes and the live constraints of §4.2
-- [ ] Map editor: Fill, Validate and Save
-- [ ] Map editor: the levels list and `Apply order`
-- [ ] `tools/` excluded from the export preset, with a test and a `ci_gate.sh` rule behind it (§8)
+- [x] **Map editor built** — `make edit-maps`, `hexflow/tools/map_editor/`. Flat 2D canvas with
+      pan, zoom and the two brushes of §4.1; §4.2's constraints enforced while drawing, with the
+      61-cell ceiling and a failed Validate as outright **refusals** rather than warnings; §4.4's
+      Fill sweeping deals and keeping the best against the curve; §5's Validate; §6's Save; §7's
+      list with drag-to-reorder and `Apply order` — `tests/unit/test_map_editor.gd`
+- [x] `tools/` excluded from the export preset, asserted by `tests/unit/test_export_preset.gd`
+      and by a `ci_gate.sh` rule that fails on any reference from `src/` into `tools/` (§8).
+      `export_presets.cfg` is committed for this reason and no longer git-ignored
+- [ ] **Nobody has drawn a level with it.** Every part is tested and the round trip from a drawn
+      board to a re-verified file is covered, but the exit criterion for an authoring tool is an
+      author using it — the same shape of gap as M8's unplayed tutorial. Until then it is built
+      and unproven, and the first hand-drawn level in `src/data/levels/` is what closes it
+- [ ] Single-click load in the levels list. §7 says click; it loads on double-click or Enter,
+      because a single click is also the first half of a drag and loading the canvas the moment a
+      row is touched would throw away an unsaved board. A confirm-on-discard would let it be a
+      click again
 
 ---
 

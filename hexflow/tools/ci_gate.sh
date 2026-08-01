@@ -43,6 +43,20 @@ if [ -n "$hits" ]; then echo "$hits"; fail "colour literal in a scene (§13.2, �
 hits=$(scan src 'Color[(]"' | grep -v 'src/view/palette.gd')
 if [ -n "$hits" ]; then echo "$hits"; fail "hex colour literal outside palette.gd (§13.2, §21)"; fi
 
+echo "== MAP-EDITOR §8: the game never reaches into tools/ =="
+# §27 declined a level editor, and MAP-EDITOR §0 argues an authoring tool is a
+# different thing *because* it is not in the shipped build. The dependency runs
+# one way, the same way src/core/ → src/app/ → src/view/ does: the editor may read
+# src/, and nothing in src/ may read the editor.
+#
+# `scan` strips comments first, so the doc comments that name `tools/make_art.gd`
+# and `tools/author_levels.gd` as provenance are fine — those are prose about
+# where a file came from, not a call into it.
+hits=$(scan src 'res://tools/|"tools/|'"'"'tools/')
+if [ -n "$hits" ]; then echo "$hits"; fail "src/ loads something from tools/ (MAP-EDITOR §8)"; fi
+hits=$(grep -rn "res://tools/" --include="*.tscn" --include="*.tres" src 2>/dev/null)
+if [ -n "$hits" ]; then echo "$hits"; fail "a scene in src/ points at tools/ (MAP-EDITOR §8)"; fi
+
 echo "== §16.5 autoloads: exactly six =="
 count=$(sed -n '/^\[autoload\]/,/^\[[a-z]/p' project.godot | grep -cE '^[A-Za-z][A-Za-z0-9_]*=')
 if [ "$count" -ne 6 ]; then fail "expected 6 autoloads, found $count (§16.5)"; fi
