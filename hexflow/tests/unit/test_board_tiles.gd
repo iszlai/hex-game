@@ -252,6 +252,78 @@ func test_the_wave_runs_long_enough_to_reach_the_far_rim() -> void:
 	assert_eq(_tiles.ripple_time(), -1.0, "and parks when it is over")
 
 
+## C-36: the jolt that runs the stroke has to land on something, and what it lands
+## on is the cell the route ends at — the goal, once the route has reached it.
+##
+## The discharge itself is the shader's and a screenshot's. What CI can hold is
+## that it is aimed at the right cell, that it is aimed nowhere at all when there
+## is no route for a bolt to travel down, and that it starts and finishes.
+func test_the_strike_is_aimed_at_the_far_end_of_the_route() -> void:
+	assert_eq(_tiles.strike_at(), BoardTiles.STRIKE_NOWHERE,
+		"no route on the first move, so nothing to hit")
+
+	for i: int in range(3):
+		assert_true(_state.place(_state.legal_targets()[0]), "step %d" % i)
+	_tiles.rebuild()
+
+	var deepest: Vector3i = _tiles.strike_cell()
+	var depth: Dictionary = PathDepth.of(_state)
+	for c: Variant in depth:
+		assert_lte(int(depth[c]), int(depth[deepest]),
+			"%v is further along the route than the cell being struck" % c)
+	assert_almost_eq(_tiles.strike_at().x, _layout.to_plane(deepest).x, 0.001)
+	assert_almost_eq(_tiles.strike_at().z, _layout.to_plane(deepest).z, 0.001,
+		"and the shader is told where that cell stands")
+
+
+## The route grows, so what the bolt hits changes with it — and it is re-aimed by
+## the same rebuild that moved the end of the route, not by a caller remembering to.
+func test_the_strike_follows_the_end_of_the_route() -> void:
+	assert_true(_state.place(_state.legal_targets()[0]))
+	_tiles.rebuild()
+	var first: Vector3 = _tiles.strike_at()
+	assert_true(_state.place(_state.legal_targets()[0]))
+	_tiles.rebuild()
+	assert_ne(_tiles.strike_at(), first, "the far end moved and the strike went with it")
+
+
+func test_a_discharge_runs_once_and_parks() -> void:
+	assert_eq(_tiles.strike_time(), -1.0, "nothing struck at bind")
+	_tiles.electrify()
+	assert_eq(_tiles.strike_time(), -1.0, "and nothing to strike without a route")
+
+	assert_true(_state.place(_state.legal_targets()[0]))
+	_tiles.rebuild()
+	_tiles.electrify()
+	assert_eq(_tiles.strike_time(), 0.0, "at the start of its life, not a frame later")
+	await wait_seconds(BoardTiles.strike_seconds() + 0.2)
+	assert_eq(_tiles.strike_time(), -1.0, "and parks so no tile is left lit")
+
+
+## §14.5 is a motion reduction, not a feedback removal — the same reading the
+## illegal shake's red flash gets below. The discharge is shortened, not dropped.
+func test_reduce_motion_shortens_the_discharge_rather_than_dropping_it() -> void:
+	SettingsService.set_value("reduce_motion", true)
+	assert_lt(BoardTiles.strike_seconds(), BoardTiles.STRIKE_SECONDS)
+	assert_gt(BoardTiles.strike_seconds(), 0.0, "shortened, not removed")
+	SettingsService.set_value("reduce_motion", false)
+	assert_eq(BoardTiles.strike_seconds(), BoardTiles.STRIKE_SECONDS)
+
+
+## §14.5 *does* stop the loop, and the tiles have to stop with the stroke: the
+## landing is drawn on the ribbon's clock, so a board still flashing under Reduce
+## Motion would be flashing for a bolt that is no longer running.
+func test_the_landing_runs_on_the_strokes_own_clock() -> void:
+	var mat: ShaderMaterial = _tiles.material_override
+	_tiles.set_pulse_seconds(BoardLinks.pulse_period())
+	assert_eq(mat.get_shader_parameter("pulse_seconds"), BoardLinks.PULSE_SECONDS)
+
+	SettingsService.set_value("reduce_motion", true)
+	_tiles.set_pulse_seconds(BoardLinks.pulse_period())
+	assert_eq(mat.get_shader_parameter("pulse_seconds"), 0.0, "stopped with the bolt")
+	SettingsService.set_value("reduce_motion", false)
+
+
 ## §14.1's illegal shake, and the half of §14.5 that is easiest to get wrong.
 ## "This is a motion reduction, not a feedback removal" — so Reduce Motion takes the
 ## movement and leaves the red flash, because a player who cannot see the board move

@@ -154,6 +154,70 @@ const float FLOW_GAIN = 0.5;
 
 uniform float flow_head = -1.0;
 
+// C-36: where the jolt **lands**.
+//
+// `path_link.gdshader` runs a discharge from the start of the route to its far
+// end, and light that arrives somewhere has to arrive *at* something or it was
+// never travelling. So the cell the stroke ends at — the goal, once the route has
+// reached it — takes the hit: a flash across the whole face, a ring leaving the
+// point of impact, and forked arcs crawling out under it.
+//
+// The tile is picked by **position** rather than by a per-instance flag: all four
+// custom channels are spoken for, and the strike is one cell in sixty-one, so
+// comparing each tile's own origin against one uniform is cheaper than finding a
+// fifth channel to carry. Anything further than half a tile away is not it.
+//
+// Two clocks feed it, and they are deliberately independent:
+//
+// - `pulse_seconds` is the ribbon's own loop, mirrored here so the landing is on
+//   the same clock as the bolt. It has to be, or the flash would drift against
+//   the thing causing it — one uniform, one `fract`, no synchronisation to keep.
+// - `strike_time` is a one-shot in 0…1, driven by [BoardTiles] when §14.1's
+//   placement band reaches the end of the route and again on §14.2's 2x run into
+//   the goal. Negative means none is running.
+//
+// No colour of its own (§13.2): the discharge is the tile's own tint, added to
+// emission rather than to albedo, so it goes through the board's bloom threshold
+// and burns out toward white the way a bright thing does — rather than being
+// painted white by a literal this shader is not allowed to hold.
+const float STRIKE_SECONDS = 0.36;
+// Where in the ribbon's period the bolt arrives. Must match `JOLT_TRAVEL` in
+// `path_link.gdshader` — the two are one effect and only look it if they agree.
+const float STRIKE_TRAVEL = 0.30;
+const float STRIKE_GAIN = 1.5;
+const float STRIKE_SIDE = 0.35;      // how much of it reaches the tile's sides
+
+uniform float pulse_seconds = 0.0;
+uniform vec3 strike_at = vec3(1.0e6);
+uniform float strike_time = -1.0;
+
+// One discharge, at [param t] of the way through its life. [param radius] is the
+// fraction of the way out to the tile's rim and [param angle] the bearing from
+// its centre, so the whole thing is drawn in the tile's own polar coordinates and
+// needs nothing from the mesh.
+float strike_light(float t, float radius, float angle, float seed) {
+	float fade = 1.0 - t;
+	// The flash: two frames of white-hot, and then it is the arcs' turn. A high
+	// power on purpose — a flash that lingers is a tile that has been switched on,
+	// and this one has been *hit*.
+	float flash = pow(fade, 10.0);
+	// The splash: a thin ring leaving the point of impact, so what the eye follows
+	// out of the tile is an edge rather than a swelling blob.
+	float front = t * 1.6;
+	float ring = (1.0 - smoothstep(0.0, 0.13, abs(radius - front))) * fade * fade;
+	// The arcs, which are the part that is actually electric: filaments chasing the
+	// ring outward. Built from sines rather than from noise because the pattern has
+	// to close on itself — value noise across a bearing leaves a seam at ±pi, which
+	// on a tile is a dark crack through the middle of the discharge. The bearing is
+	// kicked in steps, so the forks jump between positions instead of sweeping.
+	float kick = floor(t * 16.0) * 2.3;
+	float fork = sin(angle * 9.0 + seed + kick) * 0.6
+		+ sin(angle * 5.0 - seed * 3.0 - kick) * 0.4;
+	float arcs = smoothstep(0.45, 0.98, abs(fork))
+		* (1.0 - smoothstep(0.0, 0.40, abs(radius - front))) * fade;
+	return flash * 1.0 + ring * 1.1 + arcs * 1.7;
+}
+
 // §14.1's board ripple: a radial brightness wave leaving a goal, each cell lit
 // `RIPPLE_PER_CELL` seconds later than the one inside it. `ripple_time` is seconds
 // since the wave left, negative when none is running; the per-instance distance
@@ -281,6 +345,27 @@ void fragment() {
 	if (flow_head >= 0.0 && (k == KIND_PATH || k == KIND_START)) {
 		float band = 1.0 - smoothstep(0.0, FLOW_WIDTH, abs(depth_along - flow_head));
 		base += tint * band * FLOW_GAIN;
+	}
+
+	// C-36's landing, on the one cell the stroke ends at. Into `glow` rather than
+	// into `base`: it is light the tile is giving off, not paint on it, and the
+	// board's bloom is what turns a bright enough one white.
+	if (distance(tile_origin.xz, strike_at.xz) < tile_width * 0.5) {
+		float face = smoothstep(0.35, 0.75, up);
+		float angle = atan(world.z - tile_origin.z, world.x - tile_origin.x);
+		// Per tile, so two cells struck one after the other do not fork alike.
+		float seed = grain_hash(tile_origin.xz).y * TAU;
+		float lit = 0.0;
+		if (pulse_seconds > 0.0) {
+			float since = (fract(TIME / pulse_seconds) - STRIKE_TRAVEL) * pulse_seconds;
+			if (since >= 0.0 && since < STRIKE_SECONDS) {
+				lit += strike_light(since / STRIKE_SECONDS, UV.x, angle, seed);
+			}
+		}
+		if (strike_time >= 0.0 && strike_time <= 1.0) {
+			lit += strike_light(strike_time, UV.x, angle, seed);
+		}
+		glow += tint * lit * STRIKE_GAIN * mix(STRIKE_SIDE, 1.0, face);
 	}
 
 	// The wave, on every cell rather than only the path: §14.1 calls it a board

@@ -45,10 +45,16 @@ const LINK_HEIGHT := 0.05
 ## How many slices the bar mesh is cut into along its own length (C-31).
 ##
 ## A box has two rings of vertices, and a vertex shader can only bend a stroke
-## where it has vertices to bend. Eight is enough for the two-octave wobble in
-## `path_link.gdshader` to read as a drawn line rather than as a hinge, and it is
-## still one mesh in one MultiMesh in one draw call — the geometry §20 budgeted.
-const BAR_SEGMENTS := 8
+## where it has vertices to bend. Eight was enough for the two-octave wobble in
+## `path_link.gdshader` to read as a drawn line rather than as a hinge.
+##
+## Doubled for C-36's zigzag. A triangle wave is *corners*, and a corner has to
+## land on a ring of vertices or it comes out as whichever chord happened to span
+## it: at eight slices the bolt tore into disconnected fragments, because the four
+## slices a tooth had to itself were also carrying the exponential falloff behind
+## the tip. Sixteen is still one mesh in one MultiMesh in one draw call — the
+## geometry §20 budgeted, which counts calls rather than triangles.
+const BAR_SEGMENTS := 16
 
 ## How long one pulse takes to run the whole length of the path, in seconds.
 ##
@@ -548,8 +554,16 @@ static func _quad(st: SurfaceTool, q: Array) -> void:
 ## for and §14.1 never tabulated. The number lives beside the thing it drives.
 func set_motion() -> void:
 	if material_override is ShaderMaterial:
-		var period: float = 0.0 if SettingsService.reduce_motion() else PULSE_SECONDS
-		(material_override as ShaderMaterial).set_shader_parameter("pulse_seconds", period)
+		(material_override as ShaderMaterial).set_shader_parameter(
+			"pulse_seconds", pulse_period())
+
+
+## How long one jolt's period is right now — [constant PULSE_SECONDS], or zero when
+## §14.5 has stopped it. Public because the tiles need the same number: C-36 lands
+## the jolt on the cell the stroke ends at, and a landing on its own clock drifts
+## against the bolt causing it. [BoardView3D] carries it across.
+static func pulse_period() -> float:
+	return 0.0 if SettingsService.reduce_motion() else PULSE_SECONDS
 
 
 ## §21's escape hatch (C-24): with [param flat] the board takes no light, so a

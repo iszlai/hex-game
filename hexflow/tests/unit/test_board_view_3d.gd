@@ -188,6 +188,23 @@ func test_the_flow_pulse_runs_one_band_across_both_meshes() -> void:
 		.get_shader_parameter("flow_head"), -1.0, "so no band is left lit")
 
 
+## C-36: the band travels *to* something, so it discharges into the cell the route
+## ends at when it gets there. Detected as the head crossing 1.0 rather than
+## scheduled, because the tween is eased and no caller can work out in advance what
+## fraction of the duration the far end is reached at.
+func test_the_band_discharges_into_the_cell_it_reaches() -> void:
+	assert_true(_state.place(_state.legal_targets()[0]), "a route to travel down")
+	_view.rebuild()
+	assert_eq(_view.tiles.strike_time(), -1.0, "nothing struck yet")
+
+	_view.play_flow_pulse()
+	assert_eq(_view.tiles.strike_time(), -1.0, "and nothing struck as it sets off")
+
+	await wait_seconds(Motion.seconds("flow_pulse") + 0.05)
+	assert_gte(_view.tiles.strike_time(), 0.0, "the band arrived and the cell was hit")
+	assert_ne(_view.tiles.strike_at(), BoardTiles.STRIKE_NOWHERE, "at the route's end")
+
+
 ## A second placement while the first pulse is still travelling restarts it rather
 ## than running two bands down the same path.
 func test_a_second_placement_restarts_the_pulse() -> void:

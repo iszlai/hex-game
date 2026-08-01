@@ -106,6 +106,10 @@ func bind(state: GameState, play_area: Vector2) -> void:
 	marks.bind(state, layout, tiles)
 	seams.bind(state, layout, tiles)
 	particles.bind(layout)
+	# C-36: one clock for the bolt and for what it lands on. The view carries the
+	# number across because it is the only thing that holds both meshes — neither of
+	# them may reach for the other.
+	tiles.set_pulse_seconds(BoardLinks.pulse_period())
 	# A new level is a new completion, so §14.3's once-per-level budget resets here.
 	camera.reset_shake()
 	# A new level is never dead, whatever the last one was.
@@ -165,7 +169,13 @@ func flow_head() -> float:
 
 
 func _set_flow_head(value: float) -> void:
+	# C-36: the band arrives. Detected as a crossing rather than scheduled, because
+	# the tween is eased — the head does not reach the end of the route at any
+	# fraction of the duration a caller could work out in advance.
+	var arrived: bool = value >= 1.0 and _flow_head < 1.0
 	_flow_head = value
+	if arrived and tiles != null:
+		tiles.electrify()
 	for mesh: GeometryInstance3D in [tiles, links]:
 		if mesh != null and mesh.material_override is ShaderMaterial:
 			(mesh.material_override as ShaderMaterial).set_shader_parameter("flow_head", value)
@@ -450,6 +460,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 		# §14.5 reaches a board already on screen: the loops stop where they are
 		# rather than at the next level, and the emitters go quiet with them.
 		tiles.set_motion()
+		tiles.set_pulse_seconds(BoardLinks.pulse_period())
 		marks.set_motion()
 		particles.set_motion()
 

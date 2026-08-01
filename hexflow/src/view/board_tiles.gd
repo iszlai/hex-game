@@ -56,6 +56,22 @@ const POP_FROM := 0.82
 const SHAKE_PIXELS := 4.0
 const SHAKE_FLASH := 0.4
 
+## How long one of C-36's discharges takes on the tile it lands on.
+##
+## A chosen number that says so, the way [constant BoardLinks.PULSE_SECONDS] is:
+## §14.1 tabulates the timings the spec requires and its table is asserted row for
+## row, so a duration §13.1 asks for and §14.1 never tabulated lives beside the
+## thing it drives rather than being smuggled into that table.
+##
+## Short on purpose. The stroke is what the player is reading; this is the full
+## stop at the end of it, and a flash that outstays a placement is a light show.
+const STRIKE_SECONDS := 0.36
+
+## Where a discharge is aimed when there is nothing to aim it at. Far enough off
+## the board that no tile can match it, because the shader picks its target by
+## proximity and an unset uniform reads back as the origin — which is a cell.
+const STRIKE_NOWHERE := Vector3(1.0e6, 0.0, 1.0e6)
+
 @export var palette: Palette = null
 
 var _board: Board = null
@@ -78,6 +94,7 @@ var _shake: Dictionary = {}     # Vector3i -> sideways offset in world units
 var _shake_axis: Vector3 = Vector3.RIGHT
 var _ripple_origin: Vector3i = Vector3i.ZERO
 var _ripple: Tween = null
+var _strike: Tween = null
 
 
 func _ready() -> void:
@@ -122,6 +139,8 @@ func bind(state: GameState, layout: HexLayout) -> void:
 	set_motion()
 	# Or an unset uniform reads back as 0.0, which is a wave sitting on the origin.
 	_set_ripple_time(-1.0)
+	# Same trap, and the same answer: nothing has been struck yet.
+	_set_strike_time(-1.0)
 
 	rebuild()
 
@@ -134,6 +153,8 @@ func rebuild() -> void:
 	_depth = PathDepth.of(_state)
 	for cell: Variant in _index:
 		_write(cell as Vector3i)
+	# The route just changed, so where its far end is has changed with it.
+	_aim_strike()
 
 
 func set_candidates(targets: Array[Vector3i]) -> void:
@@ -527,6 +548,90 @@ func _set_ripple_time(value: float) -> void:
 		(material_override as ShaderMaterial).set_shader_parameter("ripple_time", value)
 
 
+## C-36: the cell the stroke's jolt lands on — the far end of the route, which is
+## the goal once the route has reached it.
+##
+## Aimed by *position* rather than by cell, because that is what the shader can
+## compare against: a tile knows where it stands and nothing else about itself.
+## Nowhere at all while there is no route to travel, which is a board on its first
+## move — a bolt has to come from somewhere before it can arrive.
+func strike_cell() -> Vector3i:
+	var end: Vector3i = _board.start if _board != null else Vector3i.ZERO
+	var deepest: int = -1
+	for cell: Variant in _depth:
+		var d: int = int(_depth[cell])
+		# `>` and not `>=`, and the walk is over `_index`'s insertion order via
+		# `_depth`'s — two cells at the same depth on a branching path (§5.1) must
+		# not swap the strike between them from one rebuild to the next.
+		if d > deepest:
+			deepest = d
+			end = cell as Vector3i
+	return end
+
+
+func _aim_strike() -> void:
+	if not (material_override is ShaderMaterial):
+		return
+	var at: Vector3 = STRIKE_NOWHERE
+	if _layout != null and _depth.size() > 1:
+		at = _layout.to_plane(strike_cell())
+	(material_override as ShaderMaterial).set_shader_parameter("strike_at", at)
+
+
+## The period of the ribbon's loop, so C-36's landing happens on the clock of the
+## bolt that causes it rather than on one of its own. Pushed in by [BoardView3D],
+## which owns both meshes: the tiles do not read [BoardLinks] and [BoardLinks] does
+## not read the tiles' shader, so the two stay a one-way dependency in the
+## direction it already ran.
+func set_pulse_seconds(period: float) -> void:
+	if material_override is ShaderMaterial:
+		(material_override as ShaderMaterial).set_shader_parameter("pulse_seconds", period)
+
+
+## Fires one discharge on whichever cell [method strike_cell] names, now.
+##
+## Called when §14.1's placement band reaches the end of the route — the band
+## travels *to* something, and this is that something being hit. It takes no cell
+## because it may not choose one: the light that causes it lands where the stroke
+## ends, and two answers to "where" is how a flash ends up on the wrong tile.
+##
+## Under §14.5 it is shortened like every other one-shot rather than removed. It is
+## feedback — the same reasoning that keeps the illegal move's red flash while
+## dropping its shake.
+func electrify() -> void:
+	if not (material_override is ShaderMaterial) or _depth.size() <= 1:
+		return
+	if _strike != null and _strike.is_running():
+		_strike.kill()
+	# At zero *now*: a tween does not run until the next idle frame, and the flash
+	# would otherwise sit at whatever the last one left behind for that frame.
+	_set_strike_time(0.0)
+	_strike = create_tween()
+	_strike.tween_method(_set_strike_time, 0.0, 1.0, strike_seconds())
+	_strike.finished.connect(func() -> void: _set_strike_time(-1.0))
+
+
+## [constant STRIKE_SECONDS] under §14.5, which scales it like every other duration
+## that is not a loop.
+static func strike_seconds() -> float:
+	if SettingsService.reduce_motion():
+		return STRIKE_SECONDS * Motion.REDUCE_MOTION_SCALE
+	return STRIKE_SECONDS
+
+
+func strike_time() -> float:
+	return float((material_override as ShaderMaterial).get_shader_parameter("strike_time"))
+
+
+func strike_at() -> Vector3:
+	return (material_override as ShaderMaterial).get_shader_parameter("strike_at") as Vector3
+
+
+func _set_strike_time(value: float) -> void:
+	if material_override is ShaderMaterial:
+		(material_override as ShaderMaterial).set_shader_parameter("strike_time", value)
+
+
 ## C-26's board material (§13.6), if the build has one. `grain_strength` stays at
 ## zero without it, which is exactly how the board rendered before — §13.6's
 ## replaceability rule cuts both ways, and `make art` may never have run here.
@@ -594,7 +699,9 @@ func set_flat(flat: bool) -> void:
 ## §14.1's candidate breathing, at §14.5's discretion: the period when it runs, and
 ## zero when Reduce Motion has stopped it. [Motion] owns both answers.
 func set_motion() -> void:
-	if material_override is ShaderMaterial:
-		var period: float = Motion.seconds("candidate_breathing") \
-			if Motion.loops("candidate_breathing") else 0.0
-		(material_override as ShaderMaterial).set_shader_parameter("breathe_seconds", period)
+	if not (material_override is ShaderMaterial):
+		return
+	var mat: ShaderMaterial = material_override
+	var period: float = Motion.seconds("candidate_breathing") \
+		if Motion.loops("candidate_breathing") else 0.0
+	mat.set_shader_parameter("breathe_seconds", period)

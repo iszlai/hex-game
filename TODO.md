@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-08-01** — Godot 4.7.1, 615 tests green in ~35 s, 60 frozen level files
+Last verified: **2026-08-01** — Godot 4.7.1, 625 tests green in ~35 s, 60 frozen level files
 re-verified.
 
 ---
@@ -466,6 +466,23 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       above the tiles so only the path spills and §13.7's backdrop is untouched. The bloom adds a
       post-process pass **§20 has not measured** — it belongs in the C-3 renderer measurement below
       rather than after it
+      **C-36: the pulse becomes a jolt, and it lands.** C-31's wave was still a highlight sliding
+      along the stroke, and it arrived nowhere. It is a bolt now — nothing ahead of the tip, a hot
+      point, a draining channel behind it, a dark gap before the next one — and its *shape* is drawn
+      rather than lit: the bar's own geometry kinks into a triangle wave and swells while the bolt is
+      passing, because the ribbon is a few pixels wide and light moving inside it can only be a
+      shimmer. `BAR_SEGMENTS` doubled to 16 so the corners have vertices to land on; at eight the
+      bolt tore into fragments. Both tails are in **lattice steps**, not fractions of the route, or
+      the same bolt would be ten times longer on a ten-times-longer path. The zigzag rides C-31's own
+      envelope, so the stroke still meets its neighbours at the tile centres they share. And the cell
+      the stroke *ends* at — the goal, once the route reaches it — now takes the hit: a flash, a ring
+      leaving the point of impact, forked arcs chasing it out, added to emission so the existing
+      bloom burns the core white without a colour literal (§13.2). It runs on the ribbon's own
+      `pulse_seconds`, pushed across by the view because neither mesh may reach for the other, so the
+      landing cannot drift against the bolt causing it and §14.5 stops both together. §14.1's
+      placement band fires the same discharge as a one-shot on arrival — and while looking for where
+      to fire it, `links.set_motion()` turned out never to have been wired to the live Reduce Motion
+      change, so the stroke's loop kept running when the setting was turned on mid-level
 - [x] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
       array only, never for the unbounded endless/daily bag (C-18) — `src/view/tile_stack.gd`, the
       board's own prism seen at the board's own elevation in a viewport of its own, so a piece in the
