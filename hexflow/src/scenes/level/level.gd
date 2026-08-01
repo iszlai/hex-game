@@ -212,6 +212,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	# §11.1: input belonging to another action set is not ours to act on.
 	if InputBindings.active_set != InputBindings.SET_BOARD:
 		return
+	# Before the pointer handler, which would otherwise read the same tap as a
+	# placement on a board that has already been won (C-35).
+	if _advance_if_waiting(event):
+		get_viewport().set_input_as_handled()
+		return
 	if _pointer(event):
 		get_viewport().set_input_as_handled()
 		return
@@ -790,11 +795,36 @@ func _on_illegal(cell: Vector3i) -> void:
 	_flash_banner("Not a legal target")
 
 
+## A finished endless stage waits for the player (C-35). Any confirm, any tap,
+## any menu accept says go — the point is that *something* the player does ends
+## the pause, not that they find the one key that does.
+func _advance_if_waiting(event: InputEvent) -> bool:
+	# Both modes now (C-35): a run waits before laying out the next stage, and the
+	# campaign waits before the results card takes the finished board away.
+	if GameDirector.state == null \
+			or GameDirector.state.status != GameState.Status.WON:
+		return false
+	if event.is_action_pressed("board_confirm") or event.is_action_pressed("modal_accept") \
+			or (event is InputEventMouseButton and (event as InputEventMouseButton).pressed) \
+			or event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
+		EventBus.advance_requested.emit()
+		return true
+	return false
+
+
 func _on_level_won(placements: int, par: int, stars: int) -> void:
 	# §14.3's whole allowance for camera motion nobody asked for, spent here.
 	board_view.play_completion()
-	_flash_banner("Complete — %d moves, ideal %d, %s" % [
-		placements, par, "★".repeat(stars) + "☆".repeat(Scoring.MAX_STARS - stars)
+	if GameDirector.mode == GameDirector.Mode.ENDLESS:
+		# A run has no results card, so the banner is the only thing that marks the
+		# stage ending — and it has to say the wait is the player's to end.
+		_flash_banner("Goal %d — %s to carry on" % [
+			GameDirector.endless_goals(), InputGlyphs.label_for("board_confirm"),
+		])
+		return
+	_flash_banner("Complete — %d moves, ideal %d, %s · %s to carry on" % [
+		placements, par, "★".repeat(stars) + "☆".repeat(Scoring.MAX_STARS - stars),
+		InputGlyphs.label_for("board_confirm"),
 	])
 
 

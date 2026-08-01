@@ -167,3 +167,37 @@ func test_the_run_tally_counts_every_stage_and_not_just_the_last() -> void:
 		"a completed stage's placements survive the stage")
 	assert_eq(GameDirector.endless_placements(), placed_by_hand,
 		"every placement of the run is counted exactly once")
+
+
+## C-35: a finished endless stage waits before the next board is laid out.
+##
+## §7.2 says "reaching a goal *is* the next stage", and that was taken literally:
+## the board was rebuilt on the same frame the goal was reached, so §14.2's
+## flourish, burst and ripple and C-30's route trace all played over a board that
+## had already been replaced. The player never saw the thing they had just done.
+func test_a_finished_endless_stage_waits_before_the_next_one() -> void:
+	GameDirector.start_endless(20260801)
+	var first: Level = GameDirector.level
+	var goals_before: int = GameDirector.endless_goals()
+
+	# Play until a goal falls.
+	var guard: int = 0
+	while GameDirector.endless_goals() == goals_before and guard < 200:
+		var targets: Array[Vector3i] = GameDirector.state.legal_targets()
+		if targets.is_empty():
+			break
+		EventBus.place_requested.emit(targets[0])
+		guard += 1
+	assert_gt(GameDirector.endless_goals(), goals_before, "a goal was reached")
+
+	# The run has advanced its count, and the *board* has not moved on yet.
+	await wait_process_frames(2)
+	assert_same(GameDirector.level, first, "the next stage arrived before the beat did")
+	assert_eq(GameDirector.state.status, GameState.Status.WON,
+		"the won board is still the one on screen")
+
+	# And the player ends the wait rather than sitting out the timer.
+	EventBus.advance_requested.emit()
+	await wait_process_frames(2)
+	assert_not_same(GameDirector.level, first, "the run carried on when asked")
+	assert_eq(GameDirector.state.status, GameState.Status.PLAYING)

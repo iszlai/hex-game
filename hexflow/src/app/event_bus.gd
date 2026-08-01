@@ -37,3 +37,8 @@ signal undo_requested()
 signal restart_requested()
 signal hint_requested()
 signal pause_requested()
+## §7.2's run, between stages: the player saying they have looked long enough.
+## Endless has no results card, so without this the only thing marking the end of
+## a stage is the board being replaced — which happens on top of the goal sequence
+## that was celebrating it.
+signal advance_requested()

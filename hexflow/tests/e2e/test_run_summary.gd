@@ -58,13 +58,21 @@ func _press(action: String) -> void:
 	await wait_process_frames(1)
 
 
-## Plays an endless run until the board runs out of moves. Bounded, because a
-## test that could loop forever on a bad generator is worse than a failing one.
+## Plays a run out until the board it dies on. Bounded, because a test that could
+## loop forever on a bad generator is worse than a failing one.
+##
+## A won stage has to be waved on (C-35): reaching a goal no longer replaces the
+## board on the same frame, so a loop that stopped at "not PLAYING" would stop at
+## the first goal and never see a death.
 func _run_to_death(p_seed: int = 4242) -> void:
 	GameDirector.start_endless(p_seed)
-	for _i: int in range(400):
-		if GameDirector.state.status != GameState.Status.PLAYING:
+	for _i: int in range(1200):
+		if GameDirector.state.status == GameState.Status.DEAD:
 			return
+		if GameDirector.state.status == GameState.Status.WON:
+			EventBus.advance_requested.emit()
+			await wait_process_frames(2)
+			continue
 		var targets: Array[Vector3i] = GameDirector.state.legal_targets()
 		if targets.is_empty():
 			EventBus.discard_requested.emit()
@@ -77,7 +85,7 @@ func _run_to_death(p_seed: int = 4242) -> void:
 ## §12.1's arrow. §14.1's dead-state desaturation runs first, so the player sees
 ## the board they died on before the card takes it away.
 func test_a_dead_endless_board_ends_the_run() -> void:
-	_run_to_death()
+	await _run_to_death()
 	assert_eq(GameDirector.state.status, GameState.Status.DEAD)
 	assert_ne(GameDirector.screen, GameDirector.Screen.RUN_SUMMARY, "not instantly")
 	await wait_seconds(Motion.seconds("dead_desaturate") + 0.3)
@@ -95,7 +103,7 @@ func test_a_dead_campaign_board_is_still_only_a_banner() -> void:
 
 
 func test_the_run_is_recorded_when_it_ends() -> void:
-	_run_to_death()
+	await _run_to_death()
 	var endless: Dictionary = SaveService.data["endless"]
 	assert_eq(int(endless["runs"]), 1, "the run counted")
 	assert_eq(int(endless["best_goals"]), int(GameDirector.last_result["goals"]))
@@ -127,7 +135,7 @@ func test_focus_opens_on_retry() -> void:
 
 
 func test_retry_starts_a_new_run_rather_than_the_dead_one_again() -> void:
-	_run_to_death()
+	await _run_to_death()
 	# The dead run itself, not its placement count: a stage can die on its opening
 	# frame, so "placements changed" is not the same claim as "this is a new run".
 	var dead: GameState = GameDirector.state

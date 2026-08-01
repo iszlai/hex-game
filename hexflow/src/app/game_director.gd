@@ -34,6 +34,12 @@ var undos_used: int = 0
 ## makes this the one stat that has to be right.
 var _playtime_marker: int = 0
 
+## How long a finished board is held before the game moves on. Long
+## enough to outlast §14.2's 700 ms goal sequence and C-30's route trace with room
+## to look at the result, and short enough that a player who does nothing is not
+## waiting on the game.
+const STAGE_PAUSE_SECONDS := 5.0
+
 ## What the run that just finished was worth. Kept here rather than read off the
 ## live state, because the Results screen is a scene of its own: by the time it is
 ## looking, a Replay or the next endless stage may already have reset `state` under
@@ -309,7 +315,16 @@ func endless_goals() -> int:
 func endless_placements() -> int:
 	if _endless == null:
 		return 0
-	return _endless.total_placements + (state.placements if state != null else 0)
+	if state == null:
+		return _endless.total_placements
+	# A *won* stage has already been handed to `advance()`, so adding the live
+	# count again would double it — which it did, for as long as C-35's stage pause
+	# lasts, because the board that finished now stays on screen instead of being
+	# replaced on the same frame. A dead stage was never banked (`advance` only
+	# runs on a win), so its placements still have to be added, and that is the
+	# case the run summary reports.
+	return _endless.total_placements \
+		+ (0 if state.status == GameState.Status.WON else state.placements)
 
 
 func start_daily(utc_date: String) -> void:
@@ -463,13 +478,23 @@ func _on_won(placements: int) -> void:
 		Mode.ENDLESS:
 			# §7.2 has no results card between stages: reaching a goal *is* the next
 			# stage, and the run only ends on a dead board (§12.1, Endless →
-			# RunSummary).
+			# RunSummary). But "is the next stage" was taken literally and the board
+			# was rebuilt on the same frame the goal was reached — so §14.2's
+			# flourish, burst, ripple and the C-30 route trace all played over a
+			# board that had already been replaced, and the player never saw the
+			# thing they had just done. The campaign gets a results card for exactly
+			# this reason; a run needs the beat even without the card.
 			if _endless != null:
 				# The stage's own placements have to be handed over *before*
 				# `_begin` replaces the state that holds them, or §7.2's tie-break
 				# only ever counts the stage the run died on.
 				_endless.advance(placements)
-				_begin(_endless.current_level())
+				await _stage_pause()
+				# The run may have been left during the pause — quit to menu, or a
+				# restart — and coming back to lay out the next stage of a run
+				# nobody is playing would drop a board under whatever screen won.
+				if mode == Mode.ENDLESS and _endless != null:
+					_begin(_endless.current_level())
 		Mode.DAILY:
 			# §12.1: Daily → Results : WON. Not recorded against the campaign —
 			# §7.3's puzzle is not a campaign level and has no slot there — but it is
@@ -484,6 +509,25 @@ func _on_won(placements: int) -> void:
 ## endless — §5.8 makes it a recoverable banner everywhere else, and the campaign
 ## and the daily both have a way back out of it. §7.2's run has no undo, so this
 ## is where it stops.
+## Holds on a finished board until the player says go, or [constant
+## STAGE_PAUSE_SECONDS] passes. Used by both modes, for the same reason with two
+## different things arriving afterwards: the next stage in a run, the results card
+## in the campaign.
+##
+## Both, rather than either: a fixed wait makes a player who is ready sit still,
+## and waiting only for input strands one who has put the Deck down mid-run — and
+## §7.2's escalation means the next board is already decided, so there is nothing
+## to decide and nothing that should block on a decision.
+func _stage_pause() -> void:
+	var timer := get_tree().create_timer(STAGE_PAUSE_SECONDS)
+	var carry_on := [false]
+	var on_advance := func() -> void: carry_on[0] = true
+	EventBus.advance_requested.connect(on_advance)
+	while not carry_on[0] and timer.time_left > 0.0:
+		await get_tree().process_frame
+	EventBus.advance_requested.disconnect(on_advance)
+
+
 ## §5.7's free auto-discard is not a choice and must not cost the player §23.1's
 ## `no_discard`, so this counts the charges actually spent rather than the tiles
 ## that went past.
@@ -530,8 +574,14 @@ func _on_dead() -> void:
 ## frame the last bar landed — the line was drawn and gone in one motion. [Motion]
 ## owns the arithmetic; §14.2's beat is the floor rather than the answer.
 func _show_results() -> void:
-	var delay: float = Motion.results_delay_seconds()
-	await get_tree().create_timer(delay).timeout
+	# §14.2's beats and C-30's trace first: this is the minimum, and it is the part
+	# the player has not been asked about.
+	await get_tree().create_timer(Motion.results_delay_seconds()).timeout
+	# Then the board is *theirs to look at* (C-35). The card used to arrive on the
+	# 1600 ms tick and take the finished board away with it, which is the one moment
+	# the player has any reason to look at the line they just drew — the whole
+	# reason C-30 draws it and C-31 lights it. It waits for them now.
+	await _stage_pause()
 	# The player may have restarted or left while that was running; a results card
 	# for a run they walked away from would be a screen arriving out of nowhere.
 	if state != null and state.status == GameState.Status.WON:

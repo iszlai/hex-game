@@ -134,8 +134,8 @@ A level file today describes its board in three numbers — `shape`, `radius`, `
 game reads to rebuild it. A board that has had cells added or removed by hand is not describable in
 three numbers; the file would have to list every hex, up to sixty-one lines of coordinates.
 
-So the question is whether an author may **remove cells at all**, or only ever place walls on them.
-The two are different things on screen:
+**Decided: an author may remove cells**, so the `cells` field below is required rather than optional
+to the design. The two are different things on screen and both are wanted:
 
 | | What the player sees |
 |---|---|
@@ -145,7 +145,7 @@ The two are different things on screen:
 Walls can fake almost any silhouette, so the board brush of §4.1 is optional in a way the contents
 brush is not.
 
-> **If removal is wanted:** add an optional `cells: [[x,y,z], …]`. When present it *is* the board and
+> **The field:** an optional `cells: [[x,y,z], …]`. When present it *is* the board and
 > `shape` becomes a label for what it started as. When absent — every level today — the shape fields
 > build the board exactly as they do now. `LevelRepository.from_dict` prefers `cells`; `to_dict`
 > writes it only when the board diverges from its named shape, so a swept ring stays three numbers
@@ -276,10 +276,11 @@ Two rules the editor has to keep:
 
 ## 10. Open questions
 
-- **Q2 — the `cells` schema field** of §4.3: may an author *remove* cells, or only wall them? Walls
-  fake almost any silhouette, and only hand-drawn boards would pay for the field. **Open.**
+All answered. Kept here because the reasoning is the useful part:
 
-Answered, and kept here because the reasoning is the useful part:
+- **Q2 — may an author remove cells?** Yes, so the schema gains `cells`. See §4.3. A removed cell
+  shows the backdrop and a wall shows a hatched tile standing at wall height; walls can fake a
+  silhouette but they cannot make a hole.
 
 - **Q1 — canvas renderer.** Flat 2D. See §3.
 - **Q4 — a hand-drawn level's `generator.seed`.** Searching for a seed that *reproduces* a drawn

@@ -140,7 +140,13 @@ func test_finishing_a_level_records_it_and_advances_the_campaign() -> void:
 	assert_true(Campaign.level_unlocked(1, 2), "and the next level opened")
 	assert_eq(Campaign.next_unplayed(), Vector2i(1, 2))
 
+	# §14.2's beats, then the wait that is the player's (C-35): the finished board
+	# is theirs to look at, and the card arrives when they say so.
 	await wait_seconds(Motion.results_delay_seconds() + 0.3)
+	assert_eq(GameDirector.screen, GameDirector.Screen.LEVEL,
+		"the board a player just finished is not taken away from them")
+	EventBus.advance_requested.emit()
+	await wait_process_frames(2)
 	assert_eq(GameDirector.screen, GameDirector.Screen.RESULTS)
 	await _follow()
 	await _press("menu_accept")

@@ -92,12 +92,35 @@ func _complete(chapter: int, index: int) -> void:
 
 
 ## §12.1's arrow, with §14.2's t=700 in front of it — the card waits for the goal
-## flourish, the burst, the ripple and the flow pulse to finish.
+## flourish, the burst, the ripple and the flow pulse to finish, and then waits
+## again for the player (C-35).
+##
+## The second wait is the point. The card used to arrive on the 1600 ms tick and
+## take the finished board away with it, at the one moment the player has any
+## reason to look at the line they just drew — which is the whole reason C-30
+## draws it and C-31 lights it.
 func test_winning_a_level_lands_on_results_but_not_immediately() -> void:
 	_win(1, 1)
 	assert_ne(GameDirector.screen, GameDirector.Screen.RESULTS,
 		"§14.2 puts the card at t=700, not at t=0")
+
 	await wait_seconds(Motion.results_delay_seconds() + 0.3)
+	assert_ne(GameDirector.screen, GameDirector.Screen.RESULTS,
+		"the animation finishing is not the same as the player being finished")
+
+	EventBus.advance_requested.emit()
+	await wait_process_frames(2)
+	assert_eq(GameDirector.screen, GameDirector.Screen.RESULTS)
+
+
+## And a player who does nothing is not left holding a board for ever: the wait
+## ends on its own. Both, rather than either — a fixed delay makes someone who is
+## ready sit still, and waiting only for input strands someone who put the Deck
+## down mid-level.
+func test_the_card_arrives_on_its_own_if_the_player_does_nothing() -> void:
+	_win(1, 1)
+	await wait_seconds(
+		Motion.results_delay_seconds() + GameDirector.STAGE_PAUSE_SECONDS + 0.5)
 	assert_eq(GameDirector.screen, GameDirector.Screen.RESULTS)
 
 
