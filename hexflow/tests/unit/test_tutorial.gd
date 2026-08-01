@@ -133,10 +133,18 @@ func test_the_first_beat_names_the_direction_the_player_actually_has() -> void:
 	assert_false(Tutorial.text_of(spec, Direction.W).contains("{"),
 		"no placeholder survives into what the player reads")
 
-	# And it agrees with the level that ships, which is what §10.2 asserted directly.
+	# And it agrees with the level that ships — *whatever* that level opens on.
+	# This used to assert "north-east", which was true of the board §10.2 was
+	# written against and stopped being true the moment C-33 re-authored chapter 1.
+	# Naming the actual tile is the whole reason the beat takes a parameter, so a
+	# test that pins one direction is testing the old level rather than the beat.
 	var level: Level = LevelRepository.load_level(1, 1)
-	assert_string_contains(Tutorial.text_of(spec, level.tiles[0]), "north-east",
-		"chapter 1 level 1 still opens on NE, as §10.2 assumes")
+	var opening: String = Tutorial.text_of(spec, level.tiles[0])
+	assert_false(opening.contains("{"), "the level's own tile filled the placeholder")
+	assert_true(
+		opening.contains("north") or opening.contains("south")
+			or opening.contains("east") or opening.contains("west"),
+		"the beat must name the tile the player is actually holding, not a code")
 
 
 ## A save with no `tutorial_flags` at all — an older build's, or one edited by

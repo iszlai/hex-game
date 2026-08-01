@@ -74,7 +74,16 @@ func test_the_first_beat_greets_a_new_player() -> void:
 	await _open(1, 1)
 	assert_eq(_beat_id(), "T1")
 	assert_true((_scene.get_node("%Banner") as Control).visible)
-	assert_string_contains(_banner().text.to_lower(), "north-east")
+	# The direction is the level's, not a constant: this said "north-east" because
+	# that is what chapter 1 level 1 opened on before C-33 re-authored it, which is
+	# precisely the lie the beat's placeholder exists to prevent. Asserting the
+	# *shape* of the sentence keeps the test about the beat rather than the board.
+	var text: String = _banner().text.to_lower()
+	assert_false(text.contains("{"), "the placeholder was filled in")
+	assert_true(
+		text.contains("north") or text.contains("south")
+			or text.contains("east") or text.contains("west"),
+		"T1 names a compass direction, not a code: %s" % text)
 
 
 ## §10.1: "Beat 1 gates input to the single correct cell." The gate is the level's

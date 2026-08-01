@@ -57,7 +57,11 @@ static func chapter_params(chapter: int, level_index: int = 1) -> Params:
 	var t: int = clampi(level_index - 1, 0, 11)
 	match chapter:
 		1:
-			p.radius = 2 if level_index <= 4 else 3
+			# Radius 2 for the two tutorial levels only. §8.4 writes chapter 1 as
+			# "2→3" and four levels of nineteen cells was the reading; a board that
+			# small has no room for a route to be interesting, so the curve cannot
+			# descend across them (C-33).
+			p.radius = 2 if level_index <= 2 else 3
 			p.wall_count = _ramp(0, 2, t)
 			p.min_distance = _ramp(3, 5, t)
 			p.wander = _ramp(0, 1, t)

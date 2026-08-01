@@ -12,8 +12,17 @@ extends SceneTree
 ## script, so everything here goes through the pure core and the static
 ## [LevelRepository] API.
 
-const SEEDS_PER_SLOT := 40
+## Seeds tried per slot, per shape. Every one is generated *and measured*, so this
+## is the sweep's whole cost: 60 slots x shapes x this, at a few hundred
+## milliseconds each.
+const SEEDS_PER_SLOT := 10
 const OUT_ROOT := "res://src/data/levels"
+
+## What the winning candidate scored, for the line printed about it. Held here
+## rather than returned because `_author` already returns the level and a second
+## return value would be a Dictionary nobody reads twice.
+var _scored_routes: int = -1
+var _scored_forgiving: int = -1
 
 
 func _initialize() -> void:
@@ -34,42 +43,100 @@ func _initialize() -> void:
 				continue
 			_write(level)
 			written += 1
-			print("c%d l%02d  par %2d  walls %2d  tiles %2d  goals %d" % [
-				chapter, index, level.par, level.board.walls().size(),
-				level.tiles.size(), level.board.goals.size()
+			print("c%d l%02d  %-9s ideal %2d  routes %3d (want %2d)  forgiving %3d (want %3d)  walls %2d  goals %d" % [
+				chapter, index, level.board.shape, level.par,
+				_scored_routes, DifficultyCurve.routes_for(chapter, index),
+				_scored_forgiving, DifficultyCurve.forgiving_for(chapter, index),
+				level.board.walls().size(), level.board.goals.size()
 			])
 	print("wrote %d level files" % written)
 	quit()
 
 
-## Difficulty inside a chapter is monotonic in par (§9), so each slot has a target
-## band and the sweep keeps the first candidate that lands inside it.
-func _par_band(chapter: int, index: int) -> Vector2i:
-	var floor_par: int = 6 if chapter > 1 else 4
-	var low: int = floor_par + int(float(index - 1) * 0.6)
-	return Vector2i(low, low + 4)
-
-
+## Picks the candidate closest to the slot's place on the curve (C-33).
+##
+## The old sweep kept the first candidate whose **par** landed in a band, and par
+## measures length. Three measurements say that is the wrong key: the shipped
+## sixty have no difficulty curve in either dial, and chapter 4 — the one selected
+## for the shortest levels — turned out to be the *widest* and most forgiving
+## chapter in the game.
+##
+## So every candidate is generated **and measured**, and the best-scoring one
+## wins rather than the first acceptable one. Two consequences worth stating:
+## the sweep is far slower than it was, because measuring is the expensive part
+## and it now happens per candidate rather than never; and a candidate the metrics
+## cannot score inside their budget is **rejected outright**, because a level
+## nobody can rank is a level nobody should ship.
 func _author(chapter: int, index: int) -> Level:
-	var params := Generator.chapter_params(chapter, index)
-	var band := _par_band(chapter, index)
 	var base_seed: int = Generator.fnv1a_32("hexflow:c%d:l%d" % [chapter, index])
+	var metrics := LevelMetrics.new()
+	var best: Level = null
+	var best_score: int = 1 << 30
 	var fallback: Level = null
 
-	for attempt: int in range(SEEDS_PER_SLOT):
-		var level := Generator.generate(base_seed + attempt * 7919, params)
-		if level == null:
-			continue
-		if fallback == null:
-			fallback = level
-		if level.par >= band.x and level.par <= band.y:
-			return _stamp(level, chapter, index)
-	# Any verified level beats no level; the band is a preference, solvability
-	# is the requirement.
+	for shape: Variant in DifficultyCurve.shapes_for(chapter):
+		var params := Generator.chapter_params(chapter, index)
+		params.shape = str(shape)
+		params.shape_arg = _shape_arg(str(shape))
+		params.radius = _shape_size(str(shape), params.radius)
+
+		for attempt: int in range(SEEDS_PER_SLOT):
+			var level := Generator.generate(base_seed + attempt * 7919, params)
+			if level == null:
+				continue
+			if fallback == null:
+				fallback = level
+			var routes: int = metrics.routes_at_ideal(level)
+			if routes < 0:
+				continue   # unmeasurable, therefore unrankable, therefore not shipped
+
+			# Forgiveness is the expensive half — it runs the solver once per
+			# alternative at every branching turn — so it is only measured for a
+			# candidate whose route count alone could still win. The route term of
+			# the score cannot fall when forgiveness is added, so a candidate
+			# already behind on routes cannot come back.
+			if DifficultyCurve.distance(chapter, index, routes,
+					DifficultyCurve.forgiving_for(chapter, index)) >= best_score:
+				continue
+			var forgiving: int = metrics.forgiveness(level)
+			if forgiving < 0:
+				continue
+			var score: int = DifficultyCurve.distance(chapter, index, routes, forgiving)
+			if score < best_score:
+				best_score = score
+				best = level
+				_scored_routes = routes
+				_scored_forgiving = forgiving
+
+	if best != null:
+		return _stamp(best, chapter, index)
+	# Any verified level beats no level: the curve is a preference, solvability is
+	# the requirement (§8.2 step 7).
+	_scored_routes = -1
+	_scored_forgiving = -1
 	return _stamp(fallback, chapter, index) if fallback != null else null
 
 
+## Each shape's second parameter, and the size that keeps it inside the solver's
+## 61-cell ceiling while still being worth playing on (C-32).
+func _shape_arg(shape: String) -> int:
+	match shape:
+		"ring": return 1
+		"corridor": return 4
+		"hourglass": return 3
+		_: return 0
+
+
+func _shape_size(shape: String, radius: int) -> int:
+	match shape:
+		"triangle": return radius + 3   # side, not radius: side 6 is 28 cells
+		"corridor": return radius + 6   # length, and the arg is its width
+		_: return radius
+
+
 func _stamp(level: Level, chapter: int, index: int) -> Level:
+	level.authored_routes = _scored_routes
+	level.authored_forgiving = _scored_forgiving
 	level.id = LevelRepository.id_for(chapter, index)
 	level.chapter = chapter
 	level.index = index

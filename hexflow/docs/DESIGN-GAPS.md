@@ -80,7 +80,13 @@ construction, needs **no board regeneration and loses no stars**, and stores one
 **Still open for D2:** whether the second award rides `turn_par` (cheap, works on the shipped 60) or
 a re-authored resource (expensive, and still needs the cost-function change to mean anything).
 
-### D2 · Chapter 4 is where the curve collapses
+### D2 · Chapter 4 is where the curve collapses — **resolved 2026-08-01**
+
+**Done.** The campaign is re-authored against a written-down curve (C-33) on boards of six shapes
+(C-32). Chapter 4's dip is gone, every chapter descends and spikes, and the chapter endings escalate.
+The measurements that follow are what the decision was taken on, kept because they are the evidence
+that par was the wrong key.
+
 
 **Measured 2026-08-01 with a better instrument than `par`** — `tools/measure_difficulty.gd`. §9
 orders the campaign by `par`, and `par` measures *length*: a par-14 board with many optimal lines is

@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 568 tests / 16,800 asserts green in ~35 s, 60 frozen
+Last verified: **2026-07-31** — Godot 4.7.1, 574 tests / 16,900 asserts green in ~35 s, 60 frozen
 level files re-verified.
 
 ---
@@ -287,7 +287,13 @@ identity. **Met** — `tests/e2e/test_persistence.gd`, `tests/unit/test_resume.g
 Exit: every level file validates and reproduces its par; the whole campaign is playable start to
 finish. **Met** — `tests/property/test_level_files.gd`, `tests/e2e/test_campaign_chain.gd`.
 
-- [x] 60 generated, verified, frozen level files under `src/data/levels/chapter_N/`
+- [x] 60 generated, verified, frozen level files under `src/data/levels/chapter_N/` — **re-authored
+      2026-08-01 against a difficulty curve (C-33) on boards of six shapes (C-32)**. The originals
+      were selected by `par`, which measures length: three independent measurements found no
+      difficulty curve in them at all, and chapter 4 — chosen for the shortest levels — turned out to
+      be the widest and most forgiving chapter in the game. Every candidate is now generated *and
+      measured*, and the best fit for its slot wins rather than the first acceptable one. Every ideal
+      and every star from before this is invalidated, which is why it happened now and not later
 - [x] `tools/author_levels.gd` sweeps seeds per slot against the chapter's par band
 - [x] `tests/property/test_level_files.gd` re-verifies every shipped file on every push
 - [x] Level schema documented — `src/data/schemas/level.md`

@@ -7,6 +7,10 @@ extends RefCounted
 enum Kind { EMPTY = 0, WALL = 1 }
 
 ## Flags are a bitmask so a cell can be, say, both a GOAL and a GATE.
+## Below this a board has no room for a route worth playing. Not a spec number —
+## the smallest shipped board is a radius-2 hexagon at 19 cells.
+const MIN_CELLS := 12
+
 const F_START := 1
 const F_GOAL := 2
 const F_PORTAL := 4
@@ -178,13 +182,20 @@ func cells_with_flag(flag: int) -> Array[Vector3i]:
 ## empty means valid. The loader fails loudly on this in debug builds.
 func validate() -> Array[String]:
 	var problems: Array[String] = []
-	if radius < 2 or radius > 4:
-		problems.append("radius %d out of range 2..4" % radius)
+	# The ceiling is the solver's 64-bit path mask (C-19), and "radius 2..4" was
+	# only ever a proxy for it — the largest hexagon that fits is radius 4. It stops
+	# being a proxy the moment a board is not a hexagon (C-32): a triangle of side 7
+	# reaches a bounding radius of 5 and is still only 36 cells, well inside what
+	# the solver holds. So the count is checked, which is the thing that actually
+	# breaks, rather than the radius, which no longer implies it.
+	if _cells.size() > Hex.MAX_CELLS:
+		problems.append("%d cells will not fit the solver's path mask (max %d)"
+			% [_cells.size(), Hex.MAX_CELLS])
+	if _cells.size() < MIN_CELLS:
+		problems.append("%d cells is too small to be a level" % _cells.size())
 	for c: Vector3i in _kinds.keys():
 		if not Hex.is_valid(c):
 			problems.append("cell %v violates x + y + z == 0" % c)
-		if Hex.length(c) > radius:
-			problems.append("cell %v lies outside radius %d" % [c, radius])
 	if not has(start):
 		problems.append("start %v is not on the board" % start)
 	elif is_wall(start):

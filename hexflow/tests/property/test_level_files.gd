@@ -42,15 +42,59 @@ func test_every_level_round_trips_through_json() -> void:
 	assert_eq(round_tripped.solution, level.solution)
 
 
-func test_difficulty_rises_across_each_chapter() -> void:
-	# §9 — par is monotonic across a chapter, allowing a little breathing room so
-	# the generator is not forced into degenerate boards.
+## C-33: the campaign's difficulty curve, checked against what each level was
+## *authored to be* rather than re-measured — measuring sixty boards takes minutes
+## and this runs on every push.
+##
+## It replaces a test that compared each chapter's first `par` to its last. That
+## test passed on the shipped campaign, which had no difficulty curve at all:
+## `par` measures length, chapter 1 peaked in the middle and ended easier, and
+## chapter 4 was selected for the shortest levels and turned out to be the widest
+## and most forgiving chapter in the game. A test that a broken thing passes is
+## not a weak test, it is the wrong test.
+func test_the_campaign_follows_its_authored_difficulty_curve() -> void:
 	LevelRepository.clear_cache()
+	var spikes: Array[int] = []
+
 	for chapter: int in range(1, LevelRepository.CHAPTERS + 1):
-		var first := LevelRepository.load_level(chapter, 1)
-		var last := LevelRepository.load_level(chapter, LevelRepository.LEVELS_PER_CHAPTER)
-		assert_true(last.par >= first.par,
-			"chapter %d ends easier than it starts (%d -> %d)" % [chapter, first.par, last.par])
+		var routes: Array[int] = []
+		for index: int in range(1, LevelRepository.LEVELS_PER_CHAPTER + 1):
+			var level := LevelRepository.load_level(chapter, index)
+			assert_gt(level.authored_routes, 0,
+				"%s was never measured, so nothing knows what it is" % level.id)
+			routes.append(level.authored_routes)
+		spikes.append(routes[11])
+
+		# The spike: the last level is the narrowest of its chapter, and the one
+		# before it is a step back. A chapter that only descends has no moment in
+		# it — the hardest level is wherever the line happened to stop.
+		assert_lte(routes[11], routes.min(),
+			"chapter %d's last level is not its hardest" % chapter)
+		assert_gt(routes[10], routes[11],
+			"chapter %d drops into its spike from nowhere" % chapter)
+
+		# And it descends overall, allowing for the noise a generator leaves: the
+		# back half must be narrower than the front half rather than every step
+		# being smaller than the last, which no sweep over real boards achieves.
+		var front: int = 0
+		var back: int = 0
+		for i: int in range(6):
+			front += routes[i]
+			back += routes[i + 6]
+		assert_lt(back, front, "chapter %d does not get harder" % chapter)
+
+	# The rising baseline between chapters, measured at the *spikes* rather than at
+	# the openings. Openings cannot carry it on the shipped files: §8.4 gives
+	# chapter 1 radius-2 boards for its tutorial levels, and a nineteen-cell board
+	# with a three-move ideal is structurally narrow whatever the curve asks for —
+	# so chapter 1 opens at three and chapter 3 opens at six, and no sweep can
+	# reverse that without making the tutorial harder than the chapter after it.
+	#
+	# What each chapter *ends* on is the claim that survives and is worth making:
+	# every chapter finishes at least as hard as the one before it finished.
+	for chapter: int in range(1, LevelRepository.CHAPTERS):
+		assert_lte(spikes[chapter], spikes[chapter - 1],
+			"chapter %d ends easier than chapter %d" % [chapter + 1, chapter])
 
 
 func test_the_loader_rejects_a_future_schema_instead_of_guessing() -> void:
@@ -62,17 +106,32 @@ func test_the_loader_rejects_a_future_schema_instead_of_guessing() -> void:
 	assert_push_error("newer than this build understands")
 
 
-## C-32 added `shape` to the level schema. Every one of the sixty frozen files
-## predates it and must keep loading as the hexagon it is — a default that failed
-## quietly here would change sixty boards and every par with them.
-func test_the_frozen_files_still_load_as_hexagons() -> void:
+## Every shipped level is the board its file says it is. C-33 re-authored the
+## campaign with shapes in it, so this replaces a test that asserted all sixty
+## were hexagons — true before the re-author, and the wrong claim afterwards.
+##
+## What is worth checking is not which shape a level is but that the *name* and
+## the *cells* agree: a file naming a ring and holding a hexagon would play as a
+## hexagon and be described as a ring everywhere else in the game.
+func test_every_level_is_the_shape_its_file_claims() -> void:
 	LevelRepository.clear_cache()
+	var seen: Dictionary = {}
 	for chapter: int in range(1, LevelRepository.CHAPTERS + 1):
 		for index: int in range(1, LevelRepository.LEVELS_PER_CHAPTER + 1):
 			var level := LevelRepository.load_level(chapter, index)
-			assert_eq(level.board.shape, "hexagon", "%s changed shape" % level.id)
-			assert_eq(level.board.cells(), Hex.hexagon(level.board.radius),
-				"%s is no longer the board it was authored as" % level.id)
+			assert_true(Hex.SHAPES.has(level.board.shape),
+				"%s names shape %s, which does not exist" % [level.id, level.board.shape])
+			assert_eq(level.board.cells(),
+				Hex.shape(level.board.shape, level.board.shape_size, level.board.shape_arg),
+				"%s is not the board it says it is" % level.id)
+			seen[level.board.shape] = true
+
+	# §10's tutorial runs in chapter 1, and a beat that says "grow from any path
+	# cell" over a corridor is teaching the corridor instead.
+	for index: int in range(1, LevelRepository.LEVELS_PER_CHAPTER + 1):
+		assert_eq(LevelRepository.load_level(1, index).board.shape, "hexagon",
+			"chapter 1 level %d is not a plain board" % index)
+	assert_gt(seen.size(), 1, "the campaign uses more than one shape")
 
 
 ## A shaped board survives being written out and read back. `radius` in the file

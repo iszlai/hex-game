@@ -33,6 +33,18 @@ var solution_script: Array = []
 
 ## Provenance only — never read at runtime.
 var generator_seed: int = 0
+
+## What the level was *authored to be* (C-33): how many distinct ways there are to
+## finish it in `par` moves, and what fraction of wrong turns are recoverable.
+##
+## Authoring metadata, like [member generator_seed] — written by the sweep that
+## chose this candidate over the others, never recomputed at runtime. They exist
+## so the shape of the campaign's difficulty curve is checkable in CI without
+## re-measuring sixty boards, which takes minutes.
+##
+## `-1` means unmeasured, which is what every level authored before C-33 is.
+var authored_routes: int = -1
+var authored_forgiving: int = -1
 var generator_params_version: int = 1
 
 

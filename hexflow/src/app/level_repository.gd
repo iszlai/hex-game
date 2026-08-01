@@ -138,6 +138,9 @@ static func from_dict(d: Dictionary) -> Level:
 		tiles.append(Direction.from_name(str(n)))
 
 	var level := Level.build(board, tiles, int(d.get("seed", 0)))
+	var metrics: Dictionary = d.get("metrics", {})
+	level.authored_routes = int(metrics.get("routes", -1))
+	level.authored_forgiving = int(metrics.get("forgiving", -1))
 	level.id = str(d.get("id", ""))
 	level.chapter = int(d.get("chapter", 0))
 	level.index = int(d.get("index", 0))
@@ -204,6 +207,12 @@ static func to_dict(level: Level) -> Dictionary:
 		"par": level.par,
 		"solution": solution,
 		"solution_script": script,
+		# C-33's two dials, as the sweep measured them. Authoring metadata: written
+		# once, read by the property test that checks the curve, never recomputed.
+		"metrics": {
+			"routes": level.authored_routes,
+			"forgiving": level.authored_forgiving,
+		},
 		"generator": {
 			"seed": level.generator_seed,
 			"params_version": level.generator_params_version,
