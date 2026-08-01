@@ -10,11 +10,12 @@
 ## `uid` minted once and never reused, and progress keys on that — so a level
 ## carries its stars wherever it moves and position is only presentation.
 ##
-## Which is why this rewrites the **raw JSON** rather than round-tripping through
-## [Level]. §7.1 promises `Apply order` touches `chapter`, `index` and the
-## filenames and nothing else, and the only way to promise that is to not
-## re-serialise the rest. A round trip through `to_dict` would be *nearly*
-## lossless, and "nearly" across sixty frozen files is how a par quietly changes.
+## §7.1 promises `Apply order` touches `chapter`, `index` and the filenames and
+## **nothing else**, which is a promise about a round trip through [Level] being
+## lossless. It is, and that is asserted rather than assumed: `tests/property/
+## test_level_files.gd` checks every shipped file against what [LevelFile] writes,
+## byte for byte. Patching the parsed JSON directly would look safer and would
+## quietly re-float every integer in the file — see [LevelFile].
 ##
 ## Not part of the shipped game.
 class_name LevelBrowser
@@ -197,20 +198,13 @@ func _apply_order() -> void:
 		return
 	for row: Variant in _rows:
 		var entry: Dictionary = row
-		_write(str(entry["path"]), entry["data"] as Dictionary)
+		var level := LevelRepository.from_dict(entry["data"] as Dictionary)
+		if level == null:
+			push_error("cannot rewrite %s" % entry["path"])
+			continue
+		LevelFile.write(level, str(entry["path"]))
 	LevelRepository.clear_cache()
 	_status.text = "rewrote %d levels" % written
 	reordered.emit(written)
 	_rebuild()
 
-
-## Sorted keys and a trailing newline, matching `tools/stamp_uids.gd` and what is
-## on disk — a level that only moved slot must not also show up in the diff as
-## reformatted.
-static func _write(path: String, data: Dictionary) -> void:
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("cannot write %s" % path)
-		return
-	file.store_string(JSON.stringify(data, "  ", true) + "\n")
-	file.close()

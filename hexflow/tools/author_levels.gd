@@ -175,9 +175,8 @@ func _write(level: Level) -> void:
 	if not problems.is_empty():
 		push_error("%s failed verification: %s" % [path, ", ".join(problems)])
 		return
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
-		push_error("could not write %s" % path)
-		return
-	f.store_string(JSON.stringify(LevelRepository.to_dict(level), "  "))
-	f.close()
+	# Through the one writer, so the sweep and the map editor produce byte-
+	# comparable files (MAP-EDITOR §6). This used to write unsorted keys and no
+	# trailing newline, which meant every `make levels` reformatted the whole
+	# campaign on top of whatever it actually changed.
+	LevelFile.write(level, path)

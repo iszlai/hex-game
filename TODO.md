@@ -9,8 +9,8 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-07-31** — Godot 4.7.1, 577 tests / 17,000 asserts green in ~35 s, 60 frozen
-level files re-verified.
+Last verified: **2026-08-01** — Godot 4.7.1, 615 tests green in ~35 s, 60 frozen level files
+re-verified.
 
 ---
 
@@ -853,6 +853,10 @@ for why an authoring tool is not the "level editor" §27 declined.
       61-cell ceiling and a failed Validate as outright **refusals** rather than warnings; §4.4's
       Fill sweeping deals and keeping the best against the curve; §5's Validate; §6's Save; §7's
       list with drag-to-reorder and `Apply order` — `tests/unit/test_map_editor.gd`
+- [x] **One canonical level-file format** — every writer routes through `hexflow/tools/level_file.gd`,
+      and `tests/property/test_level_files.gd` asserts all 60 shipped files are byte-identical to
+      what it produces. The 60 were reformatted once to match: they held `"chapter": 1.0` because
+      `stamp_uids.gd` had re-stringified parsed JSON, and JSON has no integers
 - [x] `tools/` excluded from the export preset, asserted by `tests/unit/test_export_preset.gd`
       and by a `ci_gate.sh` rule that fails on any reference from `src/` into `tools/` (§8).
       `export_presets.cfg` is committed for this reason and no longer git-ignored

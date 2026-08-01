@@ -126,18 +126,3 @@ func stamp(draft: MapDraft) -> Level:
 	level.authored_forgiving = forgiving
 	return level
 
-
-## Writes a level file. Sorted keys and a trailing newline, matching what is on
-## disk and what `tools/stamp_uids.gd` writes — the editor and the sweep have to
-## produce byte-comparable files, or every level either tool touches shows up in
-## the diff as reformatted.
-static func write(level: Level, path: String) -> bool:
-	DirAccess.make_dir_recursive_absolute(
-		ProjectSettings.globalize_path(path.get_base_dir()))
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("cannot write %s" % path)
-		return false
-	file.store_string(JSON.stringify(LevelRepository.to_dict(level), "  ", true) + "\n")
-	file.close()
-	return true

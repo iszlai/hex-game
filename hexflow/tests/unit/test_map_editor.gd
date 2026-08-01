@@ -312,7 +312,7 @@ func test_a_saved_level_reloads_and_reverifies() -> void:
 	assert_true(report.ok, ", ".join(report.problems))
 
 	var path := "user://test_map_editor_save.json"
-	assert_true(MapReport.write(report.stamp(draft), path))
+	assert_true(LevelFile.write(report.stamp(draft), path))
 
 	var reloaded := LevelRepository.from_dict(
 		JSON.parse_string(FileAccess.get_file_as_string(path)) as Dictionary)
@@ -350,7 +350,7 @@ func test_a_hand_drawn_board_survives_being_saved() -> void:
 		assert_gt(report.problems.size(), 0, "a broken board says why")
 		return
 	var path := "user://test_map_editor_drawn.json"
-	assert_true(MapReport.write(report.stamp(draft), path))
+	assert_true(LevelFile.write(report.stamp(draft), path))
 	var text := FileAccess.get_file_as_string(path)
 	assert_string_contains(text, "\"cells\"")
 

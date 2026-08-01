@@ -348,7 +348,7 @@ func _save() -> void:
 		return
 
 	var path := LevelRepository.path_for(_draft.chapter, _draft.index)
-	if not MapReport.write(level, path):
+	if not LevelFile.write(level, path):
 		_note("could not write %s" % path)
 		return
 	LevelRepository.clear_cache()

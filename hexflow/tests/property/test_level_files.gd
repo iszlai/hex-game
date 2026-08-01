@@ -28,6 +28,38 @@ func test_every_level_file_validates_and_reproduces_its_par() -> void:
 				"%s: %s" % [level.id, ", ".join(problems)])
 
 
+## Every shipped file is **byte-identical** to what [LevelFile] writes.
+##
+## Four tools write into `src/data/levels/`, and until they were routed through
+## one writer they produced three formats between them — unsorted keys, a missing
+## trailing newline, and a whole campaign of `"chapter": 1.0` left behind by a
+## tool that re-stringified parsed JSON (JSON has no integers, so Godot's parser
+## hands every number back as a double).
+##
+## None of that changes what a level *is*. It changes what a diff looks like:
+## `make levels` would have reformatted all sixty files on top of whatever it
+## actually changed, and one level saved from the map editor would have been the
+## only file in the tree in a different shape. A real change hides in a diff
+## nobody can read.
+##
+## This also asserts, in passing, that `from_dict` → `to_dict` is lossless — which
+## is what lets `Apply order` rewrite a level's slot by going through [Level]
+## rather than by patching raw JSON.
+func test_every_level_file_is_written_in_the_canonical_form() -> void:
+	LevelRepository.clear_cache()
+	for chapter: int in range(1, LevelRepository.CHAPTERS + 1):
+		for index: int in range(1, LevelRepository.LEVELS_PER_CHAPTER + 1):
+			var path := LevelRepository.path_for(chapter, index)
+			var on_disk := FileAccess.get_file_as_string(path)
+			var level := LevelFile.read(path)
+			assert_not_null(level, "could not read %s" % path)
+			if level == null:
+				continue
+			assert_eq(LevelFile.text_of(level), on_disk,
+				"%s is not in the form LevelFile writes — run the writers through it"
+					% path.get_file())
+
+
 func test_every_level_round_trips_through_json() -> void:
 	LevelRepository.clear_cache()
 	var level := LevelRepository.load_level(4, 7)

@@ -76,13 +76,16 @@ func _mint(rng: RandomNumberGenerator, seen: Dictionary) -> String:
 	return ""
 
 
-## Rewritten with sorted keys and a trailing newline, matching what
-## `author_levels.gd` writes — a stamped file must not show up in a diff as
-## reformatted.
+## Through [LevelFile], the one writer, so a stamped file does not show up in a
+## diff as reformatted.
+##
+## It used to re-stringify the parsed dictionary directly, which is what turned
+## every integer in the sixty frozen files into a float: JSON has no integers, so
+## `JSON.parse_string` hands back doubles and stringifying them writes `1.0`.
+## Going through [Level] instead means `from_dict` retypes them on the way in.
 func _write(path: String, d: Dictionary) -> void:
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("cannot write %s" % path)
+	var level := LevelRepository.from_dict(d)
+	if level == null:
+		push_error("cannot rewrite %s" % path)
 		return
-	file.store_string(JSON.stringify(d, "  ", true) + "\n")
-	file.close()
+	LevelFile.write(level, path)
