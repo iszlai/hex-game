@@ -793,7 +793,7 @@ func _on_illegal(cell: Vector3i) -> void:
 func _on_level_won(placements: int, par: int, stars: int) -> void:
 	# §14.3's whole allowance for camera motion nobody asked for, spent here.
 	board_view.play_completion()
-	_flash_banner("Complete — %d placements, par %d, %s" % [
+	_flash_banner("Complete — %d moves, ideal %d, %s" % [
 		placements, par, "★".repeat(stars) + "☆".repeat(Scoring.MAX_STARS - stars)
 	])
 
@@ -1048,7 +1048,7 @@ func _refresh_hud() -> void:
 	score_label.text = "goals %d · placements %d" \
 		% [GameDirector.endless_goals(), GameDirector.endless_placements()] \
 		if GameDirector.mode == GameDirector.Mode.ENDLESS \
-		else "placements %d / par %d" % [state.placements, level.par]
+		else "%d moves \u00b7 ideal %d" % [state.placements, level.par]
 	# The star band is live and has a label of its own: it shows what the run is
 	# worth *now*, so a player one placement from dropping a star can see it before
 	# they spend it (§5.10). Its own label because it and the counter grow at

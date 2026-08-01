@@ -49,8 +49,8 @@ func test_an_endless_run_names_itself_and_scores_itself_by_goals() -> void:
 
 	# §7.2: "Score = goals_reached", tie-broken by placements. Neither is a par.
 	assert_string_contains(_label("ScoreLabel").text, "goals")
-	assert_false(_label("ScoreLabel").text.contains("par"),
-		"a run has no par to be measured against")
+	assert_false(_label("ScoreLabel").text.contains("ideal"),
+		"a run has no ideal to be measured against")
 	assert_false(_label("StarsLabel").visible,
 		"and no star band, because there is nothing for it to ever award")
 
@@ -67,7 +67,7 @@ func test_the_daily_names_the_day_and_keeps_its_par() -> void:
 	assert_string_contains(_label("TitleLabel").text, "2026-07-31")
 	assert_false(_label("TitleLabel").text.contains("daily_"),
 		"the prefix is part of the id, not part of the day")
-	assert_string_contains(_label("ScoreLabel").text, "par")
+	assert_string_contains(_label("ScoreLabel").text, "ideal")
 	assert_true(_label("StarsLabel").visible, "a generated level has a real par")
 
 

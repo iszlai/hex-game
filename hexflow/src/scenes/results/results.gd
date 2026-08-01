@@ -89,7 +89,7 @@ func _refresh() -> void:
 	else:
 		title_label.text = "Complete"
 
-	score_label.text = "placements %d / par %d" % [placements, par]
+	score_label.text = "%d moves \u00b7 ideal %d" % [placements, par]
 	detail_label.text = _band_text(placements, par)
 	(stars_row.get_node("HintDot") as Label).visible = bool(_result.get("hinted", false))
 
@@ -107,12 +107,17 @@ func _refresh() -> void:
 
 ## Why this many stars, in the terms §5.10 states them — so a two-star result says
 ## what the third one would have cost rather than leaving it to be inferred.
+##
+## "par" is golf, and it is a word the player never asked for. §5.10 keeps the
+## name because it names a *field*; what reaches the screen is "the ideal", which
+## says the same thing without a sport in it.
 func _band_text(placements: int, par: int) -> String:
+	var over: int = placements - par
 	if _stars_earned() >= Scoring.MAX_STARS:
-		return "par met"
+		return "the ideal"
 	if placements <= par + Scoring.MAX_STARS:
-		return "%d over par · %d fewer for three stars" % [placements - par, placements - par]
-	return "%d over par" % (placements - par)
+		return "%d over \u00b7 %d fewer for three stars" % [over, over]
+	return "%d over" % over
 
 
 ## §14.1: 3 × 260 ms, `BACK`/`EASE_OUT`, staggered 140 ms, a chord note each.

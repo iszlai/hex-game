@@ -263,7 +263,7 @@ func _refresh_detail() -> void:
 	var level: Level = LevelRepository.load_level(_chapter, index)
 	var par: int = level.par if level != null else 0
 	var best: int = Campaign.best_placements(_chapter, index)
-	detail_label.text = "Level %d   par %d%s" % [
+	detail_label.text = "Level %d   ideal %d%s" % [
 		index, par, "   best %d" % best if best > 0 else "",
 	]
 	hint_label.text = "%s open   %s chapter   %s back" % [

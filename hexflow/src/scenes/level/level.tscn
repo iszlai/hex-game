@@ -148,7 +148,7 @@ unique_name_in_owner = true
 layout_mode = 2
 vertical_alignment = 1
 horizontal_alignment = 2
-text = "placements 0 / par 0"
+text = "0 moves · ideal 0"
 
 [node name="StarsLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
