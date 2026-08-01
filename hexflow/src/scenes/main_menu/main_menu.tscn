@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/scenes/main_menu/main_menu.gd" id="1_menu"]
 [ext_resource type="Script" path="res://src/ui/menu_list.gd" id="2_list"]
+[ext_resource type="Script" path="res://src/ui/mode_brief.gd" id="3_brief"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -71,3 +72,16 @@ mouse_filter = 2
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
+
+[node name="ModeBrief" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_brief")

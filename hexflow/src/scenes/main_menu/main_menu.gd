@@ -13,9 +13,12 @@ const TOUCH_TARGET := 44.0
 @onready var title_label: Label = %TitleLabel
 @onready var subtitle_label: Label = %SubtitleLabel
 @onready var footer_label: Label = %FooterLabel
+@onready var brief: ModeBrief = %ModeBrief
 
 var _palette: Palette = null
 var _clock: Timer = null
+## Which row opened the mode brief, so leaving it returns the focus there.
+var _brief_row: String = "endless"
 
 
 func _ready() -> void:
@@ -29,6 +32,16 @@ func _ready() -> void:
 
 	menu.activated.connect(_on_activated)
 	menu.focus_moved.connect(func(_id: String) -> void: AudioDirector.play_sfx("ui.move"))
+
+	brief.palette = _palette
+	# After `Surface.apply_to`, which has just walked every panel on this screen
+	# and given the card the standard one — a card of prose wants its own margins.
+	brief.apply_style()
+	brief.confirmed.connect(_start_mode)
+	# Leaving the brief puts the focus back on the row it came from, so Back is a
+	# true "up one level" (§12.5) rather than a press that loses the player's place
+	# in the menu.
+	brief.dismissed.connect(func() -> void: menu.focus_id(_brief_row))
 
 	# §7.3's "timer to reset" is a live number, so something has to tick it. One
 	# second, on a `Timer`, rather than a `_process` that rebuilds five strings a
@@ -59,6 +72,12 @@ func _apply_type_roles() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The mode brief is a modal *inside* this screen, so it gets first refusal —
+	# and it only answers while the `Modal` set is live, which is §11.1's rule
+	# stated once more.
+	if brief.handle_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	if InputBindings.active_set != InputBindings.SET_MENU:
 		return
 	var handled := true
@@ -83,6 +102,26 @@ func _on_activated(id: String) -> void:
 	match id:
 		"campaign":
 			GameDirector.go_to(GameDirector.Screen.LEVEL_SELECT)
+		"endless", "daily":
+			# Neither mode is explained anywhere else in the game, and both take
+			# undo away (§5.9) — which a player finds out by pressing Z on a board
+			# they cannot take back. Three lines and a Play button first.
+			_brief_row = id
+			brief.open(id)
+		"settings":
+			GameDirector.open_settings()
+		"quit":
+			# The run is written down first: §18.3's promise is that closing the
+			# window costs no more than a suspend does.
+			GameDirector.suspend()
+			get_tree().quit()
+
+
+## What pressing Play on the brief means. The brief starts nothing itself — it is
+## a panel, and §12.1's rule that no screen pushes another screen directly is not
+## suspended for a panel inside one.
+func _start_mode(mode_id: String) -> void:
+	match mode_id:
 		"endless":
 			# §7.2 is one escalating run and says nothing about repeating it, so the
 			# run seed is the clock: two sessions are different runs, and the stage
@@ -92,13 +131,6 @@ func _on_activated(id: String) -> void:
 		"daily":
 			GameDirector.start_daily(utc_date())
 			GameDirector.go_to(GameDirector.Screen.LEVEL)
-		"settings":
-			GameDirector.open_settings()
-		"quit":
-			# The run is written down first: §18.3's promise is that closing the
-			# window costs no more than a suspend does.
-			GameDirector.suspend()
-			get_tree().quit()
 
 
 ## Today, in UTC — the only clock §7.3 recognises, so a player in Auckland and one

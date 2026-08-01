@@ -777,6 +777,12 @@ Exit: mode `@e2e` scenarios pass, including the Steam-unavailable path.
       streak you can grind in an afternoon measures nothing), and the day before is computed through
       the epoch so month ends and leap years are the calendar's problem. Restart-only was already
       true — `GameDirector.undo_available` has been campaign-only since M1
+- [x] Each mode says what it is before it starts (§12.2, C-38) — `src/ui/mode_brief.gd`, a modal on
+      the menu with three lines and a Play button. Nothing in the game explained either mode, and
+      both take undo away (§5.9), which a player discovered by pressing undo on a board they could
+      not take back. The panel starts nothing itself: it emits `confirmed(mode_id)` and the menu
+      decides what that means, because §12.1's "no screen pushes another screen" is not suspended
+      for a panel inside one. `tests/e2e/test_main_menu.gd`
 - [ ] GodotSteam GDExtension linked, matched to the pinned engine (§16.1, C-2)
 - [🟨] Achievements; `endless_best_goals` and rolling daily leaderboards — **the twenty of §23.1 are
       detected now**, which nineteen of them were not: the spec listed them, the mirror and the local

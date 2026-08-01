@@ -53,6 +53,19 @@ func _press(action: String) -> void:
 	await wait_process_frames(1)
 
 
+func _brief() -> ModeBrief:
+	return _scene.get_node("%ModeBrief") as ModeBrief
+
+
+## Every word the brief has on screen, as one string — the labels are built in
+## code, so the test reads what a player reads rather than a fixture.
+func _brief_text() -> String:
+	var out: String = ""
+	for node: Node in _brief().find_children("*", "Label", true, false):
+		out += (node as Label).text + " "
+	return out
+
+
 func _value_of(id: String) -> String:
 	for row: Dictionary in _menu().rows():
 		if str(row.get("id", "")) == id:
@@ -144,6 +157,12 @@ func test_endless_starts_a_run_and_hands_it_to_the_board() -> void:
 	await _open()
 	await _press("menu_down")
 	await _press("menu_accept")
+	# The brief comes first (C-38) and starts nothing by itself.
+	assert_true(_brief().visible, "the mode is explained before it begins")
+	assert_eq(GameDirector.screen, GameDirector.Screen.MAIN_MENU)
+	await _press("modal_accept")
+
+	assert_false(_brief().visible)
 	assert_eq(GameDirector.screen, GameDirector.Screen.LEVEL)
 	assert_eq(GameDirector.mode, GameDirector.Mode.ENDLESS)
 	assert_not_null(GameDirector.state)
@@ -155,9 +174,60 @@ func test_daily_starts_todays_puzzle() -> void:
 	await _press("menu_down")
 	await _press("menu_down")
 	await _press("menu_accept")
+	assert_true(_brief().visible)
+	await _press("modal_accept")
+
 	assert_eq(GameDirector.screen, GameDirector.Screen.LEVEL)
 	assert_eq(GameDirector.mode, GameDirector.Mode.DAILY)
 	assert_not_null(GameDirector.level)
+
+
+## Neither mode is explained anywhere else in the game, and both differ from the
+## campaign on the first move — §5.9 takes undo away in both. The brief says so
+## before the board arrives rather than after (C-38).
+func test_each_mode_says_what_it_is_before_it_starts() -> void:
+	for row: String in ["endless", "daily"]:
+		await _open()
+		_menu().focus_id(row)
+		await _press("menu_accept")
+		assert_true(_brief().visible, "%s opens a brief" % row)
+		assert_eq(_brief().mode(), row)
+		var words: String = _brief_text().to_lower()
+		assert_string_contains(words, "undo", "%s: the rule that is not the campaign's" % row)
+		assert_eq(InputBindings.active_set, InputBindings.SET_MODAL,
+			"§11.1 — a modal owns input while it is up")
+		_clear_navigated_scenes()
+
+
+## §12.5 — Back from a modal goes up exactly one level: to the menu, with the
+## focus on the row it came from, and nothing started.
+func test_backing_out_of_a_brief_starts_nothing() -> void:
+	await _open()
+	_menu().focus_id("daily")
+	await _press("menu_accept")
+	await _press("modal_back")
+
+	assert_false(_brief().visible)
+	assert_eq(GameDirector.screen, GameDirector.Screen.MAIN_MENU)
+	assert_null(GameDirector.level, "nothing was started")
+	assert_eq(_menu().focused_id(), "daily", "and the player kept their place")
+	assert_eq(InputBindings.active_set, InputBindings.SET_MENU)
+
+
+## The number the row was showing follows the player into the brief — it is the
+## reason to press Play, and a fresh save gets a sentence rather than a zero.
+func test_the_brief_carries_the_mode_own_record() -> void:
+	await _open()
+	_menu().focus_id("endless")
+	await _press("menu_accept")
+	assert_string_contains(_brief_text().to_lower(), "not run this one yet")
+	_clear_navigated_scenes()
+
+	SaveService.data["endless"]["best_goals"] = 7
+	await _open()
+	_menu().focus_id("endless")
+	await _press("menu_accept")
+	assert_string_contains(_brief_text(), "7 goals")
 
 
 ## §12.5 — Back never quits the game. At the top of the state machine there is
