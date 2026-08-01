@@ -34,11 +34,14 @@ var undos_used: int = 0
 ## makes this the one stat that has to be right.
 var _playtime_marker: int = 0
 
-## How long a finished board is held before the game moves on. Long
-## enough to outlast §14.2's 700 ms goal sequence and C-30's route trace with room
-## to look at the result, and short enough that a player who does nothing is not
-## waiting on the game.
-const STAGE_PAUSE_SECONDS := 5.0
+## How long a finished board is held before the game moves on, once §14.2's beats
+## and C-30's trace have run.
+##
+## Three, not five. Five reads as the game having stopped: long enough that a
+## player starts wondering whether the press did not register, which is the
+## opposite of the beat this exists to give them. The wait only has to be long
+## enough to *look* — anyone with more to say ends it themselves.
+const STAGE_PAUSE_SECONDS := 3.0
 
 ## What the run that just finished was worth. Kept here rather than read off the
 ## live state, because the Results screen is a scene of its own: by the time it is
