@@ -7,7 +7,7 @@ extends Node
 ## fused rules into its screen class and became untestable (B4).
 
 enum Screen { BOOT, MAIN_MENU, LEVEL_SELECT, LEVEL, PAUSED, RESULTS, RUN_SUMMARY, SETTINGS }
-enum Mode { CAMPAIGN, ENDLESS, DAILY }
+enum Mode { CAMPAIGN, ENDLESS, DAILY, TUTORIAL }
 
 signal screen_changed(screen: Screen)
 
@@ -100,6 +100,12 @@ func _ready() -> void:
 
 
 func _on_screen_music(next: Screen) -> void:
+	if next == Screen.LEVEL and mode == Mode.TUTORIAL:
+		# §15.1 gives each chapter a bed and the tutorial is not a chapter, so it
+		# borrows chapter 1's — which is the bed the player is about to hear for the
+		# next hour, and arriving in it is better than arriving in silence.
+		AudioDirector.play_music("chapter_1")
+		return
 	if next == Screen.LEVEL and mode == Mode.CAMPAIGN and level != null:
 		var at: Vector2i = LevelRepository.locate(level.id)
 		if at.x > 0:
@@ -189,8 +195,8 @@ func close_settings() -> void:
 
 
 ## Where "Quit to map" goes (§12.2). A campaign level came from the map; an
-## endless run and a daily did not — §12.1 draws both straight off the main menu,
-## so that is where leaving one returns to.
+## endless run, a daily and a tutorial lesson did not — §12.1 draws those straight
+## off the main menu, so that is where leaving one returns to.
 func level_exit_screen() -> Screen:
 	return Screen.LEVEL_SELECT if mode == Mode.CAMPAIGN else Screen.MAIN_MENU
 
@@ -300,6 +306,44 @@ func resume_in_progress() -> bool:
 	return true
 
 
+## Opens §10's course at [param index], or at the lesson the player has reached
+## when it is 0 (C-37).
+##
+## A mode of its own rather than a campaign level with beats over it, because
+## everything a campaign level does here would be wrong: no stars, no par to beat,
+## no progress recorded, no results card between boards, and no autosave — a
+## six-cell board takes twenty seconds and resuming one is not a service to
+## anybody. What it does have is the next lesson, which is what [method
+## _advance_tutorial] is.
+func start_tutorial(index: int = 0) -> void:
+	var at: int = index if index > 0 else Tutorial.next_index()
+	var lesson: Level = Tutorial.level(at)
+	if lesson == null:
+		# The course is over, or its data will not load. Neither is a reason to
+		# leave the player somewhere they cannot press anything (§18).
+		Tutorial.finish()
+		go_to(Screen.MAIN_MENU)
+		return
+	mode = Mode.TUTORIAL
+	_endless = null
+	Tutorial.begin_level()
+	_begin(lesson)
+
+
+## The lesson being played, 0 outside the course.
+func tutorial_index() -> int:
+	return Tutorial.index_of(level.id) if mode == Mode.TUTORIAL and level != null else 0
+
+
+## Leaves the course early — §10.1's Back press — without marking the lessons
+## behind it done. The course is over either way: a player who skips has said
+## something about the tutorial, not about the board they were on.
+func leave_tutorial() -> void:
+	Tutorial.finish()
+	mode = Mode.CAMPAIGN
+	go_to(Screen.MAIN_MENU)
+
+
 func start_endless(p_seed: int) -> void:
 	mode = Mode.ENDLESS
 	_endless = EndlessRun.new(p_seed)
@@ -362,8 +406,11 @@ func _begin(p_level: Level) -> void:
 
 
 func undo_available() -> bool:
-	# Undo is a campaign affordance only — leaderboard integrity (§5.9).
-	return mode == Mode.CAMPAIGN and state != null and state.can_undo()
+	# §5.9 takes undo away in endless and the daily for leaderboard integrity, and
+	# nowhere else. The tutorial keeps it for the same reason the campaign does,
+	# only more so: a first-time player's first wrong move must cost them nothing.
+	return mode != Mode.ENDLESS and mode != Mode.DAILY \
+		and state != null and state.can_undo()
 
 
 # --- intents -----------------------------------------------------------------
@@ -506,6 +553,29 @@ func _on_won(placements: int) -> void:
 			SteamService.submit_leaderboard("daily_" + _daily_date, placements)
 			_unlock(Achievements.for_daily())
 			_show_results()
+		Mode.TUTORIAL:
+			await _advance_tutorial()
+
+
+## The next lesson, after the one just finished has had its moment (§14.2). No
+## results card: a teaching board has no par worth beating and no stars to award,
+## and a card between every twenty-second lesson would be four presses of "Next"
+## in the first minute of the game.
+func _advance_tutorial() -> void:
+	var finished: int = tutorial_index()
+	Tutorial.mark_level_done(finished)
+	await _stage_pause()
+	# The player may have skipped or quit while the board was being admired, and
+	# dropping the next lesson under whatever screen they went to would be a board
+	# arriving out of nowhere.
+	if mode != Mode.TUTORIAL:
+		return
+	if Tutorial.next_index() > 0:
+		start_tutorial()
+		return
+	Tutorial.finish()
+	mode = Mode.CAMPAIGN
+	go_to(Screen.MAIN_MENU)
 
 
 ## §12.1: `Endless → RunSummary : DEAD`. A dead board only ends anything in

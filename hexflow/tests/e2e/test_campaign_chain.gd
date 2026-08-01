@@ -22,6 +22,11 @@ func before_each() -> void:
 		"daily": {"history": {}, "streak": 0},
 		"stats": {"undos": 0}, "achievements_mirror": [],
 	}
+	# §10's course runs before the menu on a save that has never seen it (C-37),
+	# which is a different journey and has its own test. This one is about the
+	# campaign, so the player arrives already taught.
+	Tutorial.clear_cache()
+	Tutorial.finish()
 	GameDirector.last_result = {}
 
 

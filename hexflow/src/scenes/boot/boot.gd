@@ -63,8 +63,18 @@ func _unhandled_input(event: InputEvent) -> void:
 ## which is what a player who has been away for a week wants — the alternative,
 ## dropping straight onto a board with no idea which one, only serves the player
 ## who was away for ten seconds.
+##
+## The exception is the very first launch (§10.1, C-37). A player who has never
+## seen the game gets the course rather than the menu, because a menu is five
+## words about things none of which they know the meaning of yet. It is a minute
+## long and one Back press ends it for good, and after that this branch is dead
+## for the life of the save.
 func _leave() -> void:
 	if _left:
 		return
 	_left = true
+	if Tutorial.pending():
+		GameDirector.start_tutorial()
+		GameDirector.go_to(GameDirector.Screen.LEVEL)
+		return
 	GameDirector.go_to(GameDirector.Screen.MAIN_MENU)

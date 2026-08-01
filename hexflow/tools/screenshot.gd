@@ -10,7 +10,8 @@ extends SceneTree
 ## The third argument picks the level, because which one is on screen decides what
 ## can be *seen*: the modifiers of §6 are introduced a chapter at a time, so only
 ## chapter 5 carries a goal, a portal, a gate and a wild at once — and a capture of
-## chapter 1 says nothing at all about whether the other three draw.
+## chapter 1 says nothing at all about whether the other three draw. `t.3` is
+## §10's third teaching board rather than a chapter.
 ##
 ## The fourth picks the *screen*, by the [GameDirector.Screen] name — `level`
 ## (default), `level_select`, `main_menu`, `results`, `settings`, `run_summary`.
@@ -69,7 +70,13 @@ func _setup() -> void:
 	var director: Node = root.get_node_or_null("GameDirector")
 	_seed_progress()
 	if _at.size() == 2 and director != null:
-		director.call("start_level", LevelRepository.load_level(int(_at[0]), int(_at[1])))
+		# `t.3` is §10's third teaching board. The course is five boards nobody can
+		# reach from the level select, so without this the only way to look at one
+		# is to play the game from a wiped save (C-37).
+		if _at[0] == "t":
+			director.call("start_tutorial", int(_at[1]))
+		else:
+			director.call("start_level", LevelRepository.load_level(int(_at[0]), int(_at[1])))
 	if _screen == "results":
 		_win_the_level()
 	var scene: PackedScene = load("res://src/scenes/%s/%s.tscn" % [_screen, _screen])

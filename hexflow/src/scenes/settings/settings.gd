@@ -271,9 +271,14 @@ func _do_action(action: String) -> void:
 		"reset_tab":
 			_reset_tab()
 		"replay_tutorial":
+			# §10.1's "Replay tutorial", and it *replays* rather than re-arming
+			# something for later (C-37). The course is its own five boards now, so
+			# there is a thing to open — and a setting that answers "the tutorial
+			# will run again next time" is asking the player to take it on trust.
 			Tutorial.reset()
 			AudioDirector.play_sfx("ui.confirm")
-			hint_label.text = "The tutorial will run again from chapter 1"
+			GameDirector.start_tutorial(1)
+			GameDirector.go_to(GameDirector.Screen.LEVEL)
 		"rebind":
 			_begin_capture(str(_focused_row().get("action", "")))
 

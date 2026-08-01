@@ -44,6 +44,9 @@ const HOLD_ACTIONS: Array[String] = ["board_restart", "board_hint"]
 @onready var rail_label: Label = %RailLabel
 @onready var banner: PanelContainer = %Banner
 @onready var banner_label: Label = %BannerLabel
+@onready var coach: PanelContainer = %Coach
+@onready var coach_label: Label = %CoachLabel
+@onready var coach_hint: Label = %CoachHint
 @onready var hold_panel: PanelContainer = %HoldPanel
 @onready var hold_label: Label = %HoldLabel
 @onready var hold_bar: ProgressBar = %HoldBar
@@ -155,6 +158,7 @@ func _ready() -> void:
 	EventBus.wild_charges_changed.connect(_on_wild_charges_changed)
 	banner.visible = false
 	hold_panel.visible = false
+	coach.visible = false
 	_wire_buttons()
 	_build_flyaway()
 	_open_tutorial()
@@ -183,9 +187,10 @@ func _apply_type_roles() -> void:
 	score_label.theme_type_variation = Typography.variation_for(Typography.Role.NUMERAL)
 	stars_label.theme_type_variation = Typography.variation_for(Typography.Role.NUMERAL)
 	rail_label.theme_type_variation = Typography.variation_for(Typography.Role.NUMERAL)
-	for caption: Label in [now_label, next_label]:
+	for caption: Label in [now_label, next_label, coach_hint]:
 		caption.theme_type_variation = Typography.variation_for(Typography.Role.CAPTION)
 	banner_label.theme_type_variation = Typography.variation_for(Typography.Role.HEADING)
+	coach_label.theme_type_variation = Typography.variation_for(Typography.Role.HEADING)
 
 
 func _play_area() -> Vector2:
@@ -460,7 +465,7 @@ func _style_hud() -> void:
 	banner.custom_minimum_size = Vector2(0.0, BANNER)
 
 	for panel: PanelContainer in [%TopBar as PanelContainer, %Rail as PanelContainer,
-			banner, hold_panel]:
+			banner, hold_panel, coach]:
 		panel.add_theme_stylebox_override("panel", _panel_box(palette))
 	for button: Button in [
 		undo_button, discard_button, wild_button,
@@ -474,7 +479,8 @@ func _style_hud() -> void:
 	score_label.add_theme_color_override("font_color", palette.text_primary)
 	stars_label.add_theme_color_override("font_color", palette.goal_cell)
 	rail_label.add_theme_color_override("font_color", palette.text_secondary)
-	for caption: Label in [now_label, next_label]:
+	coach_label.add_theme_color_override("font_color", palette.text_primary)
+	for caption: Label in [now_label, next_label, coach_hint]:
 		caption.add_theme_color_override("font_color", palette.text_secondary)
 	_build_hints(palette)
 
@@ -579,6 +585,17 @@ func _on_state_reset(state: GameState) -> void:
 	_wild_armed = false
 	board_view.bind(state, _play_area())
 	_refresh_hud()
+	# A lesson does not always arrive with a new scene: finishing one rebuilds the
+	# state under a screen that stays where it is, and a restart re-runs the same
+	# board from the top. Both are a board *starting*, and a board starting is when
+	# a teaching board teaches — so the beats are re-armed and run again rather
+	# than being spent once per visit to the level screen.
+	if GameDirector.mode == GameDirector.Mode.TUTORIAL:
+		_beat = {}
+		_hide_coach()
+		_end_glow()
+		Tutorial.begin_level()
+		_open_tutorial()
 
 
 func _on_legal_targets_changed(_targets: Array) -> void:
@@ -602,52 +619,57 @@ func _refresh_candidates() -> void:
 	if _wild_active() and state.wild_charges > 0:
 		targets = state.wild_targets()
 	targets = _tutorial_gate(targets)
-	if _branch_available(targets):
-		_try_trigger("branch_available")
 	board_view.set_candidates(targets, _wild_active() and state.wild_charges > 0)
 	_router.set_candidates(targets, board_view.centres(), _play_area() * 0.5)
+	_point_at_gated_cell()
 	board_view.set_cursor(_router.cursor, _router.has_cursor)
 	_refresh_hud()
 
 
-## §10.1: "Beat 1 gates input to the single correct cell." The level's stored
-## solution is what "correct" means — the solver's own optimum, verified at
-## generation and re-verified on every push, so the tutorial cannot teach a move
-## the game does not think is best.
+## §10.1: a gating beat holds input to the single correct cell. The lesson's
+## stored solution is what "correct" means — the solver's own line, verified when
+## the board was authored and re-verified on every push, so the tutorial cannot
+## teach a move the game does not think is best.
 ##
-## §10.2's own Interaction column is the narrower claim: "only the one legal target
-## accepts input". On chapter 1 level 1 there *is* exactly one — one path cell, one
-## direction — so the board already satisfies it and this changes nothing. It earns
-## its place on the level after that, or on a reseeded one, where there might be two.
-##
-## The stored optimum is used when it is available and legal, and only then. It
-## cannot simply be trusted: the optimal line for chapter 1 level 1 opens with a
-## **discard** (C-14 is why the script exists at all), and a beat that reads "your
-## tile points north-east" must not gate the player onto a cell that tile cannot
-## reach. So the fallback is the ordinary legal set, which is never wrong.
+## The fallback is the ordinary legal set, which is never wrong: the stored line
+## cannot simply be trusted to be reachable at this instant, and a beat that says
+## "place it on the lit cell" must never light a cell the tile in hand cannot get
+## to.
 func _tutorial_gate(targets: Array[Vector3i]) -> Array[Vector3i]:
 	if _beat.is_empty() or not Tutorial.gates(_beat):
 		return targets
-	var wanted: Vector3i = _first_scripted_move()
+	var wanted: Vector3i = _scripted_move()
 	if wanted != Hex.NONE and targets.has(wanted):
 		return [wanted] as Array[Vector3i]
-	if targets.size() == 1:
+	if targets.size() <= 1:
 		return targets
 	# More than one legal target and no scripted move among them: take the first,
-	# so §10.1's "the single correct cell" is still a single cell. They are all
-	# legal, so none of them is wrong.
+	# so "the single correct cell" is still a single cell. They are all legal, so
+	# none of them is wrong.
 	return [targets[0]] as Array[Vector3i]
 
 
-## The first cell the stored optimal line places on, or [constant Hex.NONE].
-func _first_scripted_move() -> Vector3i:
+## The next cell the stored line places on — the first one not already joined —
+## or [constant Hex.NONE].
+##
+## The *next*, not the first (C-37). A gate that always named step one was enough
+## when exactly one beat in the game gated and it fired on a level's opening
+## frame; a course that walks the player through three placements has to move
+## along with them, or beat two lights the cell beat one already filled and the
+## board accepts nothing at all.
+func _scripted_move() -> Vector3i:
 	var level: Level = GameDirector.level
-	if level == null:
+	var state: GameState = GameDirector.state
+	if level == null or state == null:
 		return Hex.NONE
 	for step: Variant in level.solution_script:
 		var entry: Array = step
-		if int(entry[0]) == Solver.ACTION_PLACE:
-			return entry[1] as Vector3i
+		if int(entry[0]) == Solver.ACTION_DISCARD:
+			continue
+		var cell: Vector3i = entry[1] as Vector3i
+		if state.path.has(cell):
+			continue
+		return cell
 	return Hex.NONE
 
 
@@ -747,7 +769,6 @@ func _on_auto_skipped(dir: int) -> void:
 	# Deliberately not a failure beat: no charge is spent (§5.7).
 	_haptics.play("auto_discard")
 	_play_flyaway(dir)
-	_try_trigger("auto_skipped")
 	_flash_banner("No move — %s skipped, no cost" % Direction.name_of(dir))
 
 
@@ -786,12 +807,12 @@ func _on_illegal(cell: Vector3i) -> void:
 	# §12.4 gives an illegal confirm the same double haptic as a cone rejection.
 	_haptics.play("cursor_reject")
 	board_view.play_illegal(cell)
+	# Said at the moment the player has just tried to open one, which is the only
+	# moment it is worth saying. The tutorial's second board is about this, and it
+	# is also the answer here on every board that has a wall on it.
 	if GameDirector.level != null and GameDirector.level.board.is_wall(cell):
-		# §10.2's T7 — "Walls never open", said at the moment the player has just
-		# tried to open one, which is the only moment it is worth saying.
-		_try_trigger("wall_targeted")
-		if not _beat.is_empty():
-			return
+		_flash_banner("Walls never open")
+		return
 	_flash_banner("Not a legal target")
 
 
@@ -815,6 +836,14 @@ func _advance_if_waiting(event: InputEvent) -> bool:
 func _on_level_won(placements: int, par: int, stars: int) -> void:
 	# §14.3's whole allowance for camera motion nobody asked for, spent here.
 	board_view.play_completion()
+	if GameDirector.mode == GameDirector.Mode.TUTORIAL:
+		# No score, because there is none: the lesson is over and the only thing
+		# worth saying is what happens next.
+		_hide_coach()
+		var last: bool = GameDirector.tutorial_index() >= Tutorial.COURSE_LENGTH
+		_flash_banner("Tutorial complete — into the game" if last
+			else "Done — %s for the next one" % InputGlyphs.label_for("board_confirm"))
+		return
 	if GameDirector.mode == GameDirector.Mode.ENDLESS:
 		# A run has no results card, so the banner is the only thing that marks the
 		# stage ending — and it has to say the wait is the player's to end.
@@ -856,29 +885,28 @@ func _on_level_dead(reason: int) -> void:
 
 # --- tutorial (§10) -----------------------------------------------------------
 
-## The triggers §10.2 waits on that are true the moment a level opens. Checked in
-## the table's own order, so a level carrying two of them shows the earlier beat
-## first and the later one when the earlier is done.
+## Opens whatever the lesson has to say on its first frame.
+##
+## Called from `_ready` and again from every state reset, because a lesson does
+## not always arrive with a new scene: finishing board two rebuilds the state
+## under a screen that stays where it is, and a restart re-runs the same board
+## from the top. Both are a board *starting*, and a board starting is when a
+## teaching board teaches.
 func _open_tutorial() -> void:
-	if GameDirector.level == null or GameDirector.mode != GameDirector.Mode.CAMPAIGN:
-		# §10 weaves the tutorial into chapter 1; endless and the daily are not
-		# places to be taught, and a beat firing there would be teaching a player
-		# who has already been through it.
+	if GameDirector.level == null or GameDirector.mode != GameDirector.Mode.TUTORIAL:
+		# §10's course is its own five boards (C-37). The campaign, endless and the
+		# daily are places to play, and a beat firing in one of them would be
+		# teaching a player who has already been taught.
 		return
 	_try_trigger("level_start")
-	var board: Board = GameDirector.level.board
-	if not board.cells_with_flag(Board.F_GATE).is_empty():
-		_try_trigger("gate_visible")
-	if not board.portal_pairs().is_empty():
-		_try_trigger("portal_visible")
 
 
-## §10.1: "Non-blocking after the first beat" — so a trigger arriving while a beat
-## is up is dropped rather than queued. Twelve words on screen, never two beats'.
+## §10.1: one beat at a time — a trigger arriving while a beat is up is dropped
+## rather than queued. Twelve words on screen, never two beats' worth.
 func _try_trigger(trigger: String) -> void:
 	if not _beat.is_empty() or GameDirector.level == null:
 		return
-	if GameDirector.mode != GameDirector.Mode.CAMPAIGN:
+	if GameDirector.mode != GameDirector.Mode.TUTORIAL:
 		return
 	var spec: Dictionary = Tutorial.next_for(GameDirector.level.id, trigger)
 	if spec.is_empty():
@@ -887,23 +915,28 @@ func _try_trigger(trigger: String) -> void:
 	_beat_seconds = 0.0
 	var state: GameState = GameDirector.state
 	var direction: int = state.current_tile() if state != null else Direction.NONE
-	_flash_banner(Tutorial.text_of(spec, direction))
+	_show_coach(Tutorial.text_of(spec, direction))
 	_begin_glow(Tutorial.highlight_of(spec))
-	# T1 gates input to the one correct cell, so the candidate set has to shrink
-	# *now* rather than on the next refresh.
+	# The wild board arms the charge for the player, because the cell the beat is
+	# pointing at is not reachable without it and a lit cell that refuses is not a
+	# lesson (§6, C-37).
+	if Tutorial.arms_wild(spec) and state != null and state.wild_charges > 0:
+		_wild_armed = true
+	# A gating beat shrinks the candidate set *now* rather than on the next refresh,
+	# and the refresh is what puts the cursor on what it left.
 	if Tutorial.gates(spec):
 		_refresh_candidates()
 
 
-## Ends the live beat and records it, so §10's "never repeats" needs nothing
-## remembered by the screen.
+## Ends the live beat and remembers it for as long as this board lasts, so §10's
+## "one at a time" needs nothing remembered by the screen.
 func _finish_beat() -> void:
 	if _beat.is_empty():
 		return
-	Tutorial.mark_seen(str(_beat.get("id", "")))
+	Tutorial.mark_spoken(str(_beat.get("id", "")))
 	var was_gate: bool = Tutorial.gates(_beat)
 	_beat = {}
-	banner.visible = false
+	_hide_coach()
 	_end_glow()
 	if was_gate:
 		_refresh_candidates()
@@ -917,25 +950,91 @@ func _beat_action(action: String) -> void:
 		_finish_beat()
 
 
-## §10.1: "Skippable at any time with a single Back press; skipping sets all flags
-## seen." Back means pause everywhere else on this screen, so a live beat is the
-## one thing that gets first claim on it — and only while one is actually up.
+## Puts the cursor on the one cell a gating beat has left, so the board itself
+## shows where the move goes rather than only the words beside it. A player on a
+## pad would otherwise have to steer onto a target there is only one of.
+##
+## Called from the candidate refresh rather than from the beat, because the beat
+## opens before the board has been laid out — the cursor has to land once the
+## screen positions exist, which is exactly when the candidates are next fed. The
+## guard makes it idempotent: `point_at` emits a cursor move, and a move emitted
+## on every refresh is a haptic tick per frame for a cursor that never went
+## anywhere.
+func _point_at_gated_cell() -> void:
+	if _beat.is_empty() or not Tutorial.gates(_beat):
+		return
+	var candidates: Array[Vector3i] = _router.candidates()
+	if candidates.size() != 1:
+		return
+	if _router.has_cursor and _router.cursor == candidates[0]:
+		return
+	_router.point_at(candidates[0])
+
+
+## §10.1: "Skippable at any time with a single Back press." In a course of its
+## own that means leaving it — the boards are the tutorial, so dismissing the
+## words and staying on a six-cell board with no par teaches nothing and strands
+## the player somewhere the campaign never goes.
+##
+## Back means pause everywhere else on this screen, so this claims the press only
+## while the course is actually running.
 func _skip_tutorial() -> bool:
-	if _beat.is_empty():
+	if GameDirector.mode != GameDirector.Mode.TUTORIAL:
 		return false
-	Tutorial.skip_all()
 	_beat = {}
-	banner.visible = false
+	_hide_coach()
 	_end_glow()
-	_refresh_candidates()
+	GameDirector.leave_tutorial()
 	return true
 
 
-## §10.2's Interaction column for the four beats that point at the rail: "undo
-## button glows", "discard button glows", "HUD charge slot fills", "the tiles to
-## come are shown *here*". A beat that says "undo is free" while nothing indicates
-## which thing undo *is* has stated a fact rather than taught anything — the
-## pointing is the lesson.
+## §10.1's twelve words, on a card over the board rather than in the band at the
+## very bottom of the screen.
+##
+## The band is the *dead-state* banner (§12.3 reserves it for exactly that), and
+## the tutorial borrowed it for as long as the tutorial was guidance sprinkled
+## over campaign levels. A course cannot: it says something on every board, most
+## of what it says waits for the player to act on it, and a message in the last
+## 56 px under the rail is one a first-time player reads once and then stops
+## looking for. The card sits with the board, where the thing it is talking about
+## is.
+##
+## §10.1's "diegetic, not a modal" still holds — the card ignores the pointer,
+## dims nothing and blocks nothing. What holds input is the beat, and that happens
+## on the board.
+func _show_coach(text: String) -> void:
+	coach_label.text = text
+	# What to press, in the player's own glyphs (§11.4), and the way out. A tutorial
+	# that cannot be left is the reason players distrust tutorials.
+	coach_hint.text = "%s place   ·   %s skip the tutorial" % [
+		InputGlyphs.label_for("board_confirm"), InputGlyphs.label_for("board_back"),
+	]
+	if coach.visible:
+		# A second beat while the first card is still up replaces the words and
+		# leaves the card where it is: re-running the arrival reads as two cards
+		# rather than as one that changed its mind.
+		return
+	coach.visible = true
+	if not Motion.loops("candidate_breathing"):
+		# §14.5: reduced motion gets the card, not the fade.
+		coach.modulate.a = 1.0
+		return
+	coach.modulate.a = 0.0
+	var arrive := create_tween()
+	# The queue's own beat — this is a small thing appearing beside the board,
+	# which is what §14.1 sized that curve for.
+	Motion.shape(arrive, "queue_advance")
+	arrive.tween_property(coach, "modulate:a", 1.0, Motion.seconds("queue_advance"))
+
+
+func _hide_coach() -> void:
+	coach.visible = false
+
+
+## §10.2's Interaction column for the beats that point at the rail: "the wild
+## charge is *here*". A beat that says the wild goes any direction while nothing
+## indicates which thing the wild *is* has stated a fact rather than taught
+## anything — the pointing is the lesson.
 ##
 ## It borrows the board's own breathing rather than inventing a second idiom, so
 ## the rail and the candidates pulse on the same clock and at the same rate. §14.5
@@ -970,7 +1069,7 @@ func _end_glow() -> void:
 
 
 ## The rail elements a beat can point at. Names rather than nodes in the data, so
-## `tutorial.json` never has to know what the scene tree looks like.
+## `beats.json` never has to know what the scene tree looks like.
 func _rail_element(what: String) -> Control:
 	match what:
 		"undo": return undo_button
@@ -978,17 +1077,6 @@ func _rail_element(what: String) -> Control:
 		"wild": return wild_button
 		"next": return next_stack
 	return null
-
-
-## §10.2's T4 fires on "the first branch opportunity" — two legal targets that are
-## not neighbours of each other, which is the board saying the path has become a
-## tree rather than a line.
-func _branch_available(targets: Array[Vector3i]) -> bool:
-	for i: int in range(targets.size()):
-		for j: int in range(i + 1, targets.size()):
-			if Hex.distance(targets[i], targets[j]) > 1:
-				return true
-	return false
 
 
 func _on_wild_charges_changed(charges: int) -> void:
@@ -1051,6 +1139,16 @@ func _set_banner_rise(px: float) -> void:
 	banner.offset_bottom = px
 
 
+## The counter under the title. A teaching board has an ideal because every board
+## has one, and showing it teaches the wrong thing first: a player nine seconds
+## into their first game does not need a number to beat, and one that says "1 move
+## · ideal 2" reads as a failure in progress. What they have done, and no more.
+func _moves_read_out(state: GameState, level: Level) -> String:
+	if GameDirector.mode == GameDirector.Mode.TUTORIAL:
+		return "%d moves" % state.placements
+	return "%d moves · ideal %d" % [state.placements, level.par]
+
+
 func _refresh_hud() -> void:
 	var state: GameState = GameDirector.state
 	var level: Level = GameDirector.level
@@ -1066,6 +1164,12 @@ func _refresh_hud() -> void:
 			title_label.text = "Endless · %d goals" % GameDirector.endless_goals()
 		GameDirector.Mode.DAILY:
 			title_label.text = "Daily · %s" % GameDirector.daily_date()
+		GameDirector.Mode.TUTORIAL:
+			# How far through, because five twenty-second boards with no end in
+			# sight is a tutorial a player starts looking for the exit from.
+			title_label.text = "Tutorial · %d of %d" % [
+				GameDirector.tutorial_index(), Tutorial.COURSE_LENGTH,
+			]
 		_:
 			var at: Vector2i = LevelRepository.locate(level.id)
 			title_label.text = "Chapter %d · Level %d" % [at.x, at.y] if at.x > 0 \
@@ -1078,7 +1182,7 @@ func _refresh_hud() -> void:
 	score_label.text = "goals %d · placements %d" \
 		% [GameDirector.endless_goals(), GameDirector.endless_placements()] \
 		if GameDirector.mode == GameDirector.Mode.ENDLESS \
-		else "%d moves \u00b7 ideal %d" % [state.placements, level.par]
+		else _moves_read_out(state, level)
 	# The star band is live and has a label of its own: it shows what the run is
 	# worth *now*, so a player one placement from dropping a star can see it before
 	# they spend it (§5.10). Its own label because it and the counter grow at
@@ -1087,7 +1191,10 @@ func _refresh_hud() -> void:
 	# zero for `par <= 0`, so an endless run wore three hollow stars for its whole
 	# length — a score display that never moves, promising a reward the mode does
 	# not have.
-	stars_label.visible = level.par > 0
+	# And a teaching board has no stars for the same reason it shows no ideal: §10's
+	# course records nothing and rewards nothing, so a star band there would be
+	# promising something that never arrives.
+	stars_label.visible = level.par > 0 and GameDirector.mode != GameDirector.Mode.TUTORIAL
 	if stars_label.visible:
 		var earned: int = Scoring.stars(maxi(1, state.placements), level.par)
 		stars_label.text = "★".repeat(earned) + "☆".repeat(Scoring.MAX_STARS - earned)

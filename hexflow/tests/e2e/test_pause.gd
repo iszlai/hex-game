@@ -15,14 +15,11 @@ var _scene: Control = null
 func before_each() -> void:
 	SaveService.data = {"campaign": {}, "in_progress": null, "tutorial_flags": {},
 		"stats": {"undos": 0}, "achievements_mirror": []}
-	# §10.1 gives the tutorial first claim on Back and Start while a beat is up, so
-	# a save with the tutorial unseen would have Esc skipping T1 rather than opening
-	# the pause menu. That is the correct behaviour and it is asserted in
-	# `test_tutorial_beats.gd`; here it would only mean these tests never reach a
-	# pause menu at all. The tutorial is marked done, which is where a player
-	# pressing Start on chapter 1 in anger normally is anyway.
+	# §10's course runs on its own five boards, so a campaign level cannot raise a
+	# beat and cannot have Back claimed by one. Marked done anyway, because that is
+	# where a player pressing Start on chapter 1 in anger has always been.
 	Tutorial.clear_cache()
-	Tutorial.skip_all()
+	Tutorial.finish()
 	SettingsService.set_value("hold_to_confirm", true)
 
 

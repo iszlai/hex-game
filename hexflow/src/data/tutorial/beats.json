@@ -1,0 +1,116 @@
+{
+  "schema": 2,
+  "beats": [
+    {
+      "id": "T1",
+      "level": "t_l01",
+      "trigger": "level_start",
+      "text": "Your tile points {direction}. Place it on the lit cell.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T2",
+      "level": "t_l01",
+      "trigger": "after_place",
+      "text": "The path grows. One more reaches the goal.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T3",
+      "level": "t_l02",
+      "trigger": "level_start",
+      "text": "The dark cell is a wall. Walls never open.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T4",
+      "level": "t_l02",
+      "trigger": "after_place",
+      "text": "So go around it — over the top, then down.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T5",
+      "level": "t_l03",
+      "trigger": "level_start",
+      "text": "No way past this wall. Step into the portal.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T6",
+      "level": "t_l03",
+      "trigger": "after_place",
+      "text": "Its twin joined too. Finish from over there.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T7",
+      "level": "t_l04",
+      "trigger": "level_start",
+      "text": "A gate opens only for two path neighbours.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T8",
+      "level": "t_l04",
+      "trigger": "after_place",
+      "text": "It has two now. Step into the gate.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T9",
+      "level": "t_l04",
+      "trigger": "after_place",
+      "text": "The goal is one step beyond it.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T10",
+      "level": "t_l05",
+      "trigger": "level_start",
+      "text": "Take the star. It is one wild charge.",
+      "gate": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": ""
+    },
+    {
+      "id": "T11",
+      "level": "t_l05",
+      "trigger": "wild_gained",
+      "text": "Wild armed: it goes any direction. Reach the goal.",
+      "gate": true,
+      "arm_wild": true,
+      "done": "place",
+      "seconds": 0,
+      "highlight": "wild"
+    }
+  ]
+}
