@@ -495,3 +495,16 @@ func test_reduce_motion_stops_the_pulse_rather_than_slowing_it() -> void:
 	_links.set_motion()
 	assert_eq(mat.get_shader_parameter("pulse_seconds"), 0.0, "stopped, not hurried")
 	SettingsService.set_value("reduce_motion", false)
+
+
+## C-31's ink edge takes the board's own outline colour (C-23) rather than a token
+## of its own — one outline colour is what makes the tiles, the marks and the
+## stroke look drawn by the same hand. Asserted because §13.2's rule is that no
+## colour lives outside the palette, and a `vec3` default in a shader is exactly
+## the kind of literal that survives all four of §21's swaps unnoticed.
+func test_the_ink_edge_is_the_boards_own_outline_colour() -> void:
+	var mat: ShaderMaterial = _links.material_override as ShaderMaterial
+	var ink: Vector3 = mat.get_shader_parameter("link_ink")
+	assert_almost_eq(ink.x, _palette.board_mark_outline.r, 0.001)
+	assert_almost_eq(ink.y, _palette.board_mark_outline.g, 0.001)
+	assert_almost_eq(ink.z, _palette.board_mark_outline.b, 0.001)

@@ -20,7 +20,11 @@
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
-const float LINK_GLOW = 0.5;
+// Lowered from 0.5 when the crackle landed: a constant emission that bright left
+// no headroom above it, so the filaments read as a slightly brighter smooth line
+// rather than as arcs. The light the player sees is mostly the crackle now, and
+// this is the floor it burns down to.
+const float LINK_GLOW = 0.34;
 
 // Matches [BoardTiles]' own flat path, so a ribbon lying on a tile top steps down
 // with it rather than floating free of it. See `hex_prism.gdshader` for why.
@@ -55,10 +59,56 @@ uniform float flow_head = -1.0;
 // §14.1 never gave this a duration, so [BoardLinks.PULSE_SECONDS] chose one and
 // says so. Zero stops it dead, which is what §14.5 asks a loop to do under Reduce
 // Motion — not to run slowly.
-const float PULSE_WIDTH = 0.22;
-const float PULSE_GAIN = 0.55;
+// The wave does not sweep, it **crackles**: the travelling head is broken into
+// flickering filaments by two octaves of cheap value noise running against each
+// other, so the light arcs along the stroke the way fire runs up a fuse rather
+// than sliding along it like a highlight. The band is also sharpened (`pow`),
+// because a smooth falloff reads as a glow and a fast one reads as a discharge.
+//
+// `EMBER` is the same noise with no travelling head at all, at a fraction of the
+// gain — the stroke is never perfectly still between pulses, which is what keeps
+// it looking lit from inside rather than painted.
+const float PULSE_WIDTH = 0.26;
+const float PULSE_GAIN = 0.95;
+const float PULSE_SHARPEN = 1.9;
+const float EMBER_GAIN = 0.30;
 
 uniform float pulse_seconds = 0.0;
+
+
+// Value noise off a one-dimensional hash. No texture: a sampler here would be an
+// asset to keep, an import to configure and a thing to go missing, for a number
+// this shader can work out on its own.
+float hash11(float x) {
+	return fract(sin(x * 127.1) * 43758.5453);
+}
+
+float vnoise(float x) {
+	float i = floor(x);
+	float f = fract(x);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(hash11(i), hash11(i + 1.0), f);
+}
+
+float crackle(float x, float t) {
+	return vnoise(x * 26.0 + t * 9.0) * 0.6
+		+ vnoise(x * 61.0 - t * 17.0) * 0.4;
+}
+
+// The board's ink, shared with the tiles and the modifier marks rather than given
+// a token of its own — one outline colour is what makes them look drawn by the
+// same hand (C-23, and `board_tiles.gd` says the same thing about `tile_ink`).
+//
+// A drawn line has an edge. Without one the stroke was a glowing smear lying on
+// the board; with it the light sits *inside* something that was drawn, which is
+// what C-26 means by ink on a surface that has grain.
+//
+// Taken across the ribbon's width only, never along its length: the caps at each
+// end of a bar butt against the next bar's cap, and inking those would draw a
+// dark rung across the stroke at every joint in the route.
+const float INK_EDGE = 0.72;   // where the ink starts, as a fraction of half-width
+
+uniform vec3 link_ink = vec3(0.03, 0.04, 0.07);
 
 
 // C-31: the stroke is drawn rather than ruled.
@@ -93,6 +143,10 @@ varying flat float kind;
 // is flat per bar, so on its own a travelling wave would light one bar at a time
 // and hop; adding the fraction along the bar makes the coordinate continuous.
 varying float along;
+// Where this fragment sits across the ribbon, -1 to 1. Captured *before* the
+// wobble displaces `VERTEX.z`, or the bow would be read as part of the width and
+// the ink would wander from one side of the stroke to the other.
+varying float across;
 
 void vertex() {
 	tint = COLOR.rgb;
@@ -102,6 +156,7 @@ void vertex() {
 	// width, so a local offset is in units of whichever of those it rides. The
 	// bow is wanted in *board* units and has to be divided back out of the width,
 	// or a thin ribbon would wander less than a thick one.
+	across = VERTEX.z * 2.0;
 	float span = length(MODEL_MATRIX[0].xyz);
 	float width = max(length(MODEL_MATRIX[2].xyz), 0.0001);
 	float t = VERTEX.x + 0.5;
@@ -134,17 +189,34 @@ void fragment() {
 	// a wave along it and a two-cell one is lit almost all at once.
 	if (pulse_seconds > 0.0 && kind < 0.5) {
 		float head = fract(TIME / pulse_seconds);
-		float band = 1.0 - smoothstep(0.0, PULSE_WIDTH, abs(along - head));
-		glow += tint * band * PULSE_GAIN;
+		float band = pow(1.0 - smoothstep(0.0, PULSE_WIDTH, abs(along - head)),
+			PULSE_SHARPEN);
+		// The filaments carry most of the light and the band carries a floor of it,
+		// so the pulse still reads as one thing travelling rather than as sparks
+		// that happen to be near each other.
+		// A narrow window on the noise, so the filaments have dark between them.
+		// Widen it and the arc goes back to being a smooth swell.
+		float arc = smoothstep(0.40, 0.78, crackle(along, TIME));
+		glow += tint * band * (0.12 + arc * 1.7) * PULSE_GAIN;
+		// Between pulses the stroke smoulders rather than going flat.
+		glow += tint * smoothstep(0.58, 1.0, vnoise(along * 34.0 - TIME * 5.0))
+			* EMBER_GAIN;
 	}
+	// The ink edge. It replaces the stroke's colour rather than darkening it, and
+	// takes the glow with it — a lit outline is a halo, which is the opposite of
+	// what a drawn edge does.
+	float ink = smoothstep(INK_EDGE, 1.0, abs(across));
+	vec3 body = mix(tint, link_ink, ink);
+	glow *= 1.0 - ink;
+
 	if (flat_board) {
 		float up = clamp((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, 0.0, 1.0);
 		ALBEDO = vec3(0.0);
 		SPECULAR = 0.0;
 		ROUGHNESS = 1.0;
-		EMISSION = drain(tint * mix(SIDE_SHADE, 1.0, up) + glow);
+		EMISSION = drain(body * mix(SIDE_SHADE, 1.0, up) + glow);
 	} else {
-		ALBEDO = drain(tint);
+		ALBEDO = drain(body);
 		// Smoother and shinier than a tile, so the ribbon separates from the prism
 		// it lies on without needing a second colour to do it.
 		ROUGHNESS = 0.32;

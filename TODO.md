@@ -451,7 +451,15 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       the route on a loop, off a coordinate normalised by the deepest cell rather than the cell count
       — §5.1 makes the path a tree, and dividing by the count leaves the wave short of the far end.
       `PULSE_SECONDS` is a chosen number and says so; §14.1 never tabulated one and its table may not
-      grow a fifteenth row
+      grow a fifteenth row. Then three refinements from watching it: an **ink edge** across the
+      ribbon's width off the same `board_mark_outline` the tiles and marks use (across the width
+      only — inking the caps draws a dark rung across every joint), with `LINK_WIDTH` widened to keep
+      the lit core as thick as it was before it had an edge; a **crackle**, two octaves of value
+      noise breaking the travelling head into filaments with dark between them, which needed
+      `LINK_GLOW` lowered to leave headroom; and a **bloom** on the board viewport, thresholded well
+      above the tiles so only the path spills and §13.7's backdrop is untouched. The bloom adds a
+      post-process pass **§20 has not measured** — it belongs in the C-3 renderer measurement below
+      rather than after it
 - [x] NEXT becomes a stack of upcoming tiles; remaining count shown for a campaign level's fixed tile
       array only, never for the unbounded endless/daily bag (C-18) — `src/view/tile_stack.gd`, the
       board's own prism seen at the board's own elevation in a viewport of its own, so a piece in the

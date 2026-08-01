@@ -1,113 +1,76 @@
 # Design gaps — what stands between this and a game people love
 
-A design critique, written 2026-07-31 against the build at `324e95e`. Everything in the spec is
-*specified*; most of it is *built*. This document is about a different question: **why would anyone
-play a second session?**
+A design critique, opened 2026-07-31 against `324e95e`. Everything in the spec is *specified* and
+most of it is *built*. This document asks a different question: **why would anyone play a second
+session?**
 
-It is deliberately not a status file. [`TODO.md`](../../TODO.md) is the only place project status
-lives, and nothing here restates it. Where a gap is already tracked there, this file says so and
-points at it rather than opening a second account of the same thing.
+It is not a status file — [`TODO.md`](../../TODO.md) is the only place project status lives, and
+where a finding is tracked there this file points at it rather than opening a second account of it.
 
-Three kinds of item appear below, and the distinction matters because they are not equally cheap to
-act on:
+Findings sort into three kinds, because they are not equally cheap to act on:
 
 | Kind | Meaning |
 |---|---|
 | **Defect** | The spec asks for it, the code does not do it. Fix without asking. |
 | **Regression** | A later decision undid something the spec had right. Amend the decision in Appendix C. |
-| **Open design** | The spec never asked for it. Needs a decision before it needs code. |
+| **Open** | The spec never asked. Needs a decision before it needs code. |
 
 ---
 
-## 1. Nothing flows — *regression*
+## Part 1 — closed
 
-The elevator pitch (§2.1) is "grow a **glowing path** across a honeycomb board". §13.1 asks for "a
-single continuous line of light". §14.1 budgets a 160 ms connector-draw beat for every placement.
+The defects and regressions have been fixed. Kept here in one line each, because a critique that
+deletes its own findings loses the record of what kind of mistake keeps happening.
 
-None of it is on screen while the player is playing. Two causes:
+| # | Finding | Landed as |
+|---|---|---|
+| 1 | Ten of §15.2's sixteen SFX had a WAV, a bus, and no caller. Winning was silent | `f35e836` — plus `EV_GATE_OPENED`, which had no moment to attach to, and `AudioDirector.history`, without which CI cannot hear anything |
+| 2 | The connectors were not drawn during play, so the line the game is named after was never on screen while it was being made | `68bfde6` — C-28 reversed as **C-30** |
+| 3 | The connectors were ruled, straight, one weight; §13.1's "grows **and pulses**" had no pulse | `b44770c` — **C-31** |
+| 4 | §6's standing portal tether was never drawn, so where a portal *went* was unknowable until you had used it | `a3b3f2c` |
+| 5 | §7.2's tie-break counted one stage: `advance()` had a defaulted argument and the director took the default | `da0d356` |
+| 6 | The level screen printed `endless_3`, `par 0` and a permanent `☆☆☆` outside the campaign, and offered an undo §5.9 removes | `32b0ef3` |
+| 7 | Nineteen of §23.1's twenty achievements had no detection anywhere | `f141796` |
+| 8 | `stats.playtime_seconds`, which §23.3 resolves cloud conflicts with, was never written | `62b1d3f` |
+| 9 | §14.1's "banner slides 56 px up" was a bare `visible = true` | `a1a1cdf` |
 
-- **C-28 hides the ribbon until the level is won.** `board_links.gd:225-238` — `draw_newest()`
-  returns immediately during play (`if _traced <= 0.0: return`), and the whole route traces itself
-  as a victory flourish instead. So §14.1's connector beat never fires while a connector is being
-  made.
-- **When it does draw, it is 6% brighter than the tile beneath it.** `board_links.gd:40`,
-  `LINK_LIGHTEN := 0.06`.
-
-The result is that the player's creation is a scatter of tinted hexes for the entire duration of the
-creating, and the one image the game is named after arrives only after every decision is over. The
-trace should be a *reprise* of something watched growing, not the first sight of it.
-
-**Do:** draw the connector on commit, at a lightness that reads. Keep the win trace — it is a good
-idea in the wrong slot. Amend C-28 rather than deleting it.
-
-## 2. The board is mud — *regression*
-
-Empty cells, walls and gates all render as the same brown slab; a wall is separated by hatching
-alone. Behind them is a painted forest that is more interesting to look at than the board is. Pillar
-#1 is "readable in one glance" (§2.2) and the grey-box of M3 satisfied it better than the shipped art
-does.
-
-This is not an argument for going back to `neon_dark`. It is an argument that the C-26 pivot put
-*texture* where the design needed *signal*: the board needs its own value range, clearly separated
-from the backdrop, with empty / wall / candidate / path at four genuinely different luminances.
-`test_palette_vision.gd` already knows how to measure exactly this — it is the tool for the job.
-
-## 3. The biggest moments are silent — *defect*
-
-**Ten of the sixteen SFX in §15.2 are authored, loaded, indexed in `AudioDirector.SFX`, and never
-played by anything:** `goal.reach`, `level.win`, `level.dead`, `tile.advance`, `tile.discard`,
-`tile.autoskip`, `wild.pickup`, `portal.link`, `gate.open`.
-
-Winning a level is a 2 px shake, a route trace and a banner, with no sound but the music duck.
-
-This is the cheapest large improvement available and it is a straight defect — the spec names the
-event for each one.
-
-## 4. The lookahead was traded away — *regression*
-
-§5.3 and §12.3 specify a preview of **current + next 2**. The C-18 coin stack shows current + next 1,
-because a coin under a coin has no readable face, and TODO.md records the trade as deliberate.
-
-Lookahead is the mechanism that converts a random draw into a decision. Trading it for a visual
-traded away pillar #2, "constraint, not chaos" — the game now feels *more* luck-driven than it was
-designed to be, in the mode that was supposed to have no luck in it at all.
-
-**Do:** find a second readable face — a fanned pair, an edge-on sliver with the arrow on the rim, a
-small second slot beside the pile — or accept the regression explicitly in Appendix C rather than
-leaving the spec saying two.
+**The pattern worth noticing:** every one of these is a thing the spec asked for that no test could
+see the absence of. A sound nobody plays, an achievement nobody can earn, a stat nobody writes and a
+tie-break of 0 against 0 all look exactly like the working version from inside a green suite. Where a
+fix added a way to observe the thing — `AudioDirector.history`, the api-name table, the mode HUD
+test — that is the actual repair; the wiring was the easy half.
 
 ---
 
-## 5. Nothing is ever at stake — *open design*
+## Part 2 — open, one decision each
 
-Every pillar in §2.2 is about removing punishment, and the sum of them removed the reason to care:
+Nine questions. Each states the problem, the options, a recommendation and what it costs. They are
+roughly in order of how much they matter to whether the game has a hook, not of how cheap they are.
 
-- unlimited undo (§5.9)
-- no fail state — a dead board is a recoverable banner (§5.8)
-- free auto-discard on an impossible draw (§5.7)
-- chapters unlock at 8 of 12, so nobody is ever blocked (§7.1)
-- **hints are unlimited, free, and replay the solver** (§12.6)
+### D1 · Scoring is one axis, and it is pass/fail
 
-That last one dissolves the star economy on its own: a player can hold `H` repeatedly and be walked
-to a guaranteed ★★★, and the only consequence is a small dot on the level cell.
+**The problem.** `placements <= par` (§5.10), where `par` is the solver optimum over a **fixed** tile
+sequence (§8.3). So three stars in campaign is not a decision, it is a search — and the loop to reach
+it is undo-spam until the sequence is memorised. One number produces a search. Two numbers in tension
+produce a game.
 
-None of these should simply be reversed — they are the game's stated character, and they are why the
-target player (§2.3) is here. But *calm* and *stakeless* are not the same thing, and right now the
-game has no third option between "no pressure" and "punishment".
+**Options.** (a) Leave it — the campaign is a teaching ground and Endless carries the skill. (b) A
+second star condition in tension with brevity: touch every wild, finish with discards unspent, a par
+for *turns* distinct from par for placements. (c) Rebalance so par is genuinely hard rather than
+adding an axis.
 
-## 6. Scoring is one axis, and it is pass/fail — *open design*
+**Recommendation: (b).** It is the single change most likely to decide whether the game has a hook,
+and it costs one field per level file plus a `Scoring` rule. The solver already computes everything
+needed to verify a second objective is attainable.
 
-`placements <= par`, where `par` is the solver optimum over a **fixed** tile sequence (§5.10, §8.3).
-So in campaign, three stars is not a decision — it is a search, and the loop to reach it is
-undo-spam until the sequence is memorised.
+**Cost.** A spec amendment to §5.10, a `Scoring` change, a level-file field, and a re-verification
+sweep. Does *not* require regenerating levels.
 
-One number produces a search. Two numbers in tension produce a game. Candidates that cost nothing
-structurally: touch every wild, finish with discards unspent, a bonus for route length, a par for
-*turns* distinct from par for placements.
+---
 
-## 7. The difficulty curve collapses at chapter 4 — *defect*
+### D2 · Chapter 4 is where the curve collapses
 
-Measured across the 60 shipped level files:
+**The problem.** Measured across the 60 shipped files:
 
 | Ch | par | walls | goals | radius |
 |---|---|---|---|---|
@@ -117,109 +80,164 @@ Measured across the 60 shipped level files:
 | 4 | **6–9** | 6–10 | **1** | 3 |
 | 5 | 10–15 | 8–14 | 2 | 3, 4 |
 
-The player's hardest puzzle is level 34 of 60. The game then gets ~40% easier for twelve levels, and
-drops multi-goal entirely — which §9 says is introduced in chapter 3 and "reused thereafter".
+The hardest puzzle in the game is level 34 of 60. It then gets ~40% easier for twelve levels and
+drops multi-goal entirely. §9 also asks for difficulty "monotonic in `par`" *within* a chapter and it
+is not — chapter 1 peaks at par 7 and ends at 5, chapter 4 peaks at 9 and ends at 7.
 
-§9 also asks for difficulty "monotonic in `par`" within a chapter, and it is not: chapter 1 peaks at
-par 7 and ends at 5, chapter 4 peaks at 9 and ends at 7.
+**The genuine ambiguity, which is why this is not just a defect.** §6 says each modifier is
+"introduced by one chapter and reused thereafter", and §9 introduces multi-goal at chapter 3 — but
+§8.4's parameter table lists chapter 4's modifiers as "portals, gates" with no goal count. So whether
+chapter 4 *should* be multi-goal is a question the spec answers twice. Per C7 that is a question, not
+a licence.
 
-**Do:** re-author chapter 4 against a par band that sits between 3 and 5 and keeps multi-goal, and
-make the authoring sweep in `tools/author_levels.gd` enforce a monotonic band per slot rather than a
-single band per chapter. This invalidates chapter 4's stored pars and stars — an offline `make
-levels` step, fine before release and not after.
+**Options.** (a) §8.4 wins: chapter 4 stays single-goal and the par band is raised to 10–13 so the
+curve still climbs. (b) §9 and §6 win: chapter 4 becomes multi-goal *and* gated/portalled, par 12–16.
+(c) Reorder — move chapter 3 after 4, so mechanics arrive before the difficulty does.
 
-## 8. Nineteen of twenty achievements have no detection — *defect*
+**Recommendation: (b)**, with the authoring sweep in `tools/author_levels.gd` changed to enforce a
+monotonic band **per slot** rather than one band per chapter, which is what let chapters 1 and 4 end
+easier than their own middles.
 
-§23.1 lists twenty. The only `unlock_achievement` call site in the codebase is
-`game_director.gd:419`, `"first_flow"`. There is also no achievements UI anywhere, so
-`achievements_mirror` is write-only from the player's side.
+**Cost.** Regenerating chapter 4 invalidates its stored pars and every star earned in it. That is an
+offline `make levels` step and it is fine before release and not after — so this decision has a
+deadline the others do not.
 
-On Steam, achievements *are* the retention layer. Detection needs no GodotSteam — the mirror and the
-local queue already work, and TODO.md M9 tracks the link separately.
+---
 
-## 9. Nothing accumulates, and what does is not shown — *open design*
+### D3 · Nothing is ever at stake
+
+**The problem.** Every pillar in §2.2 removes punishment, and the sum removed the reason to care:
+unlimited undo (§5.9), no fail state (§5.8), free auto-discard (§5.7), chapters unlocking at 8 of 12
+(§7.1) — and **hints that are unlimited, free, and replay the solver** (§12.6). A player can hold `H`
+repeatedly and be walked to a guaranteed ★★★; the only consequence is a small dot.
+
+*Calm* and *stakeless* are not the same thing, and the game currently has no third option between "no
+pressure" and "punishment".
+
+**Options.** (a) Leave it — this is the stated character and the target player of §2.3 is here for
+it. (b) Make the hint dot cost the third star rather than marking it, so a hint is a *choice*.
+(c) Give the hint a cooldown or a per-level budget. (d) Keep campaign as-is and let D1's second axis
+carry the stakes.
+
+**Recommendation: (d) plus (b).** They compose: a second objective gives something to be careful
+about, and a hint that costs the top band gives being careful a price. Neither adds a fail state.
+
+---
+
+### D4 · The board is mud
+
+**The problem.** Empty cells, walls and gates all render as the same brown slab; a wall is separated
+by hatching alone. Behind them is a painted backdrop more interesting to look at than the board is.
+§2.2's first pillar is "readable in one glance", and the M3 grey-box satisfied it better than the
+shipped art does. The C-26 pivot put *texture* where the design needed *signal*.
+
+**Options.** (a) Widen the board's own value range so empty / wall / candidate / path sit at four
+clearly different luminances. (b) Push the backdrop back — darker, lower contrast, more blur — and
+leave the board as it is. (c) Both.
+
+**Recommendation: (c)**, measured rather than eyeballed. `tests/unit/test_palette_vision.gd` already
+simulates dichromacy and measures the decisions the game forces against WCAG 1.4.11's 3:1 floor; the
+same harness can measure board-versus-backdrop separation, and it would have caught this.
+
+**Cost.** Palette values plus a backdrop treatment. No structural change — §13.2's indirection means
+this is a `.tres` edit and a token or two.
+
+---
+
+### D5 · The lookahead was traded away
+
+**The problem.** §5.3 and §12.3 specify a preview of **current + next 2**. C-18's coin stack shows
+current + next 1, because a coin under a coin has no readable face. Lookahead is the mechanism that
+turns a random draw into a decision, so the trade cost §2.2's "constraint, not chaos" — the game now
+feels *more* luck-driven than designed, in the mode meant to have no luck in it.
+
+**Options.** (a) Find a second readable face — a fanned pair, an edge-on sliver with the arrow on the
+rim, a small second slot beside the pile. (b) Accept the regression and amend §5.3 and §12.3 to say
+one, so the spec stops claiming two.
+
+**Recommendation: (a).** The fan is the cheapest and keeps the pile.
+
+---
+
+### D6 · Nothing accumulates where the player can see it
+
+**The problem.** Detection and storage now work; display does not.
 
 | Persisted | Shown? |
 |---|---|
-| Per-level stars / best / hinted | yes — map and menu |
-| Endless `best_goals` | yes — menu row, run summary |
-| Daily history and streak | yes — seven pips, the best UI in the build |
+| Per-level stars / best / hinted | yes |
+| Endless `best_goals`, daily streak | yes |
 | Endless `runs` | **no** |
-| `achievements_mirror` | **no** |
-| `stats.undos` | **no** |
-| `stats.playtime_seconds`, `stats.total_placements` | **never even written** |
+| `achievements_mirror` (all 20 now earnable) | **no — there is no achievements UI** |
+| `stats.undos`, `playtime_seconds`, `total_placements`, `undo_free_streak` | **no** |
 
-There is no profile or stats screen. Longest path, levels three-starred, hint-free completions, best
-daily streak — all of it is either already in the save or one counter away, and none of it is
-visible. Accumulation the player can see is the cheapest retention there is.
+**Options.** (a) An achievements screen only. (b) One "Record" screen carrying achievements *and*
+the stats. (c) Fold the numbers into the existing main menu and level select.
 
-## 10. The daily has no way to compare — *open design*
+**Recommendation: (b).** It is one screen, `GameDirector.SCENES` takes a new entry, and every number
+on it already exists in the save. Accumulation the player can see is the cheapest retention there is.
 
-§7.3's whole premise is "a shared board is comparable between players". The comparison mechanism is a
-leaderboard, and the leaderboard is a stub (TODO.md M9). There is no share string either, and the
-spec never asks for one — but a hex path is an unusually good fit for the cheapest viral loop in
-puzzle games, and it needs no server.
+---
 
-## 11. Endless escalates by one wall and nothing else — *defect, plus open design*
+### D7 · Endless escalates by one wall and nothing else
 
-Spec C-5 fixes this deliberately ("keep radius 3 and escalate walls only"), so the shallowness is a
-decision rather than an oversight — but three things around it are not:
+**The problem.** Spec C-5 fixes this deliberately — "keep radius 3 and escalate walls only" — so the
+shallowness is a decision, not an oversight. But a run that never introduces a gate, a portal, a wild
+or a budget ends by attrition rather than by anything happening, and attrition is not a reason to
+press Retry. Endless is also where the game's actual fantasy lives (§2.1's "the direction you were
+given, not the one you wanted"), and it got the least attention.
 
-- **`total_placements` is always zero.** `endless_run.gd:advance()` takes
-  `placements_this_stage: int = 0` and the only production call site,
-  `game_director.gd:426`, passes nothing. That number is the leaderboard tiebreak.
-- **The endless and daily HUD is wrong.** `level.gd:_refresh_hud()` resolves the title through
-  `LevelRepository.locate()`, which returns `ZERO` for `endless_3`, so the top bar prints the raw id.
-  Score reads `placements 7 / par 0`, and because `Scoring.stars()` returns 0 for `par <= 0` the live
-  star band shows a permanent `☆☆☆`.
-- **The dead banner offers Undo** in a mode where `undo_available()` is false.
+**Options.** (a) Hold C-5. (b) Introduce one modifier per threshold — gates at 5 goals, portals at
+10, a budget at 15, radius 4 at 20 — reusing the campaign's own ladder. (c) Escalate the *stream*
+instead: shrink the bag, so draws get less fair as the run goes on.
 
-The open-design part is whether C-5 still deserves to hold. A run that never introduces a gate, a
-portal, a wild or a budget ends by attrition rather than by anything happening, and attrition is not
-a reason to press Retry.
+**Recommendation: (b).** It reuses §6 exactly, needs no new rules, and gives a run named thresholds
+to remember and to tell someone about.
 
-## 12. There is no world — *open design*
+---
 
-Chapter names are mechanic labels: `"Flow", "Walls", "Branches", "Gates & Portals", "Pressure"`
-(`level_select.gd:19`). Levels have no names — the frozen JSON has no field for one. Five
-commissioned paintings of a forest, a coast, mountains, ruins and a castle on the horizon sit behind
-the game with nothing connecting them and nothing to reach.
+### D8 · The daily has no way to compare
 
-The only piece of voice in the entire design is a hidden achievement in §23.1 — *"the_long_way:
-complete a level using at least par + 15 placements (hidden, affectionate)"* — and it is not
-implemented.
+**The problem.** §7.3's whole premise is "a shared board is comparable between players". The
+comparison mechanism is a leaderboard, and the leaderboard is a stub pending GodotSteam. There is no
+share string either, and the spec never asks for one.
 
-Naming the chapters after their places, giving the levels names, and letting the level-select journey
-visibly go somewhere costs no new systems and is the difference between five backdrops and a place.
+**Options.** (a) Wait for Steam. (b) Add a share string — a hex-shaped emoji grid of the solved
+route, clipboard-only, no server. (c) Both.
+
+**Recommendation: (c)**, with (b) first, because it does not depend on a GDExtension landing and it
+is the cheapest viral loop in puzzle games.
+
+---
+
+### D9 · There is no world
+
+**The problem.** Chapter names are mechanic labels — `"Flow", "Walls", "Branches", "Gates & Portals",
+"Pressure"` (`level_select.gd:19`). Levels have no names; the frozen JSON has no field for one. Five
+commissioned paintings — forest, coast, mountains, ruins, a castle on the horizon — sit behind the
+game with nothing connecting them and nothing to reach.
+
+The only voice in the entire design is §23.1's hidden `the_long_way`, *"complete a level using at
+least par + 15 placements (hidden, affectionate)"* — and that one line has more personality than
+every other string in the build combined.
+
+**Options.** (a) Leave it abstract. (b) Name the chapters after their places and let the level-select
+journey visibly travel toward the castle. (c) (b) plus per-level names in the level files.
+
+**Recommendation: (b).** It costs five strings and a map treatment, needs no new systems, and it is
+the difference between five backdrops and a place.
 
 ---
 
 ## What is already good, and should not be traded away
 
-Worth stating, because a list of gaps reads as a verdict and this one is not:
+A list of gaps reads as a verdict, and this one is not:
 
 - **The pentatonic ascent that steps back down on undo** (`audio_director.gd:195-220`). A long path
-  becomes a melody and taking a move back *sounds* like taking it back. It is the only thing in the
-  build that makes move eight feel different from move two, and it is doing that work alone.
+  becomes a melody and taking a move back *sounds* like taking it back.
 - **The daily streak pips** — seven marks with today on the right, so the display answers "have I
   played today" and not merely "how many days".
 - **`test_palette_vision.gd`** simulates dichromacy and measures the decisions the game forces
   *after* the simulation. Almost nobody does this, and it found three real defects on its first run.
-- **The layering discipline.** Every gap above is fixable *because* the rules are a pure core with a
-  test suite around them.
-
----
-
-## Suggested order
-
-Cheapest and largest first; the numbers refer to the sections above.
-
-1. §3 — fire the ten dead SFX.
-2. §11 — the endless HUD, the tiebreak, the dead banner.
-3. §1 — draw the connector during play.
-4. §8 — the other nineteen achievements.
-5. §2 — separate the board's value range from the backdrop.
-6. §9 — write and show the stats that already exist.
-7. §6, §7 — the second scoring axis and chapter 4. These decide whether the game has a hook, and
-   both need a decision before they need code.
-8. §12, §10 — names, places, and a way to compare a daily.
+- **The layering discipline.** Every fix in Part 1 was cheap *because* the rules are a pure core with
+  a test suite around them.

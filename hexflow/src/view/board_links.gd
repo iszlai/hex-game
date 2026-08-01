@@ -36,7 +36,10 @@ enum Kind { LINK = 0, TETHER = 1, TETHER_IDLE = 2 }
 ## continuous line of light"; a solid bar in three dimensions reads far heavier
 ## than the same number does in two, and at 0.26 wide and 0.09 thick it was a white
 ## pipe lying on the board rather than a line drawn on it.
-const LINK_WIDTH := 0.14
+## Widened from 0.14 when C-31's ink edge landed: the outline eats the outer 28%
+## of each half-width, so at the old number the *lit* core came out thinner than
+## the stroke had been before it had an edge at all.
+const LINK_WIDTH := 0.18
 const LINK_HEIGHT := 0.05
 
 ## How many slices the bar mesh is cut into along its own length (C-31).
@@ -153,6 +156,12 @@ func bind(state: GameState, layout: HexLayout, tiles: BoardTiles) -> void:
 		var mat := ShaderMaterial.new()
 		mat.shader = load(SHADER)
 		material_override = mat
+	# The board's ink, taken from the same token the tiles and the marks draw their
+	# outlines with (C-23) rather than given one of its own — one outline colour is
+	# what makes the whole board look drawn by one hand.
+	(material_override as ShaderMaterial).set_shader_parameter(
+		"link_ink", Vector3(palette.board_mark_outline.r,
+			palette.board_mark_outline.g, palette.board_mark_outline.b))
 	set_flat(SettingsService.flat_board())
 	set_motion()
 

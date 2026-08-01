@@ -27,6 +27,18 @@ extends SubViewportContainer
 ## board drained to grey would read as a finished one.
 const DEAD_SATURATION := 0.7
 
+## The bloom around the path (§13.1's "line of light"). Chosen numbers, like
+## C-21's camera angles: §14 tabulates timings and §13 tabulates colours, and
+## neither gives a glow a value.
+##
+## The threshold is the load-bearing one. The board's tiles are *lit* and top out
+## well below 1.0, so a threshold above that catches only what the path shader
+## emits — set it lower and the whole scene hazes over, backdrop included.
+const GLOW_THRESHOLD := 0.92
+const GLOW_INTENSITY := 1.15
+const GLOW_BLOOM := 0.20
+const GLOW_STRENGTH := 1.20
+
 ## How far past the far end of the path the band travels before it is done, so the
 ## last cell gets a full pass rather than a half one.
 const FLOW_TAIL := 0.25
@@ -383,10 +395,36 @@ func _add_lighting() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = palette.board_ambient
 	env.ambient_light_energy = 0.95
+	_light_the_path(env)
 	var holder := WorldEnvironment.new()
 	holder.name = "BoardEnvironment"
 	holder.environment = env
 	viewport.add_child(holder)
+
+
+## §13.1 asks the path to read as "a line of light", and light does not stop at
+## the edge of the thing emitting it. Without a bloom the stroke was lit *up to*
+## its ink edge and dark one pixel outside it, which reads as a painted highlight
+## rather than as something glowing on the board.
+##
+## Thresholded well above the board's own brightness so only the path blooms: the
+## tiles are lit, not emissive, and a threshold low enough to catch them would put
+## a haze over the whole scene and take §13.7's painted backdrop with it. The
+## budget is one post-process pass, which §20 has room for at 1280×800 — and it is
+## off entirely under the flat board (C-24), where nothing is emissive by design.
+func _light_the_path(env: Environment) -> void:
+	env.glow_enabled = true
+	env.glow_intensity = GLOW_INTENSITY
+	env.glow_bloom = GLOW_BLOOM
+	env.glow_strength = GLOW_STRENGTH
+	env.glow_hdr_threshold = GLOW_THRESHOLD
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	# The near levels are the tight halo that hugs the stroke; the wider ones are
+	# the spill. Skipping the widest keeps the bloom local to the line rather than
+	# washing the board it lies on.
+	env.set_glow_level(1, 1.0)
+	env.set_glow_level(2, 0.7)
+	env.set_glow_level(3, 0.35)
 
 
 ## §21's escape hatch, live: a player turning it on mid-level sees the board go
