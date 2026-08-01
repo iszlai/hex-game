@@ -31,7 +31,10 @@ const SEEDS := 10
 ## `author_levels.gd`'s number, for the same reason.
 const SEED_STRIDE := 7919
 
-## How far the carve may retry before calling a goal unreachable.
+## How many steps the wandering walk may take before it is finished off by the
+## shortest line instead (see [method _recover]). A cap on the wandering, not a
+## verdict on the goal: sixty-one cells cannot need two hundred steps, so a walk
+## still going at that point is going in circles.
 const CARVE_GUARD := 200
 
 
@@ -140,8 +143,15 @@ static func carve(draft: MapDraft, rng: RandomNumberGenerator, wander: int) -> A
 	for goal: Vector3i in draft.goals():
 		if not open.has(goal):
 			return [] as Array[int]
+		# A goal an earlier leg already walked over is **done**, not a leg of length
+		# zero. It used to be the second: the walk was asked to go from the goal to
+		# the goal, returned nothing because there was nothing to do, and the empty
+		# leg was read as a failure — so a board whose first route happened to cross
+		# its second goal could not be filled at all, however many seeds were tried.
+		if reserved.has(goal):
+			continue
 		var leg := _walk(rng, open, reserved, _branch_origin(rng, reserved, goal), goal, wander)
-		if leg.is_empty() and goal != draft.start:
+		if leg.is_empty():
 			return [] as Array[int]
 		dirs.append_array(leg)
 	return dirs
@@ -168,6 +178,15 @@ static func _branch_origin(
 ## A random walk from [param origin] to [param goal], biased toward it and
 ## wandering [param wander] extra steps. Marks every cell it visits reserved, so a
 ## later leg cannot cross back over this one and make the route self-touching.
+##
+## **The walk never steps away from the goal**, only closer or sideways, which is
+## what keeps a route from doubling back on itself and looking generated. It is
+## also why it can be cornered: any board where the way round starts by going the
+## wrong way is a board where the walk stops with nowhere to go. That used to lose
+## the whole seed, and a board with one tight corridor lost all ten the same way —
+## Fill would report "no deal made this board solvable" about a board the author
+## could solve by eye. [method _recover] is the answer, and it runs only from a
+## dead end, so a walk that had room keeps the shape it chose.
 static func _walk(
 	rng: RandomNumberGenerator,
 	open: Dictionary,
@@ -177,13 +196,16 @@ static func _walk(
 	wander: int
 ) -> Array[int]:
 	var dirs: Array[int] = []
+	# What this leg took, so a rewind gives back exactly that and not a cell some
+	# earlier leg is standing on.
+	var mine: Array[Vector3i] = []
 	var current: Vector3i = origin
 	var wander_left: int = wander
 	var guard: int = 0
 	while current != goal:
 		guard += 1
 		if guard > CARVE_GUARD:
-			return [] as Array[int]
+			return _recover(open, reserved, mine, dirs, origin, current, goal)
 		var closer: Array[int] = []
 		var sideways: Array[int] = []
 		var d_now: int = Hex.distance(current, goal)
@@ -203,12 +225,103 @@ static func _walk(
 		if pool.is_empty():
 			pool = closer if not closer.is_empty() else sideways
 		if pool.is_empty():
-			return [] as Array[int]
+			return _recover(open, reserved, mine, dirs, origin, current, goal)
 		var chosen: int = pool[rng.randi_range(0, pool.size() - 1)]
 		current += Direction.delta(chosen)
 		reserved[current] = true
+		mine.append(current)
 		dirs.append(chosen)
 	return dirs
+
+
+## A cornered walk, finished by hand. Two goes at it, in this order:
+##
+## 1. **Finish from where it stopped.** The shortest remaining line, which keeps
+##    every wandering step the walk had already earned.
+## 2. **Give the leg back and go straight there.** Only if the first fails, because
+##    the corner the walk painted itself into is sometimes the reason there is no
+##    way on at all — and the cells it spent getting there are what is in the way.
+##
+## Empty when the goal is genuinely walled off from this origin, which is a real
+## answer and the one case the seed deserves to be rejected for.
+static func _recover(
+	open: Dictionary,
+	reserved: Dictionary,
+	mine: Array[Vector3i],
+	dirs: Array[int],
+	origin: Vector3i,
+	current: Vector3i,
+	goal: Vector3i
+) -> Array[int]:
+	var rest: Array[int] = _shortest(open, reserved, current, goal)
+	if not rest.is_empty():
+		_reserve_along(reserved, current, rest)
+		var out: Array[int] = dirs.duplicate()
+		out.append_array(rest)
+		return out
+	for c: Vector3i in mine:
+		reserved.erase(c)
+	var direct: Array[int] = _shortest(open, reserved, origin, goal)
+	if direct.is_empty():
+		return [] as Array[int]
+	_reserve_along(reserved, origin, direct)
+	return direct
+
+
+## The shortest way from [param origin] to [param goal] over cells that are open
+## and not already spoken for, as the directions of its steps. Empty when there is
+## none — including when the two are the same cell, which is not a way anywhere.
+##
+## Breadth-first, so what it finds is the shortest line left and the route it
+## completes is no longer than the walk made it.
+static func _shortest(
+	open: Dictionary, reserved: Dictionary, origin: Vector3i, goal: Vector3i
+) -> Array[int]:
+	if origin == goal:
+		return [] as Array[int]
+	var came: Dictionary = {origin: origin}
+	var queue: Array[Vector3i] = [origin]
+	var head: int = 0
+	while head < queue.size():
+		var c: Vector3i = queue[head]
+		head += 1
+		for dir: int in Direction.ALL:
+			var n: Vector3i = c + Direction.delta(dir)
+			if came.has(n) or not open.has(n) or reserved.has(n):
+				continue
+			came[n] = c
+			if n == goal:
+				return _directions_back(came, origin, goal)
+			queue.append(n)
+	return [] as Array[int]
+
+
+static func _directions_back(
+	came: Dictionary, origin: Vector3i, goal: Vector3i
+) -> Array[int]:
+	var cells: Array[Vector3i] = []
+	var c: Vector3i = goal
+	while c != origin:
+		cells.append(c)
+		c = came[c] as Vector3i
+	cells.reverse()
+	var dirs: Array[int] = []
+	var at: Vector3i = origin
+	for cell: Vector3i in cells:
+		dirs.append(Direction.between(at, cell))
+		at = cell
+	return dirs
+
+
+## Reserves the cells a recovered line runs through. The walk does this as it
+## goes; a line that arrived all at once has to be told.
+static func _reserve_along(
+	reserved: Dictionary, from: Vector3i, dirs: Array[int]
+) -> void:
+	var at: Vector3i = from
+	for dir: int in dirs:
+		at += Direction.delta(dir)
+		reserved[at] = true
 
 
 ## [Generator] step 6, on a route that was carved rather than generated. Decoys

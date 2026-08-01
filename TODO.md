@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-08-01** — Godot 4.7.1, 637 tests green in ~35 s, 60 frozen level files
+Last verified: **2026-08-01** — Godot 4.7.1, 639 tests green in ~35 s, 60 frozen level files
 re-verified.
 
 ---
@@ -877,6 +877,11 @@ for why an authoring tool is not the "level editor" §27 declined.
       author can solve by eye. Every step is checked against the game's own rules — anchor, wall,
       gate, portal twin — so a traced sequence is a recorded legal play and therefore winnable by
       construction, which the seed sweep cannot promise — `tests/unit/test_map_editor.gd`
+- [x] **The two ways Fill failed** (§4.4.2) — both in the carve, so both failed identically on all
+      ten seeds and the ten tries looked like diligence. A walk that cornered itself lost the whole
+      seed; it now finishes by the shortest line from where it stopped, or hands the leg back and
+      goes straight there. A goal an earlier leg had already crossed was read as a leg that failed
+      rather than one with nothing to do — `tests/unit/test_map_editor.gd`
 - [x] **One canonical level-file format** — every writer routes through `hexflow/tools/level_file.gd`,
       and `tests/property/test_level_files.gd` asserts all 60 shipped files are byte-identical to
       what it produces. The 60 were reformatted once to match: they held `"chapter": 1.0` because

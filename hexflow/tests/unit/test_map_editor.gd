@@ -222,6 +222,75 @@ func test_fill_is_reproducible_from_its_seed() -> void:
 	assert_eq(second.tiles, first.tiles)
 
 
+## Replays a carved route from the start and returns every cell it stands on.
+## Only meaningful for a single-goal board, where the route is one leg from the
+## start — a second goal forks from wherever the trunk is nearest, so its
+## directions do not continue the first leg's line.
+func _cells_along(draft: MapDraft, route: Array[int]) -> Array[Vector3i]:
+	var out: Array[Vector3i] = [draft.start]
+	var at: Vector3i = draft.start
+	for dir: int in route:
+		at += Direction.delta(dir)
+		out.append(at)
+	return out
+
+
+## The carve's walk only ever steps closer to the goal or sideways, which is what
+## keeps a route from doubling back and looking generated — and is why a board
+## whose way round starts by going the *wrong* way can corner it. Every seed is
+## cornered in the same place, so a board like this used to fail all ten and
+## report "no deal made this board solvable" about a board with an obvious route.
+func test_a_cornered_walk_finishes_the_long_way_round_instead_of_giving_up() -> void:
+	var draft := MapDraft.new()
+	draft.apply_shape("hexagon", 2, 0)
+	draft.set_content(Vector3i(0, 0, 0), MapDraft.Content.START)
+	draft.set_content(Vector3i(2, 0, -2), MapDraft.Content.GOAL)
+	# Every neighbour of the start that is closer to the goal, or level with it.
+	# What is left all leads away, which is what the walk will not do.
+	for c: Vector3i in [Vector3i(1, 0, -1), Vector3i(0, 1, -1), Vector3i(1, -1, 0)]:
+		draft.set_content(c, MapDraft.Content.WALL)
+
+	for seed_value: int in [0, 1, 7, 99]:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed_value
+		var route := TileFiller.carve(draft, rng, 0)
+		assert_false(route.is_empty(), "seed %d found no route round the walls" % seed_value)
+		var cells := _cells_along(draft, route)
+		assert_eq(cells[cells.size() - 1], Vector3i(2, 0, -2), "the route ends on the goal")
+		for c: Vector3i in cells:
+			assert_true(draft.has(c), "the route left the board at %v" % c)
+			assert_ne(draft.content_at(c), MapDraft.Content.WALL, "the route crossed a wall at %v" % c)
+
+	# And end to end, which is the claim an author cares about: Fill has a deal for
+	# a board it used to have nothing to say about.
+	var deal := TileFiller.try_seed(draft, 0, 1 << 30)
+	assert_not_null(deal, "Fill still refuses the board")
+	if deal != null:
+		var level := draft.to_level()
+		level.tiles = deal.tiles
+		assert_true(Solver.solve(level).is_solvable(), "and the deal it keeps is winnable")
+
+
+## A goal an earlier leg already walked over is done, not a leg of length zero.
+## The walk was asked to go from the goal to the goal, returned nothing because
+## there was nothing to do, and the empty leg was read as a failure — so a board
+## whose first route crossed its second goal could not be filled at all.
+##
+## The route to (2,0,-2) is forced: from the start it is the only line that never
+## steps away from it, and it runs straight over the second goal at the centre.
+func test_a_goal_the_route_already_crossed_does_not_fail_the_carve() -> void:
+	var draft := MapDraft.new()
+	draft.apply_shape("hexagon", 2, 0)
+	draft.set_content(START, MapDraft.Content.START)
+	draft.set_content(Vector3i(2, 0, -2), MapDraft.Content.GOAL)
+	draft.set_content(Vector3i(0, 0, 0), MapDraft.Content.GOAL)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var route := TileFiller.carve(draft, rng, 0)
+	assert_eq(route, [Direction.NE, Direction.NE, Direction.NE, Direction.NE] as Array[int],
+		"one line covers both goals, and the second leg has nothing to add")
+
+
 ## The carve routes around a gate rather than through it: §6's gate needs two path
 ## neighbours before it opens, and a single-file route arrives with one.
 func test_the_carve_avoids_gates() -> void:

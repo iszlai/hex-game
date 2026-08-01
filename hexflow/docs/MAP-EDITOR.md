@@ -206,13 +206,11 @@ since the sequence was made.
 
 #### 4.4.1 Trace, and why Fill was not enough
 
-**Fill does not always fill, and cannot be argued with when it doesn't.** Each of its ten seeds is a
-biased random walk from the start; a walk that paints itself into a corner is thrown away whole, and
-on a board with a tight corridor or a goal behind a doorway all ten do it. What the author gets is
-*"no deal made this board solvable"* about a board that is perfectly solvable — they can see the
-route with their eye and there is no way to tell the tool about it.
+**Fill did not always fill, and could not be argued with when it didn't.** Two ways it failed, both
+now fixed — see below — and one reason it will always be able to fail again: it searches, and a
+search that comes back empty has nothing to say about a board the author can solve by eye.
 
-Trace is that way. Every click is checked against the rules the game plays by — the tile is laid
+Trace is the way to tell it. Every click is checked against the rules the game plays by — the tile is laid
 against a cell the path already has (§5.4), never onto a wall or onto itself, a gate only opens on
 the second approach (§6), and stepping on a portal carries the path to its twin (§5.5.3). So what
 comes out is a **recorded legal play**, and therefore a sequence the solver can win *by
@@ -237,6 +235,22 @@ Validate, seconds later, with nothing to point at.
 
 A traced sequence has no decoys in it — it is exactly the tiles the route spends. Padding it is
 the text field's job, or Fill's on a board where Fill works.
+
+#### 4.4.2 The two ways Fill failed — **fixed**
+
+Both were in the carve, not in the sweep, so they failed the same way on every one of the ten seeds
+and the ten tries looked like diligence.
+
+- **A cornered walk lost the whole seed.** The walk only ever steps closer to the goal or level
+  with it, which is what keeps a route from doubling back and looking generated. On a board whose
+  way round *starts* by going the wrong way it has nowhere legal to go, and it gave up. It now
+  finishes by the shortest remaining line from where it stopped; failing that, it hands back the
+  cells this leg took and goes straight there. Only from a dead end, so a walk with room still
+  keeps the shape it chose. Empty now means the goal is genuinely walled off, which is the one case
+  a seed deserves to be rejected for.
+- **A goal the route had already crossed failed the carve.** With two goals, the leg to the second
+  was asked to walk from that goal to that goal, returned nothing because there was nothing to do,
+  and the empty leg was read as a failure. A crossed goal is *done*, and is now skipped.
 
 ---
 
