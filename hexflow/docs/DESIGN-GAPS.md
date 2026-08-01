@@ -49,24 +49,36 @@ roughly in order of how much they matter to whether the game has a hook, not of 
 
 ### D1 · Scoring is one axis, and it is pass/fail
 
+**Decided 2026-08-01: fold into D2 and build a real second resource into the levels.** What follows
+is the measurement taken while choosing, because it changes what D2 has to do.
+
 **The problem.** `placements <= par` (§5.10), where `par` is the solver optimum over a **fixed** tile
-sequence (§8.3). So three stars in campaign is not a decision, it is a search — and the loop to reach
-it is undo-spam until the sequence is memorised. One number produces a search. Two numbers in tension
+sequence (§8.3). Three stars in campaign is not a decision, it is a search — and the loop to reach it
+is undo-spam until the sequence is memorised. One number produces a search. Two numbers in tension
 produce a game.
 
-**Options.** (a) Leave it — the campaign is a teaching ground and Endless carries the skill. (b) A
-second star condition in tension with brevity: touch every wild, finish with discards unspent, a par
-for *turns* distinct from par for placements. (c) Rebalance so par is genuinely hard rather than
-adding an axis.
+**What the shipped levels can support — measured, not guessed** (`tools/measure_slack.gd`):
 
-**Recommendation: (b).** It is the single change most likely to decide whether the game has a hook,
-and it costs one field per level file plus a `Scoring` rule. The solver already computes everything
-needed to verify a second objective is attainable.
+- The optimal line spends the level's **entire** discard budget on 44 of 60 levels. Six levels grant
+  none at all. So "finish with a discard unspent" is *incompatible with par* on 44 levels and
+  *automatic* on 6.
+- Granting every level one more discard: 32 of 60 gain slack, and **20 pars move**. Granting two: 41
+  of 60, and **24 pars move**. A par that moves invalidates every star already earned on that level.
+- Wilds exist only in chapter 5 (12 of 60), so "touch every wild" cannot be campaign-wide either.
 
-**Cost.** A spec amendment to §5.10, a `Scoring` change, a level-file field, and a re-verification
-sweep. Does *not* require regenerating levels.
+**The reason, which is not about the levels at all.** `solver.gd:258` — *"Voluntary discard: costs a
+charge, never a placement, so `g` is unchanged."* A discard is **free in the objective function**. The
+solver will therefore spend every discard it is given, on every board, however the generator is
+tuned. `discards` cannot become a resource by re-authoring, because the thing that consumes it is the
+definition of par, not the shape of the board.
 
----
+**So re-authoring alone does not produce the axis.** The correction is to make par count something a
+discard costs — a second objective (`turn_par` = fewest `placements + voluntary discards`) computed
+by the same solver with the discard branch costing 1 instead of 0. That conflicts with `par` by
+construction, needs **no board regeneration and loses no stars**, and stores one integer per level.
+
+**Still open for D2:** whether the second award rides `turn_par` (cheap, works on the shipped 60) or
+a re-authored resource (expensive, and still needs the cost-function change to mean anything).
 
 ### D2 · Chapter 4 is where the curve collapses
 
