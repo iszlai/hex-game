@@ -45,7 +45,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
-        test-file gate levels sheet sfx art icon glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
+        test-file gate levels tutorial sheet sfx art icon glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
         playtest playtest-restore edit-maps play-draft \
         clean clean-levels legacy-branch status
 
@@ -153,6 +153,11 @@ levels: check ## Regenerate and re-verify campaign levels. CHAPTER=3 for one
 	@$(RUN_CMD) --headless -s res://tools/author_levels.gd -- $(CHAPTER)
 	@echo
 	@echo "levels are frozen data — commit the JSON, and expect pars to change"
+
+tutorial: check ## Rebuild and re-verify §10's five teaching boards
+	@$(RUN_CMD) --headless -s res://tools/author_tutorial.gd
+	@echo
+	@echo "the lessons are frozen data — commit the JSON"
 
 edit-maps: check ## Draw a campaign board by hand (hexflow/docs/MAP-EDITOR.md)
 	@$(RUN_CMD) --resolution 1440x900 res://tools/map_editor/map_editor.tscn

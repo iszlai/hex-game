@@ -8,8 +8,14 @@ enum Kind { EMPTY = 0, WALL = 1 }
 
 ## Flags are a bitmask so a cell can be, say, both a GOAL and a GATE.
 ## Below this a board has no room for a route worth playing. Not a spec number —
-## the smallest shipped board is a radius-2 hexagon at 19 cells.
-const MIN_CELLS := 12
+## the smallest *campaign* board is a radius-2 hexagon at 19 cells, and
+## `tests/property/test_level_files.gd` holds the sixty to that floor.
+##
+## Six, because §10's tutorial teaches one idea per board and a board with room
+## for a second idea on it is teaching two. Three cells wide and two deep is the
+## smallest thing that can hold a start, a goal, a wall between them and a way
+## round — which is the second lesson, and the largest of the five.
+const MIN_CELLS := 6
 
 const F_START := 1
 const F_GOAL := 2

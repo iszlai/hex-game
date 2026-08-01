@@ -1,0 +1,97 @@
+{
+  "budget": null,
+  "chapter": 0,
+  "discards": 0,
+  "gates": [],
+  "generator": {
+    "params_version": 1,
+    "seed": 0
+  },
+  "goals": [
+    [
+      2,
+      -1,
+      -1
+    ]
+  ],
+  "id": "t_l03",
+  "index": 3,
+  "metrics": {
+    "forgiving": -1,
+    "routes": -1
+  },
+  "par": 2,
+  "portals": [
+    [
+      [
+        0,
+        1,
+        -1
+      ],
+      [
+        2,
+        -2,
+        0
+      ]
+    ]
+  ],
+  "radius": 3,
+  "schema": 1,
+  "shape": "corridor",
+  "shape_arg": 2,
+  "solution": [
+    [
+      0,
+      1,
+      -1
+    ],
+    [
+      2,
+      -1,
+      -1
+    ]
+  ],
+  "solution_script": [
+    [
+      0,
+      [
+        0,
+        1,
+        -1
+      ]
+    ],
+    [
+      0,
+      [
+        2,
+        -1,
+        -1
+      ]
+    ]
+  ],
+  "start": [
+    0,
+    0,
+    0
+  ],
+  "tiles": [
+    "NW",
+    "NW",
+    "E",
+    "SE"
+  ],
+  "uid": "t_l03",
+  "walls": [
+    [
+      1,
+      0,
+      -1
+    ],
+    [
+      1,
+      -1,
+      0
+    ]
+  ],
+  "wilds": []
+}

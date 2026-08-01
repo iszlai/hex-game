@@ -60,6 +60,54 @@ func test_every_level_file_is_written_in_the_canonical_form() -> void:
 					% path.get_file())
 
 
+## §10's five teaching boards are frozen data on the same terms as the sixty, and
+## for a sharper reason: every one of them has words on screen describing the
+## route through it, so a board that stopped reproducing its line would leave the
+## tutorial telling a first-time player to do something that no longer works.
+func test_every_tutorial_file_validates_and_reproduces_its_line() -> void:
+	Tutorial.clear_cache()
+	for index: int in range(1, Tutorial.COURSE_LENGTH + 1):
+		var path := Tutorial.level_path(index)
+		assert_true(FileAccess.file_exists(path), "missing %s" % path)
+		var lesson := Tutorial.level(index)
+		assert_not_null(lesson, "could not load %s" % path)
+		if lesson == null:
+			continue
+		var problems := LevelRepository.verify(lesson)
+		assert_eq(problems, [] as Array[String], "%s: %s" % [lesson.id, ", ".join(problems)])
+		# The words say "place it on the lit cell", and the lit cell is this line.
+		assert_gt(lesson.solution_script.size(), 0, "%s stores no line" % lesson.id)
+
+
+## And in the same canonical form, written by the same writer — so `make tutorial`
+## reformats nothing on top of whatever it actually changed.
+func test_every_tutorial_file_is_written_in_the_canonical_form() -> void:
+	Tutorial.clear_cache()
+	for index: int in range(1, Tutorial.COURSE_LENGTH + 1):
+		var path := Tutorial.level_path(index)
+		var on_disk := FileAccess.get_file_as_string(path)
+		var lesson := LevelFile.read(path)
+		assert_not_null(lesson, "could not read %s" % path)
+		if lesson == null:
+			continue
+		assert_eq(LevelFile.text_of(lesson), on_disk,
+			"%s is not in the form LevelFile writes" % path.get_file())
+
+
+## [constant Board.MIN_CELLS] came down to six so §10's boards could be as small
+## as one idea, and the campaign's own floor moved here rather than disappearing.
+## Nineteen is the radius-2 hexagon §8.4 gives chapter 1; anything under it is a
+## board with no room for a route worth playing, and the only reason one would
+## appear in the sixty is a bug in the sweep.
+func test_the_campaign_keeps_its_own_floor_on_board_size() -> void:
+	LevelRepository.clear_cache()
+	for chapter: int in range(1, LevelRepository.CHAPTERS + 1):
+		for index: int in range(1, LevelRepository.LEVELS_PER_CHAPTER + 1):
+			var level := LevelRepository.load_level(chapter, index)
+			assert_gte(level.board.size(), 19,
+				"%s is smaller than a radius-2 hexagon" % level.id)
+
+
 func test_every_level_round_trips_through_json() -> void:
 	LevelRepository.clear_cache()
 	var level := LevelRepository.load_level(4, 7)
@@ -180,8 +228,10 @@ func test_every_level_is_the_shape_its_file_claims() -> void:
 				"%s is not the board it says it is" % level.id)
 			seen[level.board.shape] = true
 
-	# §10's tutorial runs in chapter 1, and a beat that says "grow from any path
-	# cell" over a corridor is teaching the corridor instead.
+	# Chapter 1 is the first hour, and a player arriving from §10's course has just
+	# learnt what a wall and a gate are — not what a corridor is. The shapes start
+	# in chapter 2, where a silhouette is a thing to notice rather than one more
+	# unexplained rule.
 	for index: int in range(1, LevelRepository.LEVELS_PER_CHAPTER + 1):
 		assert_eq(LevelRepository.load_level(1, index).board.shape, "hexagon",
 			"chapter 1 level %d is not a plain board" % index)
