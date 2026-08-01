@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-08-01** — Godot 4.7.1, 625 tests green in ~35 s, 60 frozen level files
+Last verified: **2026-08-01** — Godot 4.7.1, 626 tests green in ~35 s, 60 frozen level files
 re-verified.
 
 ---

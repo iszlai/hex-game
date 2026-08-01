@@ -460,6 +460,11 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 		# §14.5 reaches a board already on screen: the loops stop where they are
 		# rather than at the next level, and the emitters go quiet with them.
 		tiles.set_motion()
+		# The stroke's own loop is a loop like the other two, and it was only ever
+		# told at bind time — so turning Reduce Motion on mid-level left the bolt
+		# running down a board that had stopped moving in every other respect. The
+		# tiles take the same period, so the bolt and its landing stop together.
+		links.set_motion()
 		tiles.set_pulse_seconds(BoardLinks.pulse_period())
 		marks.set_motion()
 		particles.set_motion()

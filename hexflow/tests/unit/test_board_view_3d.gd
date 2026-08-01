@@ -205,6 +205,22 @@ func test_the_band_discharges_into_the_cell_it_reaches() -> void:
 	assert_ne(_view.tiles.strike_at(), BoardTiles.STRIKE_NOWHERE, "at the route's end")
 
 
+## §14.5 reaches a board that is already on screen — the loops stop where they are
+## rather than at the next level. The stroke's own loop was missing from that list
+## and kept running, which is the one loop the player is most likely to be looking
+## at when they turn the setting on.
+func test_reduce_motion_reaches_the_stroke_already_on_screen() -> void:
+	SettingsService.set_value("reduce_motion", false)
+	var links: ShaderMaterial = _view.links.material_override
+	var tiles: ShaderMaterial = _view.tiles.material_override
+	assert_eq(links.get_shader_parameter("pulse_seconds"), BoardLinks.PULSE_SECONDS)
+
+	SettingsService.set_value("reduce_motion", true)
+	assert_eq(links.get_shader_parameter("pulse_seconds"), 0.0, "the bolt stops")
+	assert_eq(tiles.get_shader_parameter("pulse_seconds"), 0.0,
+		"and so does what it lands on")
+
+
 ## A second placement while the first pulse is still travelling restarts it rather
 ## than running two bands down the same path.
 func test_a_second_placement_restarts_the_pulse() -> void:
