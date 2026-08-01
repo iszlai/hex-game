@@ -42,6 +42,7 @@ Single developer, so there is no review to wait for and no branch protection to 
 | [`TODO.md`](TODO.md) | What is done, what is next |
 | [`hexflow/docs/ASSET-REQUIREMENTS.md`](hexflow/docs/ASSET-REQUIREMENTS.md) | Every image, colour, sound and setting someone outside the repo has to provide, and what stands in for it today |
 | [`hexflow/docs/DESIGN-GAPS.md`](hexflow/docs/DESIGN-GAPS.md) | What stands between a spec-complete build and a game someone plays twice. Separates defects from decisions that need making |
+| [`hexflow/docs/MAP-EDITOR.md`](hexflow/docs/MAP-EDITOR.md) | Brief for the hand-authoring tool. **Not built** — this is the whole spec, including why it does not violate §27's "no level editor" |
 
 The spec outranks every other document. If code and spec disagree, the code is a bug. If the **spec**
 is wrong, log it in Appendix C and fix it there — do not silently diverge (constraint C7).
