@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3]
+
+; The whole scene. §2 needs the editor to run as a scene rather than as a `-s`
+; MainLoop script, because it needs input, a UI and a render — the three things a
+; MainLoop script does not get. Everything inside it is built by the script; see
+; the note at the top of `map_editor.gd` for why the node tree is not spelled out
+; here.
+
+[ext_resource type="Script" path="res://tools/map_editor/map_editor.gd" id="1_editor"]
+
+[node name="MapEditor" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_editor")
