@@ -32,6 +32,30 @@ var solution: Array[Vector3i] = []
 var solution_script: Array = []
 
 ## Provenance only — never read at runtime.
+## A permanent name for *this level*, independent of where it sits in the campaign.
+##
+## `id` — `"c3_l07"` — names a **slot**, and the save used to key every star, best
+## score and hint flag on it. Moving a level to another slot therefore left its
+## stars behind for whatever took its place: a player would open a level they had
+## never seen already three-starred, and the one they had actually earned it on
+## would read blank. Progress keys on this instead, so position is presentation.
+##
+## Minted once by whatever authors the file and never reused. Empty on a level
+## that predates C-34, which `LevelRepository` fills in from the slot so an
+## unstamped file still loads.
+var uid: String = ""
+
+## What the save keys this level's progress on: its own name if it has one, and
+## its slot id if it does not.
+##
+## The fallback is not a nicety. A [Level] built in code rather than loaded from a
+## file — every endless stage, every daily, every fixture in `tests/` — never
+## passes through the loader that fills a uid in, so without this they would all
+## record progress under the empty string, which is one shared row for all of them.
+func progress_key() -> String:
+	return uid if uid != "" else id
+
+
 var generator_seed: int = 0
 
 ## What the level was *authored to be* (C-33): how many distinct ways there are to

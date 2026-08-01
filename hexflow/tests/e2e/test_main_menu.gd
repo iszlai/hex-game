@@ -93,7 +93,9 @@ func test_campaign_carries_the_completion_percentage() -> void:
 
 	for chapter: int in range(1, 3):
 		for index: int in range(1, LevelRepository.LEVELS_PER_CHAPTER + 1):
-			(SaveService.data["campaign"] as Dictionary)[LevelRepository.id_for(chapter, index)] = {
+			# Keyed on the level's own name (C-34), which is what [Campaign] reads.
+			(SaveService.data["campaign"] as Dictionary)[
+				LevelRepository.load_level(chapter, index).progress_key()] = {
 				"completed": true, "best_placements": 8, "stars": 3, "hinted": false,
 			}
 	await _open()

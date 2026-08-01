@@ -142,6 +142,10 @@ static func from_dict(d: Dictionary) -> Level:
 	level.authored_routes = int(metrics.get("routes", -1))
 	level.authored_forgiving = int(metrics.get("forgiving", -1))
 	level.id = str(d.get("id", ""))
+	# A file written before C-34 has no uid. Falling back to the slot id keeps it
+	# loadable and keeps whatever progress was already recorded against it — the
+	# fallback is the *old* behaviour, so nothing is lost by upgrading.
+	level.uid = str(d.get("uid", "")) if str(d.get("uid", "")) != "" else level.id
 	level.chapter = int(d.get("chapter", 0))
 	level.index = int(d.get("index", 0))
 	level.discards = int(d.get("discards", 3))
@@ -187,6 +191,7 @@ static func to_dict(level: Level) -> Dictionary:
 	return {
 		"schema": SCHEMA,
 		"id": level.id,
+		"uid": level.uid,
 		"chapter": level.chapter,
 		"index": level.index,
 		# The size the shape was *asked* for, not the radius it turned out to reach:

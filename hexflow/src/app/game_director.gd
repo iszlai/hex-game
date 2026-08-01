@@ -451,7 +451,7 @@ func _on_won(placements: int) -> void:
 	EventBus.level_won.emit(placements, level.par, stars)
 	match mode:
 		Mode.CAMPAIGN:
-			SaveService.record_completion(level.id, placements, stars, hints_used > 0)
+			SaveService.record_completion(level.progress_key(), placements, stars, hints_used > 0)
 			# The save is written first, because §23.1's chapter conditions are
 			# claims about all twelve levels and this is one of them. Reading them
 			# before the completion is recorded asks the question one level early.

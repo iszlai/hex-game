@@ -94,7 +94,11 @@ func _play_out() -> void:
 
 
 func _complete(chapter: int, index: int) -> void:
-	(SaveService.data["campaign"] as Dictionary)[LevelRepository.id_for(chapter, index)] = {
+		# Keyed on the level's own name (C-34), which is what [Campaign] reads — the
+	# slot id was the key until levels got names, and a fixture still using it
+	# would be invisible to the screen under test.
+	(SaveService.data["campaign"] as Dictionary)[
+		LevelRepository.load_level(chapter, index).progress_key()] = {
 		"completed": true, "best_placements": 9, "stars": 3, "hinted": false,
 	}
 

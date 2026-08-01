@@ -21,6 +21,9 @@ const OUT_ROOT := "res://src/data/levels"
 ## What the winning candidate scored, for the line printed about it. Held here
 ## rather than returned because `_author` already returns the level and a second
 ## return value would be a Dictionary nobody reads twice.
+## Names already issued in this run, so two slots cannot collide.
+var _minted: Dictionary = {}
+
 var _scored_routes: int = -1
 var _scored_forgiving: int = -1
 
@@ -119,6 +122,21 @@ func _author(chapter: int, index: int) -> Level:
 
 ## Each shape's second parameter, and the size that keeps it inside the solver's
 ## 61-cell ceiling while still being worth playing on (C-32).
+## A permanent name for a level. `randi()` is fine here — C2 bans it in `src/`,
+## where determinism is the requirement; this is an authoring step whose output is
+## committed and read back as frozen data.
+func _mint() -> String:
+	var chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	while true:
+		var out: String = ""
+		for _i: int in range(10):
+			out += chars[randi() % chars.length()]
+		if not _minted.has(out):
+			_minted[out] = true
+			return out
+	return ""
+
+
 func _shape_arg(shape: String) -> int:
 	match shape:
 		"ring": return 1
@@ -137,6 +155,12 @@ func _shape_size(shape: String, radius: int) -> int:
 
 
 func _stamp(level: Level, chapter: int, index: int) -> Level:
+	# A fresh uid, never the one already at this slot (C-34). The sweep produces a
+	# *different level*, and inheriting the old name would hand a player's stars to
+	# a board they have never seen — which is the exact bug uids exist to prevent,
+	# arriving from the other direction. The map editor does the opposite and keeps
+	# the uid, because there it is the same level being tweaked.
+	level.uid = _mint()
 	level.authored_routes = _scored_routes
 	level.authored_forgiving = _scored_forgiving
 	level.id = LevelRepository.id_for(chapter, index)

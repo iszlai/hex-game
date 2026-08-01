@@ -106,6 +106,28 @@ func test_the_loader_rejects_a_future_schema_instead_of_guessing() -> void:
 	assert_push_error("newer than this build understands")
 
 
+## C-34: every level has a permanent name of its own, and no two share one.
+##
+## `id` names a *slot* — `"c3_l07"` — and the save used to key every star on it,
+## so moving a level to another slot left its stars behind for whatever took its
+## place: a player would open a level they had never seen already three-starred.
+## Progress keys on the uid now, which makes two levels sharing one the way that
+## bug comes back — silently, as two boards reporting each other's stars.
+func test_every_level_has_a_name_of_its_own() -> void:
+	LevelRepository.clear_cache()
+	var seen: Dictionary = {}
+	for chapter: int in range(1, LevelRepository.CHAPTERS + 1):
+		for index: int in range(1, LevelRepository.LEVELS_PER_CHAPTER + 1):
+			var level := LevelRepository.load_level(chapter, index)
+			assert_ne(level.uid, "", "%s has no uid" % level.id)
+			assert_ne(level.uid, level.id,
+				"%s fell back to its slot id, so it was never stamped" % level.id)
+			assert_false(seen.has(level.uid),
+				"%s shares a uid with %s" % [level.id, str(seen.get(level.uid, ""))])
+			seen[level.uid] = level.id
+	assert_eq(seen.size(), LevelRepository.CHAPTERS * LevelRepository.LEVELS_PER_CHAPTER)
+
+
 ## Every shipped level is the board its file says it is. C-33 re-authored the
 ## campaign with shapes in it, so this replaces a test that asserted all sixty
 ## were hexagons — true before the re-author, and the wrong claim afterwards.

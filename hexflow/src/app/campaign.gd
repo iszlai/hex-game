@@ -32,7 +32,13 @@ const TOTAL_LEVELS := CHAPTERS * LEVELS_PER_CHAPTER
 ## through this rather than reaching into `SaveService.data["campaign"]`, so the
 ## shape of a save entry is known in one file.
 static func entry(chapter: int, index: int) -> Dictionary:
-	return SaveService.level_entry(LevelRepository.id_for(chapter, index))
+	# Keyed on the level's own uid rather than its slot (C-34): a level carries its
+	# stars with it when the campaign is reordered, instead of leaving them behind
+	# for whatever lands in the slot.
+	var level: Level = LevelRepository.load_level(chapter, index)
+	if level == null:
+		return {}
+	return SaveService.level_entry(level.progress_key())
 
 
 static func is_completed(chapter: int, index: int) -> bool:

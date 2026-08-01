@@ -21,9 +21,15 @@ func after_each() -> void:
 
 ## Marks a level complete without touching the disk, which `record_completion`
 ## would do on every call.
+## Progress is keyed on the level's own uid (C-34), not on its slot. Writing the
+## slot id here would build a fixture the game cannot read — which is exactly the
+## mismatch uids were introduced to remove, so the fixture has to move with it.
 func _complete(chapter: int, index: int, stars: int = 3, hinted: bool = false) -> void:
+	var level: Level = LevelRepository.load_level(chapter, index)
+	if level == null:
+		return
 	var campaign: Dictionary = SaveService.data["campaign"]
-	campaign[LevelRepository.id_for(chapter, index)] = {
+	campaign[level.uid] = {
 		"completed": true, "best_placements": 10, "stars": stars, "hinted": hinted,
 	}
 
@@ -114,7 +120,7 @@ func test_only_the_last_level_reads_a_hundred_percent() -> void:
 	for chapter: int in range(1, LevelRepository.CHAPTERS + 1):
 		_complete_chapter(chapter, LevelRepository.LEVELS_PER_CHAPTER)
 	assert_eq(Campaign.completion_percent(), 100)
-	SaveService.data["campaign"].erase(LevelRepository.id_for(5, 12))
+	SaveService.data["campaign"].erase(LevelRepository.load_level(5, 12).uid)
 	assert_lt(Campaign.completion_percent(), 100, "59 of 60 is not finished")
 
 

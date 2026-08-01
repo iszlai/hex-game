@@ -20,11 +20,21 @@ func before_each() -> void:
 
 
 ## Marks [param count] levels of [param chapter] complete, with [param stars] each.
+## Keyed on the level's uid (C-34), like the game does — a fixture written under
+## the slot id would be invisible to [Campaign] and every assertion below would
+## pass for the wrong reason.
 func _complete(chapter: int, count: int, stars: int = PERFECT, hinted: bool = false) -> void:
 	for index: int in range(1, count + 1):
-		SaveService.data["campaign"]["c%d_l%02d" % [chapter, index]] = {
+		var level: Level = LevelRepository.load_level(chapter, index)
+		if level == null:
+			continue
+		SaveService.data["campaign"][level.uid] = {
 			"completed": true, "best_placements": 1, "stars": stars, "hinted": hinted,
 		}
+
+
+func _uid(chapter: int, index: int) -> String:
+	return LevelRepository.load_level(chapter, index).uid
 
 
 func _earned(chapter: int, placements: int = 1, par: int = 1,
@@ -66,11 +76,11 @@ func test_a_chapter_clears_at_twelve_and_not_at_eleven() -> void:
 ## but not perfect.
 func test_a_chapter_is_perfect_only_at_three_stars_throughout() -> void:
 	_complete(3, 12, PERFECT)
-	SaveService.data["campaign"]["c3_l07"]["stars"] = 2
+	SaveService.data["campaign"][_uid(3, 7)]["stars"] = 2
 	assert_true(_earned(3).has("chapter_3_clear"))
 	assert_false(_earned(3).has("chapter_3_perfect"), "one two-star level is enough")
 
-	SaveService.data["campaign"]["c3_l07"]["stars"] = PERFECT
+	SaveService.data["campaign"][_uid(3, 7)]["stars"] = PERFECT
 	assert_true(_earned(3).has("chapter_3_perfect"))
 
 
@@ -80,7 +90,7 @@ func test_all_stars_needs_the_whole_campaign() -> void:
 	assert_eq(Campaign.total_stars(), Achievements.ALL_STARS, "§23.1's 180")
 	assert_true(_earned(5).has("all_stars"))
 
-	SaveService.data["campaign"]["c1_l01"]["stars"] = 2
+	SaveService.data["campaign"][_uid(1, 1)]["stars"] = 2
 	assert_false(_earned(5).has("all_stars"), "179 is not 180")
 
 
@@ -96,7 +106,7 @@ func test_no_discard_is_a_chapter_five_condition() -> void:
 func test_a_hinted_level_costs_the_chapter_its_hint_free_award() -> void:
 	_complete(4, 12, PERFECT, false)
 	assert_true(_earned(4).has("no_hints_chapter"))
-	SaveService.data["campaign"]["c4_l05"]["hinted"] = true
+	SaveService.data["campaign"][_uid(4, 5)]["hinted"] = true
 	assert_false(_earned(4).has("no_hints_chapter"))
 
 

@@ -199,39 +199,28 @@ how far each sits from its slot on the curve.
 - **Drag** reorders, within a chapter or across chapters.
 - **Apply order** rewrites the files.
 
-### 7.1 Reordering is safe now and unsafe later — **decided: pre-release only**
+### 7.1 Reordering is safe, because levels have names — **built, C-34**
 
-The game remembers progress like this:
+The save used to remember progress like this:
 
 ```
 "c3_l07"  ->  3 stars, best 11 moves, hint used
-"c3_l08"  ->  2 stars, best 14 moves
 ```
 
-`c3_l07` means **chapter 3, slot 7**. It names a *position*, not a level — `LevelRepository.id_for`
-builds it from the chapter and index, and `SaveService` keys everything on it.
+`c3_l07` means **chapter 3, slot 7**. It named a *position*, so dragging a level out of slot 7 did
+not take its stars with it — they stayed on the slot, and whatever landed there inherited them.
 
-So dragging the level out of slot 7 does not take its stars with it. The stars stay on the slot, and
-whatever lands there inherits them. A player who has never seen the new level 7 opens it already
-three-starred, and the level they actually earned those stars on now shows blank.
+Every level file now carries a `uid` instead: a ten-character name minted once, stored in the file,
+never reused. Progress keys on that, so **a level carries its stars wherever it moves** and position
+is only presentation. `Apply order` rewrites `chapter`, `index` and the filenames and touches nothing
+else.
 
-**Before release this costs nothing.** There is one save, it belongs to the developer, and
-`make playtest` already moves it aside. Reorder freely.
+Two rules the editor has to keep:
 
-**After release it is data loss**, and the trap is narrower than it looks:
-
-- **Appending** levels to the end of a chapter is safe. Nothing moves, so no id changes hands.
-- **Inserting or reordering** shifts every level after the change, and every one of them swaps
-  progress with its neighbour.
-
-So the tool is **pre-release only**, and the rule for shipping content later is *append, never
-insert*. `Apply order` refuses when the build is a release build and says why.
-
-If the campaign ever does need reordering after release, the fix is a stable identity: a short `uid`
-written into each level file once and never reused, with progress keyed on the uid and position
-demoted to presentation. That costs a schema field, a save migration (§18.4 already has the
-machinery) and a one-off pass over the existing sixty. Worth paying then, not now — building it
-before anything needs it is a migration written against a guess.
+- **Editing a level keeps its uid.** It is the same level with a wall moved.
+- **The authoring sweep mints a new one**, because it produces a different level at that slot.
+  Inheriting the old name would hand a player's stars to a board they have never seen, which is the
+  original bug arriving from the other direction.
 
 ## 8. Keeping it out of the game
 
