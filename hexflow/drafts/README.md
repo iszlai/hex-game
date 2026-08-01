@@ -18,6 +18,14 @@ Two things the sixty slots cannot do:
 - **Try a level without spending a slot.** Three versions of chapter 3's opener can live here at
   once and be compared before one of them takes the slot.
 
+## Playing one
+
+```sh
+make play-draft FILE=drafts/idea.json
+```
+
+The real game, not a preview. An unvalidated draft has no par, so it is solved on the way in.
+
 ## Promoting a draft
 
 Open it, set **chapter** and **level**, Validate, and **save to slot**. It keeps its `uid`, so if it

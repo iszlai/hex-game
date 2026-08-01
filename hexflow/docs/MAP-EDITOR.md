@@ -80,9 +80,12 @@ render — the three things a MainLoop script does not get. It may use the game'
 │                                              │   budget   [–]  │
 ├──────────────────────────────────────────────┤                  │
 │  TILES  NE NE E SE · SW W NE …    [fill]     │  [ validate ]    │
-├──────────────────────────────────────────────┤  [ save     ]    │
-│  ✓ solvable · ideal 11 · 3 routes · 58% kind │  [ levels…  ]    │
-└──────────────────────────────────────────────┴──────────────────┘
+├──────────────────────────────────────────────┤  [ new      ]    │
+│  ✓ solvable · ideal 11 · 3 routes · 58% kind │  [ open…    ]    │
+└──────────────────────────────────────────────┤  [ save slot]    │
+                                               │  [ save as… ]    │
+                                               │  [ levels…  ]    │
+                                               └──────────────────┘
 ```
 
 **The canvas is flat 2D — decided.** Coloured hexes, one colour per contents, with the modifier's
@@ -239,6 +242,27 @@ whole of the constraint.
 Promoting a draft is: open it, set chapter and level, Validate, save to slot. It keeps its `uid`,
 so §7.1's rule holds across the move.
 
+**new** starts an empty board, behind a confirm — §9 rules undo out of scope because "save-and-reload
+covers it", which is true of a mis-drag and not of a press that throws the whole board away. It keeps
+the slot and **drops the `uid`**: a fresh board inheriting the last one's name would hand a player's
+stars to a level they have never seen, which is the bug uids exist to prevent, and is why the sweep
+mints a new one too.
+
+### 6.2 Playing a draft
+
+```sh
+make play-draft FILE=drafts/idea.json
+```
+
+Opens the level in the **real game** — the real board, the real rail, the real rules — not a preview
+inside the editor. A draft that was never validated has no `par`, and par is what §5.10's star bands
+are measured against, so it is solved on the way in; a board the solver cannot win is reported and
+played anyway, because seeing *why* is the reason to open it.
+
+`tools/play_draft.gd` is a `-s` MainLoop, the same arrangement `tools/screenshot.gd` uses. **Nothing
+in `src/` learns that drafts exist**, so there is no debug flag in the shipped build to gate and §8's
+one-way arrow is untouched — which is the only reason this does not reopen §27.
+
 ---
 
 ## 7. Levels: pick and reorder
@@ -289,7 +313,7 @@ Two rules the editor has to keep:
 | Not doing | Why |
 |---|---|
 | Undo/redo history | Save-and-reload covers it; a full command stack is most of the tool's cost for a fraction of its value |
-| Playtesting inside the editor | `make run` already plays the level that was just saved |
+| Playtesting inside the editor | Still out of scope, but the reason changed. It used to be "`make run` already plays the level that was just saved", which stopped being true the moment a board could be saved somewhere other than a campaign slot — the boards most worth playing are the unfinished ones. `make play-draft FILE=…` plays any level file in the real game, from outside it. See §6.2 |
 | Editing endless or daily boards | Both are generated from a seed at runtime (§7.2, §7.3); there is nothing to edit |
 | Painting the tile sequence graphically | A text field is faster and unambiguous |
 | Any player-facing entry point | §27 |

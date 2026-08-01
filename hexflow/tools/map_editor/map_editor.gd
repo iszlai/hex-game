@@ -143,7 +143,13 @@ func _build_panel() -> Control:
 	panel.add_theme_constant_override("separation", 6)
 	scroll.add_child(panel)
 
+	# Two columns, because seven full-width rows are the tallest thing in the rail
+	# and the fields below them ended up scrolled out of sight behind it. A brush
+	# palette is a grid everywhere else for the same reason.
 	panel.add_child(_label("BRUSH"))
+	var brushes := GridContainer.new()
+	brushes.columns = 2
+	panel.add_child(brushes)
 	var group := ButtonGroup.new()
 	for entry: Variant in BRUSHES:
 		var spec: Dictionary = entry
@@ -152,11 +158,19 @@ func _build_panel() -> Control:
 		button.toggle_mode = true
 		button.button_group = group
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var brush: int = int(spec["brush"])
 		button.pressed.connect(func() -> void: _canvas.brush = brush)
 		if brush == int(MapDraft.Content.WALL):
 			button.button_pressed = true
-		panel.add_child(button)
+		brushes.add_child(button)
+
+	# The one thing about the brushes that is not on a button, and the first thing
+	# anyone asks. §4.1 gives right-drag a different meaning per brush — off-board
+	# for the board brush, empty for the rest — and neither is guessable.
+	var hint := _label("left paints · right erases · middle-drag pans · wheel zooms")
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(hint)
 
 	panel.add_child(_label("BOARD"))
 	var grid := GridContainer.new()
@@ -198,10 +212,12 @@ func _build_panel() -> Control:
 	_index.value_changed.connect(func(v: float) -> void: _draft.index = int(v); _invalidate())
 
 	rail.add_child(_button("validate  (F5)", _validate))
+	rail.add_child(HSeparator.new())
+	rail.add_child(_button("new  (Ctrl+N)", _new_board))
+	rail.add_child(_button("open…  (Ctrl+O)", _open_file))
 	_save_button = _button("save to slot  (Ctrl+S)", _save)
 	rail.add_child(_save_button)
 	rail.add_child(_button("save as…  (Ctrl+Shift+S)", _save_as))
-	rail.add_child(_button("open…  (Ctrl+O)", _open_file))
 	rail.add_child(_button("levels…", _open_browser))
 	return rail
 
@@ -282,6 +298,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		accept_event()
 	elif key.keycode == KEY_O and key.is_command_or_control_pressed():
 		_open_file()
+		accept_event()
+	elif key.keycode == KEY_N and key.is_command_or_control_pressed():
+		_new_board()
 		accept_event()
 
 
@@ -381,6 +400,46 @@ func _save_to(path: String) -> void:
 		path, level.uid,
 		"" if to_campaign else "  — a draft, not one of the sixty",
 	])
+
+
+## An empty board to start from.
+##
+## Behind a confirm, which is not politeness. §9 rules undo out of scope on the
+## grounds that "save-and-reload covers it" — that is true of a mis-drag and not
+## true of this, which throws the whole board away in one press. It is the same
+## reasoning §11.3 applies to Restart in the game.
+func _new_board() -> void:
+	if _filling:
+		return
+	var confirm := ConfirmationDialog.new()
+	confirm.title = "New board"
+	confirm.dialog_text = "Start a new board?\n\nThere is no undo. Anything not saved is lost."
+	confirm.ok_button_text = "New board"
+	confirm.confirmed.connect(_reset_draft)
+	for signal_name: String in ["confirmed", "canceled", "close_requested"]:
+		confirm.connect(signal_name, confirm.queue_free)
+	add_child(confirm)
+	confirm.popup_centered()
+
+
+## The slot is kept and everything else is dropped.
+##
+## **The uid goes.** A fresh board that inherited the last one's name would hand a
+## player's stars to a level they have never seen, which is the exact bug uids
+## exist to prevent (C-34) — the sweep mints a new one for the same reason. It
+## stays empty until the first save, which is where the collision check lives.
+func _reset_draft() -> void:
+	var chapter: int = _draft.chapter
+	var index: int = _draft.index
+	_draft = MapDraft.new()
+	_draft.chapter = chapter
+	_draft.index = index
+	_draft.apply_shape("hexagon", 3, 0)
+	_canvas.bind(_draft)
+	_sync_fields()
+	_invalidate()
+	_note("new board · slot %d-%02d kept · it is named when it is first saved"
+		% [chapter, index])
 
 
 ## §6.1's Save as. Defaults to `drafts/` and will go anywhere, including — with a

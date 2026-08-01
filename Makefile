@@ -46,7 +46,7 @@ GODOT_CMD = $(shell test -x "$(GODOT)" && echo "$(abspath $(GODOT))" || echo "$(
 .DEFAULT_GOAL := help
 .PHONY: help godot check import run editor test test-core test-property test-e2e \
         test-file gate levels sheet sfx art icon glyphs marks marks-cut panels-cut grain-cut faces-cut assets assets-add assets-ui shot measure \
-        playtest playtest-restore edit-maps \
+        playtest playtest-restore edit-maps play-draft \
         clean clean-levels legacy-branch status
 
 ## ---------------------------------------------------------------- meta
@@ -158,6 +158,10 @@ edit-maps: check ## Draw a campaign board by hand (hexflow/docs/MAP-EDITOR.md)
 	@$(RUN_CMD) --resolution 1440x900 res://tools/map_editor/map_editor.tscn
 	@echo
 	@echo "levels are frozen data — commit the JSON the editor wrote"
+
+play-draft: check ## Play a level file in the real game. FILE=drafts/idea.json
+	@test -n "$(FILE)" || { echo "usage: make play-draft FILE=drafts/idea.json"; exit 1; }
+	@$(RUN_CMD) --resolution 1280x800 -s res://tools/play_draft.gd -- "$(FILE)"
 
 sfx: check ## Re-render §15.2's sixteen effects into assets/sfx/ (commit the output)
 	@$(RUN_CMD) --headless -s res://tools/make_sfx.gd

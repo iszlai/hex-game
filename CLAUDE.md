@@ -59,6 +59,7 @@ make test    # whole suite, ~50 s
 make gate    # everything CI runs — before every push
 make playtest # play as a first-time player; your save is moved aside, not deleted
 make edit-maps # draw a campaign board by hand
+make play-draft FILE=drafts/x.json  # play any level file in the real game
 make         # list targets
 ```
 

@@ -864,6 +864,14 @@ for why an authoring tool is not the "level editor" §27 declined.
       board to a re-verified file is covered, but the exit criterion for an authoring tool is an
       author using it — the same shape of gap as M8's unplayed tutorial. Until then it is built
       and unproven, and the first hand-drawn level in `src/data/levels/` is what closes it
+- [x] **Drafts** (§6.1) — `save as…` / `open…` / `new`, defaulting to `hexflow/drafts/`, so a board
+      that is not ready to be one of the sixty has somewhere to live. §6's refusal follows the
+      **destination** rather than the button: a campaign slot still demands a passing Validate, a
+      draft only needs a start. `new` drops the uid, because a fresh board inheriting the last
+      one's name is C-34's bug from the other direction — `tests/unit/test_map_editor.gd`
+- [x] **`make play-draft FILE=…`** (§6.2) — plays any level file in the real game. A `-s` MainLoop,
+      so nothing in `src/` learns that drafts exist and there is no debug path in the shipped build
+      to gate. An unvalidated draft has no par, so it is solved on the way in
 - [ ] Single-click load in the levels list. §7 says click; it loads on double-click or Enter,
       because a single click is also the first half of a drag and loading the canvas the moment a
       row is touched would throw away an unsaved board. A confirm-on-discard would let it be a
