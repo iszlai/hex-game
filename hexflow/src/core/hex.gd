@@ -188,10 +188,101 @@ static func star(radius: int) -> Array[Vector3i]:
 	return _finish(out)
 
 
-## Canonical order and the size ceiling, applied to every shape at the one place
-## they all pass through — a shape that silently returned 70 cells would fail much
-## later, inside the solver's mask, as a wrong answer rather than as an error.
+## The shapes by name, and the meaning of each one's second parameter.
+## `"hexagon"` first, so a default is the shape the game has always had.
+const SHAPES: Array[String] = [
+	"hexagon", "triangle", "ring", "corridor", "hourglass", "star",
+]
+
+
+## Builds a shape by name. [param arg] means whatever the shape says it means —
+## the ring's hole, the corridor's width, the hourglass's waist — and is ignored
+## by the shapes that take one number.
+##
+## One dispatcher rather than six call sites, so the level schema stores a string
+## and a pair of integers instead of sixty explicit cell lists, and a shape stays
+## something a reader of the JSON can *recognise*.
+static func shape(kind: String, radius: int, arg: int = 0) -> Array[Vector3i]:
+	match kind:
+		"triangle": return triangle(radius)
+		"ring": return ring_board(radius, maxi(1, arg))
+		"corridor": return corridor(radius, maxi(2, arg))
+		"hourglass": return hourglass(radius, maxi(1, arg))
+		"star": return star(radius)
+		_: return hexagon(radius)
+
+
+## Canonical order, centred, and the size ceiling — applied at the one place every
+## shape passes through.
+##
+## **Centring is not cosmetic.** §4.4 fits the board on screen from its radius, and
+## a triangle built with a corner at the origin has a bounding radius equal to its
+## whole side, so it would be drawn at a fraction of the size it could be. A shape
+## is translated so the cell that minimises the distance to every other cell sits
+## at the origin, which is the smallest bounding radius it can have. A hexagon is
+## already at its own centre, so this leaves it exactly as it was.
+##
+## The ceiling is asserted here rather than trusted to each shape's arithmetic: a
+## shape that silently returned seventy cells would fail much later, inside the
+## solver's 64-bit mask, as a wrong answer rather than as an error.
 static func _finish(cells: Array[Vector3i]) -> Array[Vector3i]:
 	assert(cells.size() <= MAX_CELLS,
 		"a board of %d cells will not fit the solver's 64-bit path mask" % cells.size())
-	return sort_cells(cells)
+	var origin: Vector3i = centre(cells)
+	var out: Array[Vector3i] = []
+	for c: Vector3i in cells:
+		out.append(c - origin)
+	return sort_cells(out)
+
+
+## The point with the smallest greatest-distance to every cell of [param cells] —
+## the board's middle, in the sense that matters for fitting it on a screen.
+##
+## Searched over the whole bounding region rather than over the cells themselves,
+## because **the middle of a shape need not be part of it**: a ring's centre is
+## precisely the hole, and picking the nearest actual cell instead put the hole
+## off-origin and cost the ring the property it exists for.
+##
+## Integer arithmetic throughout — averaging the coordinates would be the obvious
+## way and would put a float in `src/core/`, which C3 forbids.
+static func centre(cells: Array[Vector3i]) -> Vector3i:
+	if cells.is_empty():
+		return Vector3i.ZERO
+	var min_x: int = cells[0].x
+	var max_x: int = cells[0].x
+	var min_y: int = cells[0].y
+	var max_y: int = cells[0].y
+	var min_z: int = cells[0].z
+	var max_z: int = cells[0].z
+	for c: Vector3i in cells:
+		min_x = mini(min_x, c.x); max_x = maxi(max_x, c.x)
+		min_y = mini(min_y, c.y); max_y = maxi(max_y, c.y)
+		min_z = mini(min_z, c.z); max_z = maxi(max_z, c.z)
+
+	var best: Vector3i = cells[0]
+	var best_reach: int = 1 << 30
+	for x: int in range(min_x, max_x + 1):
+		for y: int in range(min_y, max_y + 1):
+			var z: int = -x - y
+			if z < min_z or z > max_z:
+				continue
+			var candidate := Vector3i(x, y, z)
+			var reach: int = 0
+			for c: Vector3i in cells:
+				reach = maxi(reach, distance(candidate, c))
+				if reach >= best_reach:
+					break
+			if reach < best_reach:
+				best_reach = reach
+				best = candidate
+	return best
+
+
+## How far the furthest cell of [param cells] sits from the origin — what §4.4
+## needs in order to size a board that is not a hexagon and therefore has no
+## radius of its own.
+static func bounding_radius(cells: Array[Vector3i]) -> int:
+	var r: int = 0
+	for c: Vector3i in cells:
+		r = maxi(r, length(c))
+	return r

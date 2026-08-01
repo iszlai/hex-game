@@ -13,7 +13,19 @@ const F_PORTAL := 4
 const F_GATE := 8
 const F_WILD := 16
 
+## How far the furthest cell sits from the centre. Derived from the cells, not
+## given: for a hexagon it is the radius it was built with, and for every other
+## shape it is whatever that shape turned out to reach.
 var radius: int = 3
+
+## §C-32's silhouette, and the number that shapes it. Kept so a level file can
+## name a shape rather than list sixty cells, and so `to_dict` can write back what
+## `from_dict` read.
+var shape: String = "hexagon"
+var shape_arg: int = 0
+## The size the shape was *asked* for, which is only the same as [member radius]
+## for a hexagon.
+var shape_size: int = 3
 var start: Vector3i = Vector3i.ZERO
 var goals: Array[Vector3i] = []
 
@@ -23,6 +35,13 @@ var _portal_twin: Dictionary = {}  # Vector3i -> Vector3i
 var _cells: Array[Vector3i] = []   # stable iteration order
 
 
+## [param p_shape] and [param p_shape_arg] are last and defaulted, so every caller
+## that predates shapes keeps building the hexagon it always built (C-32).
+##
+## [member radius] is derived from the cells rather than taken from
+## [param p_radius], because a shape's size parameter is not its radius — a
+## triangle of side 6 is not a radius-6 board — and [member radius] is what §4.4
+## fits the board on screen by.
 static func build(
 	p_radius: int,
 	p_start: Vector3i,
@@ -30,11 +49,16 @@ static func build(
 	p_walls: Array[Vector3i] = [],
 	p_portal_pairs: Array = [],
 	p_gates: Array[Vector3i] = [],
-	p_wilds: Array[Vector3i] = []
+	p_wilds: Array[Vector3i] = [],
+	p_shape: String = "hexagon",
+	p_shape_arg: int = 0
 ) -> Board:
 	var b := Board.new()
-	b.radius = p_radius
-	b._cells = Hex.hexagon(p_radius)
+	b.shape = p_shape
+	b.shape_arg = p_shape_arg
+	b.shape_size = p_radius
+	b._cells = Hex.shape(p_shape, p_radius, p_shape_arg)
+	b.radius = Hex.bounding_radius(b._cells)
 	for c: Vector3i in b._cells:
 		b._kinds[c] = Kind.EMPTY
 		b._flags[c] = 0

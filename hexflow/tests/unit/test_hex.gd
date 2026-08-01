@@ -169,3 +169,40 @@ func _connected_count(cells: Array[Vector3i]) -> int:
 				seen[n] = true
 				queue.append(n)
 	return seen.size()
+
+
+## Centring is what makes a shape fit the screen: §4.4 sizes the board from its
+## radius, so a triangle built with a corner at the origin would be drawn at a
+## fraction of the size it could be.
+func test_a_shape_is_centred_so_it_fits_at_its_smallest_radius() -> void:
+	for kind: String in Hex.SHAPES:
+		var cells: Array[Vector3i] = Hex.shape(kind, 4, 2)
+		var r: int = Hex.bounding_radius(cells)
+		# No translation of the shape can make it any tighter than where it sits.
+		for d: int in Direction.ALL:
+			var moved: Array[Vector3i] = []
+			for c: Vector3i in cells:
+				moved.append(c + Direction.delta(d))
+			assert_gte(Hex.bounding_radius(moved), r,
+				"%s would fit better one step %s" % [kind, Direction.name_of(d)])
+
+
+## The middle of a shape need not be one of its cells. A ring's centre is exactly
+## the hole, and centring on the nearest *cell* instead moved the hole off the
+## origin and cost the ring the only property it exists for.
+func test_a_ring_keeps_its_hole_at_the_centre() -> void:
+	var ring: Array[Vector3i] = Hex.ring_board(4, 1)
+	assert_false(ring.has(Vector3i.ZERO), "the hole is the point of a ring")
+	assert_eq(Hex.bounding_radius(ring), 4, "and it is still a radius-4 board")
+
+
+## A hexagon is already at its own centre, so shapes must not have disturbed the
+## thing every one of the sixty shipped levels is.
+func test_the_hexagon_is_untouched_by_all_of_this() -> void:
+	for radius: int in [2, 3, 4]:
+		assert_eq(Hex.shape("hexagon", radius), Hex.hexagon(radius))
+		assert_eq(Hex.hexagon(radius), Hex.sort_cells(Hex.hexagon(radius)))
+		assert_eq(Hex.bounding_radius(Hex.hexagon(radius)), radius)
+	# And an unknown name is a hexagon rather than an empty board, because a level
+	# file naming a shape this build does not have must still be playable.
+	assert_eq(Hex.shape("dodecahedron", 3), Hex.hexagon(3))

@@ -123,11 +123,14 @@ static func from_dict(d: Dictionary) -> Level:
 		var p: Array = pair
 		portals.append([Hex.from_array(p[0] as Array), Hex.from_array(p[1] as Array)])
 
+	# `shape` is absent from every level file written before C-32 and defaults to
+	# the hexagon they all are, so the sixty frozen files keep loading unchanged.
 	var board := Board.build(
 		int(d.get("radius", 3)),
 		Hex.from_array(d.get("start", [0, 0, 0]) as Array),
 		_cells(d.get("goals", [])),
-		walls, portals, gates, wilds
+		walls, portals, gates, wilds,
+		str(d.get("shape", "hexagon")), int(d.get("shape_arg", 0))
 	)
 
 	var tiles: Array[int] = []
@@ -183,7 +186,12 @@ static func to_dict(level: Level) -> Dictionary:
 		"id": level.id,
 		"chapter": level.chapter,
 		"index": level.index,
-		"radius": level.board.radius,
+		# The size the shape was *asked* for, not the radius it turned out to reach:
+		# `from_dict` feeds this straight back to `Hex.shape`, and a triangle of
+		# side 6 rebuilt at its bounding radius would be a different board.
+		"radius": level.board.shape_size,
+		"shape": level.board.shape,
+		"shape_arg": level.board.shape_arg,
 		"start": Hex.to_array(level.board.start),
 		"goals": goals,
 		"walls": walls,
