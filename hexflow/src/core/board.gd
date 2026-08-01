@@ -135,6 +135,19 @@ func size() -> int:
 	return _cells.size()
 
 
+## How many cells a path could ever occupy: everything that is not a wall.
+##
+## The denominator of §15.1's "board fill %", which decides when the music's
+## second stem comes in. Counted rather than stored, because a board is built once
+## and this is asked once per placement.
+func open_count() -> int:
+	var n: int = 0
+	for c: Vector3i in _cells:
+		if is_open(c):
+			n += 1
+	return n
+
+
 func has(c: Vector3i) -> bool:
 	return _kinds.has(c)
 

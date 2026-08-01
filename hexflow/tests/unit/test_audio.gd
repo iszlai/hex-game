@@ -132,7 +132,6 @@ func test_every_chapter_has_a_bed_and_every_bed_loops() -> void:
 func test_a_bed_changes_by_fading_and_never_restarts_itself() -> void:
 	AudioDirector.play_music("chapter_1")
 	assert_eq(AudioDirector.music_key(), "chapter_1")
-	var players: Array = AudioDirector.get("_music")
 	var live: int = int(AudioDirector.get("_playing"))
 
 	AudioDirector.play_music("chapter_1")
@@ -140,9 +139,70 @@ func test_a_bed_changes_by_fading_and_never_restarts_itself() -> void:
 
 	AudioDirector.play_music("chapter_2")
 	assert_eq(AudioDirector.music_key(), "chapter_2")
-	assert_ne(int(AudioDirector.get("_playing")), live, "the next bed comes up on the other player")
-	assert_true((players[live] as AudioStreamPlayer).playing,
+	assert_ne(int(AudioDirector.get("_playing")), live, "the next bed comes up on the other deck")
+	assert_true((AudioDirector.call("_deck", live, "base") as AudioStreamPlayer).playing,
 		"and the outgoing one is still sounding while it fades")
+	AudioDirector.stop_music()
+
+
+## §15.1's three stems are one performance in three files, so they are started on
+## the same frame and never seeked. What the game changes is a *level*: the layer
+## rides up above 40% board fill and back down below 30%.
+func test_the_three_stems_start_together() -> void:
+	AudioDirector.play_music("chapter_1")
+	var live: int = int(AudioDirector.get("_playing"))
+	for stem: String in AudioDirector.STEMS:
+		var player: AudioStreamPlayer = AudioDirector.call("_deck", live, stem)
+		assert_not_null(player.stream, "%s has no file" % stem)
+		assert_true(player.playing, "%s is not running with the others" % stem)
+	AudioDirector.stop_music()
+
+
+## §15.1's thresholds, and the gap between them. One threshold at 40% would fade
+## the layer in and out on every placement made near it — the player would hear
+## the music breathing along with their own indecision.
+func test_the_layer_waits_for_progress_and_leaves_late() -> void:
+	AudioDirector.play_music("chapter_1")
+	assert_false(AudioDirector.stem_up("layer"), "a bed starts at its base")
+
+	AudioDirector.set_intensity(0.35)
+	assert_false(AudioDirector.stem_up("layer"), "35% is under §15.1's 40")
+	AudioDirector.set_intensity(0.45)
+	assert_true(AudioDirector.stem_up("layer"), "and over it, the layer comes in")
+
+	AudioDirector.set_intensity(0.35)
+	assert_true(AudioDirector.stem_up("layer"), "it does not leave at the line it arrived on")
+	AudioDirector.set_intensity(0.25)
+	assert_false(AudioDirector.stem_up("layer"), "§15.1 takes it out below 30")
+	AudioDirector.stop_music()
+
+
+## §15.1: endless "adds a third stem that enters every 5 goals", and it stays.
+## A run is an escalation; a layer that came and went with the count would be
+## reporting the arithmetic rather than the escalation.
+func test_the_third_stem_belongs_to_a_long_run() -> void:
+	AudioDirector.play_music("chapter_1")
+	AudioDirector.set_goals(4)
+	assert_false(AudioDirector.stem_up("extra"))
+	AudioDirector.set_goals(5)
+	assert_true(AudioDirector.stem_up("extra"))
+	AudioDirector.set_goals(9)
+	assert_true(AudioDirector.stem_up("extra"), "it is not re-triggered, it is already there")
+	AudioDirector.stop_music()
+
+
+## A new bed starts at its base whatever the last one was doing. A level opened at
+## 60% fill would otherwise arrive with the layer already up, which reads as the
+## music being loud rather than as the board being full.
+func test_a_new_bed_starts_at_its_base() -> void:
+	AudioDirector.play_music("chapter_1")
+	AudioDirector.set_intensity(0.8)
+	AudioDirector.set_goals(10)
+	assert_true(AudioDirector.stem_up("layer"))
+
+	AudioDirector.play_music("chapter_2")
+	assert_false(AudioDirector.stem_up("layer"), "the next bed opens quiet")
+	assert_false(AudioDirector.stem_up("extra"))
 	AudioDirector.stop_music()
 
 

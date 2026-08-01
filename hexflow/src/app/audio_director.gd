@@ -23,6 +23,23 @@ const MUSIC_MENU := "menu"
 ## which is the same rule §14.1 applies to screens.
 const MUSIC_CROSSFADE := 1.5
 
+## §15.1's three stems, in the order they are laid out per deck.
+const STEMS: Array[String] = ["base", "layer", "extra"]
+
+## §15.1: the layer "fades in as board fill % rises above 40%, out below 30%".
+## The numbers are the spec's; what is measured against them is not (C-41) — see
+## [method GameDirector.music_intensity].
+const LAYER_IN := 0.40
+const LAYER_OUT := 0.30
+
+## §15.1: endless "adds a third stem that enters every 5 goals".
+const EXTRA_EVERY := 5
+
+## Where a stem sits when it is up. Zero: the mix was balanced when the three were
+## rendered (`tools/make_music.gd` normalises their *sum*), so the game's job is to
+## bring a stem to the level it was written at and not to mix it again.
+const STEM_DB := 0.0
+
 ## §15.1: "Music ducks −6 dB for 600 ms on the goal-reached sequence." The goal is
 ## the loudest thing the game does and the bed has to get out of its way.
 const DUCK_DB := -6.0
@@ -82,6 +99,11 @@ var _music: Array[AudioStreamPlayer] = []
 var _playing: int = 0
 var _music_key: String = ""
 var _music_tween: Tween = null
+## Which of §15.1's adaptive stems are up, and the tween riding each one. Kept per
+## stem so a layer arriving does not cancel a bed change already in flight.
+var _layer_up: bool = false
+var _extra_up: bool = false
+var _stem_tweens: Dictionary = {}
 var _duck_tween: Tween = null
 var _streams: Dictionary = {}                    # id -> AudioStream
 var _general: Array[AudioStreamPlayer] = []
@@ -122,17 +144,20 @@ func _ready() -> void:
 
 # --- music (§15.1) -------------------------------------------------------------
 
-## Two players, so a bed can cross-fade into the next one rather than cutting.
+## Two decks of three, so a bed can cross-fade into the next one rather than
+## cutting, and each bed can bring its own stems up and down while it plays.
+##
 ## Built once at boot: a music player created when a screen changes is a player
 ## created during a fade, which is the worst moment to allocate one.
 func _build_music() -> void:
-	for i: int in range(2):
-		var player := AudioStreamPlayer.new()
-		player.name = "Music%d" % i
-		player.bus = "Music"
-		player.volume_db = -80.0
-		add_child(player)
-		_music.append(player)
+	for deck: int in range(2):
+		for stem: String in STEMS:
+			var player := AudioStreamPlayer.new()
+			player.name = "Music%d_%s" % [deck, stem]
+			player.bus = "Music"
+			player.volume_db = -80.0
+			add_child(player)
+			_music.append(player)
 
 
 ## Plays the bed for [param key] — "menu", "chapter_3" — cross-fading over §15.1's
@@ -142,28 +167,108 @@ func _build_music() -> void:
 func play_music(key: String) -> void:
 	if key == _music_key:
 		return
-	var stream: AudioStream = _music_stream(key)
-	_music_key = key if stream != null else ""
-	if _music.size() < 2:
+	var base: AudioStream = _music_stream(key, "base")
+	_music_key = key if base != null else ""
+	if _music.size() < STEMS.size() * 2:
 		return
 
 	var next: int = 1 - _playing
-	var incoming: AudioStreamPlayer = _music[next]
-	var outgoing: AudioStreamPlayer = _music[_playing]
 	if _music_tween != null and _music_tween.is_running():
 		_music_tween.kill()
-	if stream != null:
-		incoming.stream = stream
-		incoming.volume_db = -80.0
-		incoming.play()
+	# A stem still riding up belongs to the bed being replaced. Left running it
+	# would fight the cross-fade for the same property on the same player, and the
+	# outgoing layer would climb while everything else was leaving.
+	for tween: Variant in _stem_tweens.values():
+		if tween is Tween and (tween as Tween).is_running():
+			(tween as Tween).kill()
+	_stem_tweens.clear()
+
+	# The three stems are started on the same frame and never touched again, which
+	# is what keeps them in step: they are one performance cut into three files
+	# (§15.1), so the only thing that may differ between them is level. Seeking or
+	# restarting one of them is the one way to break that, so nothing here does.
+	if base != null:
+		for stem: String in STEMS:
+			var player: AudioStreamPlayer = _deck(next, stem)
+			player.stream = base if stem == "base" else _music_stream(key, stem)
+			player.volume_db = -80.0
+			if player.stream != null:
+				player.play()
 	_playing = next
+	# A new bed starts at its base and earns the rest: a level opening at 60% fill
+	# would otherwise arrive with the layer already up, which reads as the music
+	# being loud rather than as the board being full.
+	_layer_up = false
+	_extra_up = false
 
 	_music_tween = create_tween()
 	_music_tween.set_parallel(true)
-	if stream != null:
-		_music_tween.tween_property(incoming, "volume_db", 0.0, MUSIC_CROSSFADE)
-	_music_tween.tween_property(outgoing, "volume_db", -80.0, MUSIC_CROSSFADE)
-	_music_tween.chain().tween_callback(outgoing.stop)
+	for stem: String in STEMS:
+		var incoming: AudioStreamPlayer = _deck(next, stem)
+		var outgoing: AudioStreamPlayer = _deck(1 - next, stem)
+		if base != null and incoming.stream != null and stem == "base":
+			_music_tween.tween_property(incoming, "volume_db", 0.0, MUSIC_CROSSFADE)
+		_music_tween.tween_property(outgoing, "volume_db", -80.0, MUSIC_CROSSFADE)
+		_music_tween.chain().tween_callback(outgoing.stop)
+
+
+## §15.1's adaptive layer: in above 40%, out below 30%, over 1.5 s.
+##
+## Two thresholds rather than one, because a single one at 40% would fade the
+## layer in and out on every placement made near it — the player would hear the
+## music breathing in time with their own indecision. The gap is the spec's, and
+## it is the difference between an adaptive bed and a wobbling one.
+##
+## [param intensity] is 0..1 and the audio layer does not ask what it counts;
+## [method GameDirector.music_intensity] decides that, and C-41 is why it is not
+## the board's fill.
+func set_intensity(intensity: float) -> void:
+	if _layer_up and intensity < LAYER_OUT:
+		_layer_up = false
+		_fade_stem("layer", false)
+	elif not _layer_up and intensity > LAYER_IN:
+		_layer_up = true
+		_fade_stem("layer", true)
+
+
+## §15.1's third stem, which endless brings in every five goals. On once it is on:
+## a run is an escalation, and a layer that came and went with the count would be
+## reporting the arithmetic rather than the escalation.
+func set_goals(goals: int) -> void:
+	var wanted: bool = goals >= EXTRA_EVERY
+	if wanted == _extra_up:
+		return
+	_extra_up = wanted
+	_fade_stem("extra", wanted)
+
+
+## Whether a stem is currently up, which is the honest thing for a test to ask.
+func stem_up(stem: String) -> bool:
+	if stem == "layer":
+		return _layer_up
+	return _extra_up if stem == "extra" else _music_key != ""
+
+
+func _deck(deck: int, stem: String) -> AudioStreamPlayer:
+	return _music[deck * STEMS.size() + STEMS.find(stem)]
+
+
+## Rides one stem of the live deck up or down over §15.1's cross-fade. Its own
+## tween per stem, so a layer arriving does not cancel a bed change already in
+## flight — and the outgoing deck is never touched, because it is on its way out
+## with everything it holds.
+func _fade_stem(stem: String, up: bool) -> void:
+	var player: AudioStreamPlayer = _deck(_playing, stem)
+	if player.stream == null:
+		return
+	if not player.playing:
+		player.play()
+	var tween: Tween = _stem_tweens.get(stem)
+	if tween != null and tween.is_running():
+		tween.kill()
+	tween = create_tween()
+	tween.tween_property(player, "volume_db", STEM_DB if up else -80.0, MUSIC_CROSSFADE)
+	_stem_tweens[stem] = tween
 
 
 ## Stops the bed, fading rather than cutting.
@@ -198,12 +303,20 @@ func duck() -> void:
 ## The bed for a key, or `null` when the build has no music for it. §13.6's
 ## replaceability rule applies to audio too: a missing track costs the player the
 ## music and never the game.
-func _music_stream(key: String) -> AudioStream:
+func _music_stream(key: String, stem: String = "base") -> AudioStream:
 	if key == "":
 		return null
-	var path: String = MUSIC_DIR + key + ".ogg"
+	var path: String = "%s%s_%s.ogg" % [MUSIC_DIR, key, stem]
 	if not ResourceLoader.exists(path):
-		return null
+		# Only the base falls back. A build whose music arrived as one file per bed
+		# still plays, with the adaptive layer simply never arriving — §13.6's
+		# replaceability rule applied to a half-finished asset drop rather than to
+		# a missing one.
+		if stem != "base":
+			return null
+		path = MUSIC_DIR + key + ".ogg"
+		if not ResourceLoader.exists(path):
+			return null
 	var stream: AudioStream = load(path)
 	if stream is AudioStreamOggVorbis:
 		# A bed that stopped at the end of its 48 seconds would be worse than none.

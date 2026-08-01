@@ -412,6 +412,33 @@ func _begin(p_level: Level) -> void:
 	_publish(state.drain_events())
 
 
+## How far into the level the run is, 0..1 — what §15.1's second stem rides on.
+##
+## §15.1 says "board fill %", and measuring it that way was tried: the answer is
+## that the layer would never arrive. A path is a *line* across a hex board, not a
+## flood of it, so the fraction of cells a finished solution occupies is a fact
+## about the board's shape rather than about the player's progress — measured over
+## the shipped sixty, a completed level reaches 40% fill in **0 of 12** levels in
+## chapter 1, 1 of 12 in chapter 2, and 4 of 12 in chapter 4. A first-time player
+## would go two hours without hearing the half of §15.1 that makes the music
+## adaptive (C-41).
+##
+## So the thresholds stay the spec's and the measurement changes: placements
+## against the level's own ideal. That reaches 1.0 on every board by construction,
+## crosses 40% where the spec meant it to — a level that is getting somewhere — and
+## falls back on an undo, which is the one thing the fill number did get right.
+##
+## A level with no par (endless before its first stage is scored) falls back to the
+## board, which is better than a constant.
+func music_intensity() -> float:
+	if state == null or level == null:
+		return 0.0
+	if level.par > 0:
+		return clampf(float(state.placements) / float(level.par), 0.0, 1.0)
+	var open: int = level.board.open_count()
+	return 0.0 if open <= 0 else float(state.path.size()) / float(open)
+
+
 func undo_available() -> bool:
 	# §5.9 takes undo away in endless and the daily for leaderboard integrity, and
 	# nowhere else. The tutorial keeps it for the same reason the campaign does,
@@ -501,6 +528,13 @@ func _publish(events: Array) -> void:
 	if state != null:
 		EventBus.tile_advanced.emit(state.current_tile(), state.preview(2))
 		EventBus.legal_targets_changed.emit(state.legal_targets())
+		# §15.1's adaptive music reads the board, and the board is this file's to
+		# report. The audio layer is told a *fact* — how full the board is — and
+		# decides for itself what that means for a stem, the same way every other
+		# view-facing fact works here (§16.2).
+		AudioDirector.set_intensity(music_intensity())
+		if mode == Mode.ENDLESS:
+			AudioDirector.set_goals(endless_goals())
 		_autosave()
 
 
