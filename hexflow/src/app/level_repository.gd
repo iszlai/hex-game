@@ -125,12 +125,18 @@ static func from_dict(d: Dictionary) -> Level:
 
 	# `shape` is absent from every level file written before C-32 and defaults to
 	# the hexagon they all are, so the sixty frozen files keep loading unchanged.
+	#
+	# `cells` is preferred over the shape fields when it is there: a hand-drawn
+	# board (MAP-EDITOR §4.3) has cells its shape does not, and the shape is then
+	# only a note about what the author started from. Absent — every swept level —
+	# the three numbers build the board exactly as they always have.
 	var board := Board.build(
 		int(d.get("radius", 3)),
 		Hex.from_array(d.get("start", [0, 0, 0]) as Array),
 		_cells(d.get("goals", [])),
 		walls, portals, gates, wilds,
-		str(d.get("shape", "hexagon")), int(d.get("shape_arg", 0))
+		str(d.get("shape", "hexagon")), int(d.get("shape_arg", 0)),
+		_cells(d.get("cells", []))
 	)
 
 	var tiles: Array[int] = []
@@ -188,7 +194,7 @@ static func to_dict(level: Level) -> Dictionary:
 		var s: Array = step
 		script.append([int(s[0]), Hex.to_array(s[1] as Vector3i)])
 
-	return {
+	var d: Dictionary = {
 		"schema": SCHEMA,
 		"id": level.id,
 		"uid": level.uid,
@@ -223,6 +229,17 @@ static func to_dict(level: Level) -> Dictionary:
 			"params_version": level.generator_params_version,
 		},
 	}
+
+	# Only a board that has diverged from its named shape pays the sixty lines of
+	# coordinates. A swept ring stays three numbers, which keeps the sixty frozen
+	# files exactly as they are and keeps a shape something a reader of the JSON
+	# can still recognise (MAP-EDITOR §4.3).
+	if not level.board.is_named_shape():
+		var cells: Array = []
+		for c: Vector3i in level.board.cells():
+			cells.append(Hex.to_array(c))
+		d["cells"] = cells
+	return d
 
 
 ## The expensive half of §17.1 validation: re-run the solver and confirm the

@@ -831,6 +831,26 @@ chapter 1 without incident.
 
 ---
 
+## Developer tools
+
+Not a milestone — §26 has nothing to say about these, because they never ship. They are tracked
+here because their output does: `make levels` writes the frozen campaign and the map editor writes
+into the same directory, so a tool that is half-built is a way for bad data to reach `master`.
+
+The brief is [`hexflow/docs/MAP-EDITOR.md`](hexflow/docs/MAP-EDITOR.md), and its §0 is the argument
+for why an authoring tool is not the "level editor" §27 declined.
+
+- [x] **Levels may list their cells** — the schema gains an optional `cells` field, so a board an
+      author has cut a hole in survives a save. It is written *only* when the board diverges from
+      its named shape, so the sixty swept files stay three numbers and only a hand-drawn board pays
+      the sixty lines — `tests/unit/test_hand_drawn_board.gd`
+- [ ] Map editor: canvas, brushes and the live constraints of §4.2
+- [ ] Map editor: Fill, Validate and Save
+- [ ] Map editor: the levels list and `Apply order`
+- [ ] `tools/` excluded from the export preset, with a test and a `ci_gate.sh` rule behind it (§8)
+
+---
+
 ## Cross-cutting debt
 
 - [ ] `assets/i18n/` is still empty, pending the M10 extraction. The rest of the tree is populated:

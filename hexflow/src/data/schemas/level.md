@@ -34,7 +34,9 @@ and comparison.
 | Field | Type | Notes |
 |---|---|---|
 | `schema` | int | A file with a higher schema than the build understands is **rejected with a clear error**, never reinterpreted |
-| `radius` | int | 2–4. A radius-4 board is 61 cells, the limit the solver's 64-bit path mask allows |
+| `radius` | int | The size the shape was *asked* for, which is only its radius when it is a hexagon. 61 cells is the ceiling however they are arranged — the limit the solver's 64-bit path mask allows |
+| `shape`, `shape_arg` | string, int | C-32's silhouette and the number that shapes it: the ring's hole, the corridor's width, the hourglass's waist. Absent means `hexagon`, which every file written before C-32 is |
+| `cells` | cube triples, optional | **When present it is the board**, and `shape` is only a label for what it started as. Written by the map editor for a board that has had cells added or removed by hand, and by nothing else — the sweep's boards are exactly their shape, so they stay three numbers |
 | `start`, `goals`, `walls`, `gates`, `wilds` | cube triples | Every coordinate satisfies `x + y + z == 0` and lies within `radius` |
 | `portals` | array of pairs | Each pair is two cube triples; pairing is reciprocal |
 | `tiles` | direction names | `NW NE E SE SW W` — the fixed sequence, consumed in order. Exhausting it ends the level |

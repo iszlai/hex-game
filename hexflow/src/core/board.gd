@@ -46,6 +46,13 @@ var _cells: Array[Vector3i] = []   # stable iteration order
 ## [param p_radius], because a shape's size parameter is not its radius — a
 ## triangle of side 6 is not a radius-6 board — and [member radius] is what §4.4
 ## fits the board on screen by.
+##
+## [param p_cells], when given, **is** the board, and the shape fields become a
+## label for what it started as. That is the map editor's case (MAP-EDITOR §4.3):
+## a board someone has added cells to or cut cells out of is not describable in
+## three numbers, and the alternative — forbidding the edit — would mean a wall
+## were the only way to make a hole, which is a different thing on screen. Every
+## other caller passes nothing and gets the shape it named.
 static func build(
 	p_radius: int,
 	p_start: Vector3i,
@@ -55,13 +62,15 @@ static func build(
 	p_gates: Array[Vector3i] = [],
 	p_wilds: Array[Vector3i] = [],
 	p_shape: String = "hexagon",
-	p_shape_arg: int = 0
+	p_shape_arg: int = 0,
+	p_cells: Array[Vector3i] = []
 ) -> Board:
 	var b := Board.new()
 	b.shape = p_shape
 	b.shape_arg = p_shape_arg
 	b.shape_size = p_radius
-	b._cells = Hex.shape(p_shape, p_radius, p_shape_arg)
+	b._cells = _dedup(p_cells) if not p_cells.is_empty() \
+		else Hex.shape(p_shape, p_radius, p_shape_arg)
 	b.radius = Hex.bounding_radius(b._cells)
 	for c: Vector3i in b._cells:
 		b._kinds[c] = Kind.EMPTY
@@ -97,6 +106,23 @@ static func build(
 ## Every cell of the board, ascending z then x. Never iterate `_kinds` directly.
 func cells() -> Array[Vector3i]:
 	return _cells
+
+
+## True when this board is *exactly* the shape it names, so a level file can say
+## `"shape": "ring"` and three numbers instead of listing sixty coordinates.
+##
+## The comparison is elementwise because both sides are in [method
+## Hex.sort_cells]'s canonical order — [method Hex.shape] finishes with it and
+## [method build] applies it to an explicit list — so this is a list equality and
+## not a set membership test.
+func is_named_shape() -> bool:
+	var named: Array[Vector3i] = Hex.shape(shape, shape_size, shape_arg)
+	if named.size() != _cells.size():
+		return false
+	for i: int in range(named.size()):
+		if named[i] != _cells[i]:
+			return false
+	return true
 
 
 func size() -> int:
@@ -176,6 +202,21 @@ func cells_with_flag(flag: int) -> Array[Vector3i]:
 		if has_flag(c, flag):
 			out.append(c)
 	return out
+
+
+## An explicit cell list in canonical order, with repeats dropped. A hand-drawn
+## board arrives as whatever the author painted and a level file as whatever was
+## written; a cell listed twice would make [method size] disagree with the number
+## of keys in `_kinds`, and the solver's cell ceiling is checked against
+## [method size].
+static func _dedup(cells_in: Array[Vector3i]) -> Array[Vector3i]:
+	var seen: Dictionary = {}
+	var out: Array[Vector3i] = []
+	for c: Vector3i in cells_in:
+		if not seen.has(c):
+			seen[c] = true
+			out.append(c)
+	return Hex.sort_cells(out)
 
 
 ## Structural validation, per §17.1. Returns a list of human-readable problems;
