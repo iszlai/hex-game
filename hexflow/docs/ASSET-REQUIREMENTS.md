@@ -121,6 +121,7 @@ files it writes beside them.
 | Board material | `tile_grain.png` | 256×256, **seamlessly tiling**, mid-grey average | 1 | not tinted — a *value* map | **Provided** | Halftone-screened stone, cut by `make grain-cut`. Sampled **per tile**, turned by a hash of the tile's own position, so every slab is its own piece of stone. Off entirely under §21's flat-board setting |
 | Controller glyphs | `assets/glyphs/<family>_<slot>.png` | 48×48 | **52** (13 slots × 4 families) | `text_primary` | **Placeholder** | Drawn by `make glyphs`: the outline a thumb looks for, plus 1–4 letters taken from `src/data/input_glyphs.json`. **Nothing loads them yet** — the HUD still shows the text label |
 | Brand mark | `logo.png` | 512×512 raster preferred | 1 | — | **Provided** | A painted title card, 1024×1024. A vector `logo.svg` is still worth having for the store page |
+| App icon | `assets/icons/icon.png` | Square, ≥512 | 1 | — | **Provided** | Derived, not drawn: the whole logo less an 8% margin, at 512. `make icon` re-cuts it — replace `logo.png`, re-run, commit. Deliberately *not* a crop of the picture: the name is the part that makes a window findable in a taskbar |
 
 ### Backdrops — the detail that matters
 

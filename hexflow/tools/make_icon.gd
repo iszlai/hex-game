@@ -1,19 +1,24 @@
 extends SceneTree
-## Cuts the application icon out of `assets/art/logo.png`, and the output is
+## Makes the application icon out of `assets/art/logo.png`, and the output is
 ## **committed** — the same arrangement as `make art` and `make marks`.
 ##
 ## The window and dock icon used to be Godot's, because `application/config/icon`
 ## was never set: the project had a logo and no icon, which are not the same file.
-## A logo is read at 1024 px and an icon is recognised at 32, so the icon is the
-## one element of the logo that survives being shrunk to a tab — with the border,
-## the title lettering and the landscape cropped away. All of that is legible at
-## full size and none of it survives the dock (C-31).
+##
+## This used to cut a tight square out of the campfire and throw the rest away, on
+## the argument that a logo is read at 1024 px and an icon is recognised at 32, so
+## only one element of the picture can survive the dock. That is a fair argument
+## about a *wide* logo with a word across it — and this logo is not one. It is
+## already square, the lettering is the biggest thing in it, and the framed scene
+## reads at a glance. Cropping it produced an icon nobody could tell was this game:
+## a fire on some rocks, with the name deleted.
+##
+## So the icon is the whole logo now. It keeps the name, which is what makes a
+## taskbar entry findable, and the fire is still the brightest thing in it at any
+## size.
 ##
 ## Derived rather than drawn, so an illustrator who replaces `logo.png` re-runs
-## this and is done. If the composition moves, the three numbers below are what
-## there is to retune — and they *do* move: the crop was the middle 55% while the
-## logo was a hex cluster centred in its frame, and the campfire it now points at
-## is neither centred nor that big.
+## this and is done.
 ##
 ## Run: godot --headless --path . -s res://tools/make_icon.gd
 
@@ -21,24 +26,19 @@ const SOURCE := "res://assets/art/logo.png"
 const OUT_DIR := "res://assets/icons/"
 const OUT := OUT_DIR + "icon.png"
 
-## The fraction of the source's shorter side the icon keeps, and where that square
-## sits relative to the middle of the image, as a fraction of the full size.
+## How much of each edge is dropped, as a fraction of the source's side.
 ##
-## The subject is the **campfire**: at 32 px a fire is a bright warm blob against
-## dark stone, which is the one thing in this logo that still reads as something
-## rather than as texture. The lettering is the obvious alternative and is the
-## wrong one — a word cropped to a square becomes two letters, and two letters of
-## a name nobody knows yet is not a mark.
-##
-## The square is deliberately tight. A wider one reaches the title above and the
-## frame's branches to the left, and both arrive as noise at icon size.
-const CROP := 0.32
-const CROP_OFFSET_X := -0.10
-const CROP_OFFSET_Y := 0.205
+## Not a crop of the composition — a trim of the dead space around it. The logo is
+## painted with a soft vignette outside its branch frame, and an icon is a small
+## square with a hard edge: every pixel of that margin is a pixel the picture is
+## not using. Small enough that the frame's corners survive, because the frame is
+## what stops the icon reading as a screenshot.
+const TRIM := 0.08
 
-## 256 is the largest size any of the three platforms asks a PNG for, and Godot
-## downsamples it for the window and the dock. Below 128 the engine warns.
-const SIZE := 256
+## 512 rather than 256: macOS wants 512 for a retina dock, every platform
+## downsamples happily, and this stays one committed file rather than a size per
+## target. Below 128 the engine warns.
+const SIZE := 512
 
 
 func _init() -> void:
@@ -48,10 +48,13 @@ func _init() -> void:
 		quit(1)
 		return
 
-	var side: int = int(mini(source.get_width(), source.get_height()) * CROP)
+	# The square the icon keeps: the whole picture less its margin, centred. Sized
+	# off the shorter side, so a logo that is not square loses its overhang rather
+	# than being squashed into the frame.
+	var side: int = int(mini(source.get_width(), source.get_height()) * (1.0 - TRIM * 2.0))
 	var region := Rect2i(
-		int((source.get_width() - side) / 2 + source.get_width() * CROP_OFFSET_X),
-		int((source.get_height() - side) / 2 + source.get_height() * CROP_OFFSET_Y),
+		int((source.get_width() - side) / 2),
+		int((source.get_height() - side) / 2),
 		side, side
 	)
 	var icon := source.get_region(region)
@@ -65,5 +68,5 @@ func _init() -> void:
 		push_error("could not write %s: %d" % [OUT, err])
 		quit(1)
 		return
-	print("wrote %s (%d×%d, from a %d px crop of the logo)" % [OUT, SIZE, SIZE, side])
+	print("wrote %s (%d×%d, the logo less a %d%% margin)" % [OUT, SIZE, SIZE, int(TRIM * 100.0)])
 	quit(0)
