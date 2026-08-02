@@ -258,23 +258,14 @@ when the answer is "play it properly" rather than "change a number".
 | **MuseScore** | free | You would rather read and write it as notation than as a piano roll |
 | **Audacity / ocenaudio** | free | You only want to top-and-tail or EQ the finished `.ogg` files. Not for arranging — it has no idea what a track is |
 
-**However you edit it, export it as one session, three times**, muting as you go:
+**However you edit it, export it as one session, three times**, muting as you go — three separate
+*renders* will not do, however good each one sounds, because the stems play on top of each other and
+two renders of the same piece drift apart (C-40).
 
-| File | Mute | Contains |
-|---|---|---|
-| `<track>_base.ogg` | `layer`, `extra` | The piano and the bass — always playing |
-| `<track>_layer.ogg` | `base`, `extra` | The melody — fades in as a level fills |
-| `<track>_extra.ogg` | `base`, `layer` | The counter-line — endless only, from five goals |
-
-Three separate *renders* will not do, however good each one sounds: the stems are played on top of
-each other and two renders of the same piece drift apart (C-40). One project, three exports, same
-length, same tempo.
-
-Then encode and drop them in:
-
-```sh
-ffmpeg -i base.wav -c:a vorbis -strict -2 -q:a 3 hexflow/assets/music/chapter_1_base.ogg
-```
+The full workflow — track names, mute list, tempos, how to make the loop seamless in a DAW, the
+filenames the game looks for and how to check the result — is
+[`MUSIC-HANDOFF.md`](MUSIC-HANDOFF.md). It is written to be handed to somebody who has never seen this
+repository.
 
 A commission or a licensed library is still the ceiling (C-6), and a written commercial licence would
 have to end up in the repository.

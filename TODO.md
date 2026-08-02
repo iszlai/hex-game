@@ -681,7 +681,8 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       one track per part, named after the stem it belongs to — so the piece can be opened in
       GarageBand, Reaper or MuseScore and played with real instruments. `drafts/` is outside the
       export filter, so nothing ships them. What comes back has to be one session exported three
-      times; the track names say so, and `docs/ASSET-REQUIREMENTS.md` has the mute list.
+      times; the track names say so, and [`hexflow/docs/MUSIC-HANDOFF.md`](hexflow/docs/MUSIC-HANDOFF.md)
+      is the whole workflow written for somebody who has never seen this repository.
       **The style is lo-fi jazz (C-42).** The first pass was pads and read as an organ, which is
       structural rather than a matter of voicing: a chord that starts and does not stop *is* an organ.
       Every voice decays now — a Rhodes comping sevenths and ninths over an upright, tape hiss and
