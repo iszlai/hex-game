@@ -80,6 +80,11 @@ samples_of() {
 # Integrated loudness and true peak of any number of inputs mixed together,
 # which is how the player hears them. normalize=0 keeps amix from scaling the
 # sum down and reporting a level nobody will hear.
+## A sample count as bars, to one decimal — for talking to a person about a file.
+bars_of() {
+  awk -v n="$1" -v b="$bar_samples" 'BEGIN{printf "%.1f", n/b}'
+}
+
 ## Integrated loudness of one file, or nothing if there is no file.
 loudness_of() {
   [ -n "${1:-}" ] && [ -f "${1:-}" ] || return 0
@@ -122,42 +127,63 @@ for track in ${1:-$TRACKS}; do
   expected=$(awk -v t="$tempo" 'BEGIN{printf "%.0f", 192*60/t*44100}')
   bar_samples=$(awk -v t="$tempo" 'BEGIN{printf "%.0f", 4*60/t*44100}')
 
-  # A DAW export is longer than its cycle region, and by an amount that differs per
-  # export: the reverb tail of whatever was unmuted, plus a little silence. Three
-  # stems from one session therefore come back three different lengths, all of them
-  # correct. What matters is that they *start* together — the shared cycle
-  # guarantees that — so the tails are trimmed rather than compared.
+  # Where the loop starts inside each file, worked out rather than insisted upon.
   #
-  # Trimmed rather than faded: the ring-out past the end is not wanted at all. A
-  # loop's tail is supplied by the ring-*in* at its start, which is the whole reason
-  # the arrangement is played twice and the second pass exported (§5).
+  # §5 asks for the arrangement played twice with only the second pass exported,
+  # because the second pass has the first one's decay already ringing into its
+  # first bar — which is exactly what a seamless loop needs and what no amount of
+  # cross-fading supplies. Setting a cycle region over bars 49–97 three times
+  # without nudging it is, in practice, the hardest step in the whole document.
+  #
+  # It does not have to be done in the DAW. A whole-song export contains both
+  # passes, and the second one starts at a sample position that follows from the
+  # tempo — so exporting the lot and taking the back half here is the same audio,
+  # arrived at by arithmetic instead of by dragging. Both deliveries are accepted:
+  # roughly one loop long means the cycle was set, roughly two means it was not.
+  #
+  # Either way a DAW appends the tail of whatever was unmuted, so the three files
+  # come back three different lengths. All correct — what matters is that they
+  # *start* together, and both routes guarantee that.
+  starts=()
   for f in "${files[@]}"; do
     read -r ts rate <<<"$(samples_of "$f")"
     [ "$rate" = "44100" ] || bad "$(basename "$f"): ${rate} Hz, needs 44100"
-    short=$(( expected - ts ))
-    if [ "$short" -gt 4410 ]; then
-      bad "$(basename "$f"): $ts samples, short of the $expected needed for 48 bars at ${tempo} BPM"
-      note "check the project tempo, and that the cycle covers bars 49–97 (§5)"
+
+    if [ "$ts" -ge $(( 2 * expected - 4410 )) ]; then
+      start=$expected
+      whole="both passes — taking the second"
+    else
+      start=0
+      whole="cycle area"
+    fi
+    starts+=("$start")
+
+    have=$(( ts - start ))
+    if [ "$have" -lt $(( expected - 4410 )) ]; then
+      bad "$(basename "$f"): only $(bars_of $have) bars after the loop point, need 48 at ${tempo} BPM"
+      note "check the project tempo — GarageBand starts at 120 and often ignores the file's"
       continue
     fi
-    excess=$(( ts - expected ))
+
+    excess=$(( have - expected ))
     if [ "$excess" -le 4410 ]; then
-      ok "$(basename "$f"): 48 bars at ${tempo} BPM"
+      ok "$(basename "$f"): 48 bars at ${tempo} BPM, ${whole}"
       continue
     fi
     # Whatever is being cut has to be a tail. If it is as loud as the music, the
-    # cycle region was wrong and this would be quietly discarding real bars.
-    # The field after the colon, and only that. `grep -o` on the whole line also
-    # matches the digits in ffmpeg's filter address and timestamps.
+    # arrangement is not the length this expects and real bars would be discarded.
+    # The field after the colon, and only that: `grep -o` on the whole line also
+    # matches the digits in ffmpeg's filter address and its timestamps.
     tail_peak=$(ffmpeg -hide_banner -nostats -i "$f" \
-      -af "atrim=start_sample=${expected},astats=metadata=1:reset=0" -f null - 2>&1 \
+      -af "atrim=start_sample=$(( start + expected )),astats=metadata=1:reset=0" \
+      -f null - 2>&1 \
       | sed -n 's/.*Peak level dB: *\(-*[0-9.]*\|-inf\)$/\1/p' | tail -1)
     [ -n "$tail_peak" ] || tail_peak="-inf"
     if [ "$tail_peak" != "-inf" ] && awk -v p="$tail_peak" 'BEGIN{exit !(p > -12.0)}'; then
-      bad "$(basename "$f"): $(awk -v e=$excess -v b=$bar_samples 'BEGIN{printf "%.1f", e/b}') bars past the loop, peaking at ${tail_peak} dB — too loud to be a tail"
-      note "the cycle region is probably not bars 49–97; music is being cut off"
+      bad "$(basename "$f"): $(bars_of $excess) bars past the loop peaking at ${tail_peak} dB — too loud to be a tail"
+      note "the arrangement is not 48 bars, or is not doubled; music would be cut off"
     else
-      ok "$(basename "$f"): 48 bars, plus $(awk -v e=$excess -v b=$bar_samples 'BEGIN{printf "%.1f", e/b}') bars of tail to trim"
+      ok "$(basename "$f"): 48 bars at ${tempo} BPM, ${whole}, $(bars_of $excess) bars of tail trimmed"
     fi
   done
 
@@ -166,10 +192,13 @@ for track in ${1:-$TRACKS}; do
   work=$(mktemp -d)
   trap 'rm -rf "$work"' EXIT
   trimmed=()
-  for f in "${files[@]}"; do
+  for i in "${!files[@]}"; do
+    f="${files[$i]}"
+    s="${starts[$i]}"
     t="$work/$(basename "${f%.*}").wav"
     ffmpeg -hide_banner -loglevel error -y -i "$f" \
-      -af "atrim=end_sample=${expected}" -c:a pcm_s16le -ar 44100 "$t"
+      -af "atrim=start_sample=${s}:end_sample=$(( s + expected ))" \
+      -c:a pcm_s16le -ar 44100 "$t"
     trimmed+=("$t")
   done
   trimmed_stem() {
@@ -210,13 +239,16 @@ for track in ${1:-$TRACKS}; do
   # The brief says the melody sits under the bed, and it is easy to read that as
   # "as far under as possible". The composed beds put it about 5 LU down. Past
   # about 8 the fade-in stops registering as an event.
+  #
+  # It reports rather than instructs, and never fails. Where exactly the melody
+  # sits is the composer's to decide and they may well have decided it; the number
+  # is here so that decision is made with it in view rather than by accident.
   lb=$(loudness_of "$(trimmed_stem base || true)")
   ll=$(loudness_of "$(trimmed_stem layer || true)")
   if [ -n "$lb" ] && [ -n "$ll" ]; then
     drop=$(awk -v b="$lb" -v l="$ll" 'BEGIN{printf "%.1f", b-l}')
     if awk -v d="$drop" 'BEGIN{exit !(d > 8.0)}'; then
-      note "⚠ layer is ${drop} LU below base — the composed beds use about 5"
-      note "  it will fade in mid-level and the player will not notice. Raise it"
+      note "layer sits ${drop} LU under the bed; the composed beds use about 5"
     else
       ok "layer sits ${drop} LU under the bed"
     fi

@@ -137,6 +137,9 @@ const TRACKS := {
 			[5, "maj9"], [7, "dom9"], [0, "min9"], [10, "maj9"]],
 	},
 	"chapter_1": {
+		# Played by hand, 2026-08-02 — same session and instruments as `menu`,
+		# without the kit. See `handmade` in `_render_track`.
+		"handmade": true,
 		"root": 60, "bpm": 70, "bright": 0.55,          # C major, warm
 		"chords": [[0, "maj9"], [9, "min9"], [2, "min9"], [7, "dom9"],
 			[0, "maj9"], [9, "min9"], [5, "maj7"], [7, "dom9"]],
