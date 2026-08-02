@@ -140,12 +140,18 @@ All three exports must use the same cycle region so the files are the same lengt
 
 ## 6. Exporting from GarageBand, step by step
 
-1. Drag `menu.mid` into an empty GarageBand project. Four software-instrument tracks appear.
+1. Drag `menu.mid` into an empty GarageBand project. One software-instrument track appears per part
+   — five for `menu.mid`, four for a chapter.
 2. Set the project tempo from the table in §3.
-3. Assign instruments per track (§3).
-4. Duplicate the arrangement to play twice; set the cycle area over the second pass (§5).
-5. Balance it. The piano and bass are the bed; the melody sits **under** them, not over.
-6. Export three times — `Share ▸ Export Song to Disk…`, **AIFF or WAV**, 44.1 kHz:
+3. Assign instruments per track (§3). Rename each track to match the region beside it: two of them
+   arrive called "Vibraphone", and muting the wrong one in step 6 is not a mistake you hear until
+   the game plays it.
+4. **Turn off `GarageBand ▸ Settings ▸ Advanced ▸ Auto Normalize`.** It is on by default, it applies
+   to every export separately, and it is the one setting that can ruin this delivery in a way
+   nothing downstream can repair — see §6.1.
+5. Duplicate the arrangement to play twice; set the cycle area over the second pass (§5).
+6. Balance it. The piano and bass are the bed; the melody sits **under** them, not over.
+7. Export three times — `Share ▸ Export Song to Disk…`, **AIFF or WAV**, 44.1 kHz:
 
 For `menu.mid`, which has the drums track:
 
@@ -156,6 +162,28 @@ For `menu.mid`, which has the drums track:
 | 3 | `base — rhodes`, `base — bass`, `base — drums`, `layer — melody` | `menu_extra.wav` |
 
 For the five `chapter_*.mid` files, which have no drums track, drop `base — drums` from those lists.
+
+### 6.1 Auto Normalize
+
+Worth its own heading because it is the only mistake here that passes every check a person can make
+by listening.
+
+GarageBand normalises each exported file to full scale, on by default, applied per export. The
+`layer` is one quiet instrument written to sit *under* the bed — so on its way out it gets lifted by
+however many decibels it takes to reach the top, and arrives **louder than the piano**. Measured on
+the first set exported through this document: a lone vibraphone 7.8 LU louder than the whole bed,
+and all three files peaking at the same value to six decimal places.
+
+Every other property survives. The stems are the right length, they line up, they loop, and each one
+sounds correct on its own. Only the balance *between* them is gone — which is the single thing three
+files can get wrong that one file cannot, and the reason this delivery is three files.
+
+`tools/import_music.sh` refuses a set whose stems all peak alike, so it cannot reach the game. But it
+cannot repair one, because the gain applied is different per file and nothing in the export records
+what it was. The only fix is the checkbox and three fresh exports.
+
+**How to tell it is off:** the three files have visibly different peak levels, and `menu_layer` is
+much quieter than `menu_base`.
 
 The rule underneath the table: **everything named `base — …` goes in export 1 and is muted for the
 other two.** If you remember that, you never have to read the table again.
