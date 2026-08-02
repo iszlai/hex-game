@@ -128,9 +128,10 @@ const PENTATONIC: Array[int] = [0, 3, 5, 7, 10]
 ## style choice.
 const TRACKS := {
 	"menu": {
-		# Played by hand in GarageBand, 2026-08-02: Classic Suitcase Mk IV, upright,
-		# two vibraphones and a soft kit, from this score's own `.mid`. The synth
-		# below no longer renders it — see `handmade` in `_render_track`.
+		# Placeholder: this row's audio is a *copy* of chapter_1's recording. The bed
+		# played for this score — Classic Suitcase Mk IV, upright, two vibraphones
+		# and the kit `beat` below asks for — is at commit 23c262a and is the thing
+		# to restore first. See docs/MUSIC-REWORK.md.
 		"handmade": true,
 		"root": 57, "bpm": 70, "bright": 0.45, "beat": true,   # A minor
 		"chords": [[2, "m7b5"], [7, "dom9"], [0, "min9"], [0, "min9"],
@@ -145,21 +146,33 @@ const TRACKS := {
 			[0, "maj9"], [9, "min9"], [5, "maj7"], [7, "dom9"]],
 	},
 	"chapter_2": {
+		# Placeholder: this row's audio is a *copy* of chapter_1's recording, not a
+		# performance of this score. See docs/MUSIC-REWORK.md.
+		"handmade": true,
 		"root": 58, "bpm": 72, "bright": 0.48,          # B♭ major
 		"chords": [[2, "min9"], [7, "dom9"], [0, "maj9"], [5, "maj7"],
 			[2, "min9"], [7, "dom9"], [0, "maj9"], [9, "min7"]],
 	},
 	"chapter_3": {
+		# Placeholder: this row's audio is a *copy* of chapter_1's recording, not a
+		# performance of this score. See docs/MUSIC-REWORK.md.
+		"handmade": true,
 		"root": 55, "bpm": 72, "bright": 0.40,          # G minor
 		"chords": [[0, "min9"], [5, "dom9"], [10, "maj9"], [3, "maj7"],
 			[2, "m7b5"], [7, "dom9"], [0, "min9"], [0, "min11"]],
 	},
 	"chapter_4": {
+		# Placeholder: this row's audio is a *copy* of chapter_1's recording, not a
+		# performance of this score. See docs/MUSIC-REWORK.md.
+		"handmade": true,
 		"root": 52, "bpm": 74, "bright": 0.34,          # E minor, darker
 		"chords": [[0, "min9"], [0, "min9"], [8, "maj9"], [10, "dom9"],
 			[2, "m7b5"], [7, "dom9"], [0, "min9"], [3, "maj7"]],
 	},
 	"chapter_5": {
+		# Placeholder: this row's audio is a *copy* of chapter_1's recording, not a
+		# performance of this score. See docs/MUSIC-REWORK.md.
+		"handmade": true,
 		"root": 50, "bpm": 76, "bright": 0.28,          # D minor, tense
 		"chords": [[0, "min9"], [7, "m7b5"], [10, "dom9"], [0, "min11"],
 			[5, "min7"], [10, "dom9"], [0, "min9"], [7, "dom9"]],

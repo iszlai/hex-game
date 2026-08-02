@@ -700,11 +700,19 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       synthesised ones, so the handoff is proven on one track and owed on five.
       `handmade: true` in the menu row stops `make music` overwriting it — the `.mid` is still
       rewritten, because it is the source, but the synthesis is skipped.
-      **It is 4 LU quieter than the chapter beds** — −20.2 LUFS against their −16.6 — and its layer
-      sits 11.6 LU under its base where the composed beds use about 5. Both are fader moves in the
-      DAW project, both were flagged and both were accepted as they are; entering a level from the
-      menu is audibly a step up in volume, and the melody that fades in mid-level is quieter than it
-      was designed to be. Fixing them means three fresh exports and nothing else.
+      **All six beds are currently the same recording.** Chapter 1 was played next, and its audio was
+      then copied over the other five so the game has coherent music everywhere while the real work
+      waits. Every row is `handmade: true`, which for five of the six is protecting a *copy* rather
+      than a performance — set that way deliberately, since the alternative is `make music` replacing
+      the good recording with the synthesiser. The menu bed that was actually played for the menu
+      score, the only one with drums, is at commit `23c262a`.
+      **What is owed, and why, is in [`hexflow/docs/MUSIC-REWORK.md`](hexflow/docs/MUSIC-REWORK.md).**
+      The short version: `_melody_notes` draws at random across two octaves and echoes every note, so
+      the line reads as somebody soloing — the performer found it irritating and mixed it 12–15 LU
+      under the bed to escape it, which leaves §15.1's adaptive half inaudible. Turning it down
+      treats the symptom; the writing is the defect. Rewrite it stepwise in one octave with no echo,
+      audition it through the synthesiser at 90 seconds a go, and only then re-export the beds by
+      hand at about an hour each.
       **What it rides had to change (C-41).** §15.1 says "board fill %", and measured over the shipped
       sixty a *completed* level reaches 40% fill in 0 of 12 levels in chapter 1 and 1 of 12 in chapter
       2 — a path is a line across a hex board, not a flood of it. Taken literally, the adaptive half of

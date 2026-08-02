@@ -44,6 +44,7 @@ Single developer, so there is no review to wait for and no branch protection to 
 | [`hexflow/docs/DESIGN-GAPS.md`](hexflow/docs/DESIGN-GAPS.md) | What stands between a spec-complete build and a game someone plays twice. Separates defects from decisions that need making |
 | [`hexflow/docs/MAP-EDITOR.md`](hexflow/docs/MAP-EDITOR.md) | Brief for the hand-authoring tool — `make edit-maps`. Includes why it does not violate §27's "no level editor", and §8's rules that keep it that way |
 | [`hexflow/docs/MUSIC-HANDOFF.md`](hexflow/docs/MUSIC-HANDOFF.md) | How to replace §15.1's beds by hand from the exported MIDI. Self-contained, written for somebody outside this repository |
+| [`hexflow/docs/MUSIC-REWORK.md`](hexflow/docs/MUSIC-REWORK.md) | Why the six beds are one recording copied six times, and the order to fix it in. Read before touching the music |
 
 The spec outranks every other document. If code and spec disagree, the code is a bug. If the **spec**
 is wrong, log it in Appendix C and fix it there — do not silently diverge (constraint C7).
