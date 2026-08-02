@@ -16,6 +16,11 @@
 
 set -euo pipefail
 
+# Every number here is parsed as well as printed, and a locale that writes 3,0 for
+# three-and-a-bit turns "%.1f" into something awk will not read back. This script
+# talks to ffmpeg, not to a person's spreadsheet.
+export LC_ALL=C
+
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 src="$here/drafts/music/wav"
 dst="$here/assets/music"
@@ -95,59 +100,129 @@ for track in ${1:-$TRACKS}; do
     fi
   fi
 
-  # Same length to the sample (§10). Compared against base when present.
+  # 48 bars of 4/4 is 192 beats, so the loop's exact length follows from the tempo.
+  # Every stem is cut to precisely this, which is what makes them line up.
   expected=$(awk -v t="$tempo" 'BEGIN{printf "%.0f", 192*60/t*44100}')
-  ref=""
+  bar_samples=$(awk -v t="$tempo" 'BEGIN{printf "%.0f", 4*60/t*44100}')
+
+  # A DAW export is longer than its cycle region, and by an amount that differs per
+  # export: the reverb tail of whatever was unmuted, plus a little silence. Three
+  # stems from one session therefore come back three different lengths, all of them
+  # correct. What matters is that they *start* together — the shared cycle
+  # guarantees that — so the tails are trimmed rather than compared.
+  #
+  # Trimmed rather than faded: the ring-out past the end is not wanted at all. A
+  # loop's tail is supplied by the ring-*in* at its start, which is the whole reason
+  # the arrangement is played twice and the second pass exported (§5).
   for f in "${files[@]}"; do
     read -r ts rate <<<"$(samples_of "$f")"
     [ "$rate" = "44100" ] || bad "$(basename "$f"): ${rate} Hz, needs 44100"
-    if [ -z "$ref" ]; then ref=$ts; ref_name=$(basename "$f"); fi
-    if [ "$ts" != "$ref" ]; then
-      bad "$(basename "$f"): $ts samples, but $ref_name has $ref — stems must match exactly"
+    short=$(( expected - ts ))
+    if [ "$short" -gt 4410 ]; then
+      bad "$(basename "$f"): $ts samples, short of the $expected needed for 48 bars at ${tempo} BPM"
+      note "check the project tempo, and that the cycle covers bars 49–97 (§5)"
+      continue
+    fi
+    excess=$(( ts - expected ))
+    if [ "$excess" -le 4410 ]; then
+      ok "$(basename "$f"): 48 bars at ${tempo} BPM"
+      continue
+    fi
+    # Whatever is being cut has to be a tail. If it is as loud as the music, the
+    # cycle region was wrong and this would be quietly discarding real bars.
+    # The field after the colon, and only that. `grep -o` on the whole line also
+    # matches the digits in ffmpeg's filter address and timestamps.
+    tail_peak=$(ffmpeg -hide_banner -nostats -i "$f" \
+      -af "atrim=start_sample=${expected},astats=metadata=1:reset=0" -f null - 2>&1 \
+      | sed -n 's/.*Peak level dB: *\(-*[0-9.]*\|-inf\)$/\1/p' | tail -1)
+    [ -n "$tail_peak" ] || tail_peak="-inf"
+    if [ "$tail_peak" != "-inf" ] && awk -v p="$tail_peak" 'BEGIN{exit !(p > -12.0)}'; then
+      bad "$(basename "$f"): $(awk -v e=$excess -v b=$bar_samples 'BEGIN{printf "%.1f", e/b}') bars past the loop, peaking at ${tail_peak} dB — too loud to be a tail"
+      note "the cycle region is probably not bars 49–97; music is being cut off"
+    else
+      ok "$(basename "$f"): 48 bars, plus $(awk -v e=$excess -v b=$bar_samples 'BEGIN{printf "%.1f", e/b}') bars of tail to trim"
     fi
   done
 
-  drift=$(( ref > expected ? ref - expected : expected - ref ))
-  if [ "$drift" -gt 4410 ]; then
-    bad "length $ref samples, expected ~$expected for 48 bars at ${tempo} BPM"
-    note "check the project tempo and that the cycle area covers bars 49–96 (§5)"
-  else
-    ok "48 bars at ${tempo} BPM, $ref samples, stems aligned"
-  fi
-
-  # §7's levels. base+layer for loudness, all three for peak.
-  b=$(find_stem "$track" base || true)
-  l=$(find_stem "$track" layer || true)
-  if [ -n "$b" ] && [ -n "$l" ]; then
-    sum=$(measure "$b" "$l")
-    lufs=$(echo "$sum" | grep -oE 'I: *-?[0-9.]+' | tail -1 | grep -oE '\-?[0-9.]+')
-    [ -n "$lufs" ] && {
-      off=$(awk -v v="$lufs" 'BEGIN{d=v+16; print (d<0?-d:d)}')
-      if awk -v o="$off" 'BEGIN{exit !(o>2.0)}'; then
-        bad "base+layer is ${lufs} LUFS, target −16 (±2)"
-      else
-        ok "base+layer ${lufs} LUFS"
-      fi
-    }
-  fi
-  peaksum=$(measure "${files[@]}")
-  peak=$(echo "$peaksum" | grep -oE 'Peak: *-?[0-9.]+' | tail -1 | grep -oE '\-?[0-9.]+')
-  [ -n "$peak" ] && {
-    if awk -v p="$peak" 'BEGIN{exit !(p > -1.0)}'; then
-      bad "true peak ${peak} dBTP, must stay under −1"
-    else
-      ok "true peak ${peak} dBTP"
-    fi
+  # Everything from here works on the trimmed copies, so what is measured is what
+  # the game will actually play.
+  work=$(mktemp -d)
+  trap 'rm -rf "$work"' EXIT
+  trimmed=()
+  for f in "${files[@]}"; do
+    t="$work/$(basename "${f%.*}").wav"
+    ffmpeg -hide_banner -loglevel error -y -i "$f" \
+      -af "atrim=end_sample=${expected}" -c:a pcm_s16le -ar 44100 "$t"
+    trimmed+=("$t")
+  done
+  trimmed_stem() {
+    local p="$work/${track}_$1.wav"
+    [ -f "$p" ] && echo "$p"
   }
 
+  # Did the DAW normalise each export on its own?
+  #
+  # This is the one failure that survives every other check in this file. The stems
+  # are the right length, they line up, they loop, each one sounds correct alone —
+  # and the balance between them, which is the only thing three files can get wrong
+  # that one file cannot, is gone. GarageBand ships with "Auto Normalize" on by
+  # default and it applies to every export, so the `layer` — one quiet instrument,
+  # written to sit *under* the bed — is lifted to full scale on its way out and
+  # arrives louder than the piano.
+  #
+  # Two tells, either of which is conclusive:
+  peaks=""
+  for f in "${trimmed[@]}"; do
+    peaks="$peaks $(ffmpeg -hide_banner -nostats -i "$f" -af "astats=metadata=1:reset=0" \
+      -f null - 2>&1 | sed -n 's/.*Peak level dB: *\(-*[0-9.]*\)$/\1/p' | tail -1)"
+  done
+  spread=$(echo "$peaks" | awk '{m=$1;x=$1;for(i=2;i<=NF;i++){if($i<m)m=$i;if($i>x)x=$i}
+    printf "%.3f", x-m}')
+  if [ ${#trimmed[@]} -gt 1 ] && awk -v s="$spread" 'BEGIN{exit !(s < 0.05)}'; then
+    bad "every stem peaks at the same level (within ${spread} dB) — they were normalised separately"
+    note "GarageBand ▸ Settings ▸ Advanced ▸ untick \"Auto Normalize\", then export all three again"
+  fi
+
+  # §7's levels, reached the way tools/make_music.gd reaches them: **one** gain,
+  # applied to all three stems.
+  #
+  # Not one gain per stem. `base` and `layer` do not have the same energy and are
+  # not meant to — the bed is louder than the tune. Normalising them separately
+  # would make them equal, which is not a level correction, it is a remix.
+  #
+  # So a mix that came back a few decibels hot is not something to send back to the
+  # DAW. Everything here is linear: scaling three files by one factor changes
+  # nothing about their balance, their timing or their phase.
+  b=$(trimmed_stem base || true)
+  l=$(trimmed_stem layer || true)
+  peak=$(measure "${trimmed[@]}" | sed -n 's/.*Peak: *\(-*[0-9.]*\).*/\1/p' | tail -1)
+  gain=0
+  if [ -n "$b" ] && [ -n "$l" ]; then
+    lufs=$(measure "$b" "$l" | sed -n 's/.*I: *\(-*[0-9.]*\).*/\1/p' | tail -1)
+    gain=$(awk -v v="$lufs" 'BEGIN{printf "%.2f", -16.0 - v}')
+    note "base+layer measures ${lufs} LUFS, true peak ${peak} dBTP"
+  else
+    note "no layer yet — loudness needs base+layer, so only the peak is being held"
+  fi
+  # §7's ceiling wins over its loudness target: a bed a decibel quiet is nobody's
+  # problem and a clipped one is everybody's. −1.5 rather than −1 leaves the Vorbis
+  # encoder room to overshoot a sample peak on the way out.
+  cap=$(awk -v p="$peak" 'BEGIN{printf "%.2f", -1.5 - p}')
+  if awk -v g="$gain" -v c="$cap" 'BEGIN{exit !(g > c)}'; then
+    note "held down by the peak ceiling rather than the loudness target"
+    gain=$cap
+  fi
+  ok "applying ${gain} dB to all three stems"
+
   if [ "$fail" = 0 ] && [ -z "${CHECK_ONLY:-}" ]; then
-    for f in "${files[@]}"; do
+    for f in "${trimmed[@]}"; do
       out="$dst/$(basename "${f%.*}").ogg"
       ffmpeg -hide_banner -loglevel error -y -i "$f" \
-        -c:a libvorbis -q:a 4 -ar 44100 "$out"
+        -af "volume=${gain}dB" -c:a libvorbis -q:a 4 -ar 44100 "$out"
       ok "→ ${out#$here/}"
     done
   fi
+  rm -rf "$work"; trap - EXIT
 done
 
 if [ "$fail" != 0 ]; then
