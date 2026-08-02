@@ -9,7 +9,7 @@ Living checklist of what is built and what is not. **Must be kept in sync with t
   criterion is **demonstrated**, not when the code looks finished.
 - `make gate` is the arbiter. Anything ticked here should survive it.
 
-Last verified: **2026-08-01** — Godot 4.7.1, 666 tests green in ~35 s, 60 frozen campaign level
+Last verified: **2026-08-02** — Godot 4.7.1, 671 tests green in ~35 s, 60 frozen campaign level
 files and §10's five tutorial boards re-verified, every screen readable in English and Hungarian.
 
 ---
@@ -686,8 +686,13 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       **The style is lo-fi jazz (C-42).** The first pass was pads and read as an organ, which is
       structural rather than a matter of voicing: a chord that starts and does not stop *is* an organ.
       Every voice decays now — a Rhodes comping sevenths and ninths over an upright, tape hiss and
-      crackle under it, swung eighths throughout. Still no drums; §15.1 forbids percussion in the
-      campaign and the vinyl bed is texture that cannot be counted.
+      crackle under it, swung eighths throughout.
+      **The menu bed has a beat; the five campaign beds do not.** §15.1 forbids percussion *in the
+      campaign*, and the menu track — which also plays behind endless and the daily — is not a
+      campaign bed. It gets a soft kit (kick, side stick, hats, all dragging behind the grid) because
+      lo-fi without one is just quiet jazz. In the five chapter beds the vinyl remains the only
+      texture, and it is one that cannot be counted. `beat` in the track's row is the switch, and only
+      `menu` may set it.
       **What it rides had to change (C-41).** §15.1 says "board fill %", and measured over the shipped
       sixty a *completed* level reaches 40% fill in 0 of 12 levels in chapter 1 and 1 of 12 in chapter
       2 — a path is a line across a hex board, not a flood of it. Taken literally, the adaptive half of

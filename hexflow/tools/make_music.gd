@@ -42,10 +42,21 @@ extends SceneTree
 ## without their root — the bass has that — and spread over an octave, are the
 ## sound the note was asking for.
 ##
-## §15.1 forbids percussion in the campaign, so there are no drums: the swing is
-## carried by the comping and the bass. The vinyl bed is texture rather than a
-## beat, which is what keeps it on the right side of that rule and also what makes
-## it work.
+## §15.1 forbids percussion **in the campaign**, and those five words are load
+## bearing. The five chapter beds have no drums: the swing is carried by the
+## comping and the bass, and the vinyl underneath is texture rather than a beat,
+## which is what keeps them on the right side of the rule.
+##
+## The menu bed is not a campaign bed. It plays behind the menus, endless and the
+## daily, so it gets the beat the genre is actually built on — a soft kick, a side
+## stick and hats, switched on by `beat` in its row and off in every other. Without
+## it the style is only ever half present: take the drums out of lo-fi and what is
+## left is quiet jazz, which is what the first six beds were and why they did not
+## sound like the thing they were named after.
+##
+## The rule is not being bent. It is being read: a player in a level still never
+## hears a beat, and that is the case §15.1 was protecting — an hour of counting
+## something while trying to think.
 ##
 ## ## What comes out
 ##
@@ -111,9 +122,13 @@ const PENTATONIC: Array[int] = [0, 3, 5, 7, 10]
 ## across the campaign, which is the cheapest way for five beds to feel like a
 ## sequence rather than a set. `bright` is how much tine the Rhodes has: chapter 5
 ## is the tense one and gets the least.
+##
+## `beat` is §15.1's percussion rule, and only `menu` may set it — see the note at
+## the top of the file. A campaign row that turns it on is a spec violation, not a
+## style choice.
 const TRACKS := {
 	"menu": {
-		"root": 57, "bpm": 70, "bright": 0.45,          # A minor
+		"root": 57, "bpm": 70, "bright": 0.45, "beat": true,   # A minor
 		"chords": [[2, "m7b5"], [7, "dom9"], [0, "min9"], [0, "min9"],
 			[5, "maj9"], [7, "dom9"], [0, "min9"], [10, "maj9"]],
 	},
@@ -226,6 +241,11 @@ func _render_track(name: String, spec: Dictionary) -> void:
 			"counter":
 				_reed(stems["extra"], at, hz, seconds,
 					float(note["gain"]), float(note["pan"]))
+			"drums":
+				# The one voice that takes its MIDI number rather than a frequency:
+				# a kit is a map from note to sound, not a scale.
+				_drum(stems["base"], at, int(note["midi"]), seconds,
+					float(note["gain"]), float(note["pan"]))
 	_write_midi(name, spec, score)
 
 	for stem: String in STEMS:
@@ -243,13 +263,36 @@ func _render_track(name: String, spec: Dictionary) -> void:
 ## Which stem each part belongs to. The reason the whole tool exists is on this
 ## line: muting a part is muting a *file*, and the three files were played at once.
 const PART_STEM := {
-	"rhodes": "base", "bass": "base", "melody": "layer", "counter": "extra",
+	"rhodes": "base", "bass": "base", "drums": "base",
+	"melody": "layer", "counter": "extra",
 }
+
+## The parts, in the order they are written to the `.mid`. `drums` is last because
+## it is the one that is often not there at all.
+const PARTS: Array[String] = ["rhodes", "bass", "melody", "counter", "drums"]
 
 ## General MIDI programs for the parts, for the `.mid` export. Nobody has to keep
 ## these — a DAW will put a real Rhodes on the track — but a file that opens
-## playing something close to the intention is worth four numbers.
-const PART_PROGRAM := {"rhodes": 4, "bass": 32, "melody": 73, "counter": 71}
+## playing something close to the intention is worth four numbers. `drums` has no
+## entry: it goes out on channel 10, where the program byte selects a kit rather
+## than an instrument and the default one is what is wanted.
+## Vibraphone for both melodic parts rather than the flute and clarinet these used
+## to open with. Those two are among the weakest patches in the standard set, and
+## under lo-fi they read as a school orchestra — the first person to open these
+## files reached to delete both tracks, which would have taken §15.1's adaptive
+## half with them. A default nobody wants to keep is worse than no default.
+const PART_PROGRAM := {"rhodes": 4, "bass": 32, "melody": 11, "counter": 11}
+
+## General MIDI's percussion key map, which is what the drum part's `midi` values
+## are. Writing the beat in GM numbers rather than in names of our own costs
+## nothing here and means the `.mid` opens in any DAW already playing a kit —
+## rather than playing three notes of a piano somewhere near the bottom.
+const KICK := 36        # Bass Drum 1
+const RIM := 37         # Side Stick
+const HAT := 42         # Closed Hi-Hat
+
+## Channel 10 — index 9 — is percussion in General MIDI, and nothing else is.
+const DRUM_CHANNEL := 9
 
 
 ## Every note in the piece: `{part, beat, midi, ring, gain, pan}`, with `beat`
@@ -273,6 +316,8 @@ func _score(spec: Dictionary, rng: RandomNumberGenerator) -> Array:
 		out.append_array(_bass_notes(at, chord_root, quality, bar, rng))
 		out.append_array(_melody_notes(at, root, chord_root, quality, bar, rng))
 		out.append_array(_counter_notes(at, chord_root, quality, bar))
+		if bool(spec.get("beat", false)):
+			out.append_array(_drum_notes(at, bar, rng))
 	return out
 
 
@@ -397,6 +442,47 @@ func _counter_notes(at: float, chord_root: int, quality: String, bar: int) -> Ar
 	]
 
 
+## The beat, on the menu bed only (§15.1 — see the note at the top of the file).
+##
+## Boom-bap at the pace the rest of the piece is already moving: kick on one and on
+## the swung "and" of three, side stick on two and four, hats on the off-beats
+## only. No fills and no variation that announces itself — a bed somebody hears for
+## an hour is judged by what it does *not* do, and a drum part that gets noticed
+## twice has already failed.
+##
+## The side stick rather than a snare is the whole character of the style. A snare
+## on two and four is a band playing; a rim click at the same place is somebody
+## keeping time quietly in a room, which is what this is for.
+##
+## Everything drags. `drag` puts the kit a fifth of a beat's ten-thousandth behind
+## where the grid says, the stick further back than the kick, and the hats nearly
+## on time. That lag *is* the genre — a beat that lands exactly where it is
+## expected reads as a drum machine, and this is meant to read as a loop somebody
+## made.
+func _drum_notes(at: float, bar: int, rng: RandomNumberGenerator) -> Array:
+	var out: Array = []
+	var drag: float = 0.020
+
+	out.append(_note("drums", at + drag, KICK, 0.6, 0.150))
+	out.append(_note("drums", at + _swung(5) + drag, KICK, 0.6, 0.115))
+	# Two and four, a hair further behind than the kick.
+	out.append(_note("drums", at + 1.0 + drag * 1.7, RIM, 0.4, 0.085, -0.12))
+	out.append(_note("drums", at + 3.0 + drag * 1.7, RIM, 0.4, 0.085, -0.12))
+	# One extra kick every fourth bar, so no two bars of the loop are identical and
+	# the four-bar phrase has somewhere to land.
+	if bar % 4 == 2:
+		out.append(_note("drums", at + 3.5 + drag, KICK, 0.5, 0.080))
+
+	# Hats on the off-beats, with roughly one in eight dropped. A hat on every
+	# eighth is a metronome; a hat on the off-beats with holes in it is a hand.
+	for slot: int in range(1, BEATS_PER_BAR * 2, 2):
+		if rng.randf() < 0.13:
+			continue
+		out.append(_note("drums", at + _swung(slot) + drag * 0.4, HAT, 0.25,
+			0.038 + rng.randf() * 0.016, 0.20))
+	return out
+
+
 ## The tape the whole thing is playing off: a dull hiss with a slow wobble in it,
 ## and a crackle every so often.
 ##
@@ -485,6 +571,56 @@ func _pluck_bass(buffer: PackedFloat32Array, at: int, hz: float, seconds: float,
 		# note half the speakers cannot help with.
 		buffer[index * 2] += sample * gain * 0.707
 		buffer[index * 2 + 1] += sample * gain * 0.707
+
+
+## The kit. Three sounds, each about six lines, because a lo-fi kit is a *quiet*
+## kit and almost everything that would make these convincing on their own gets
+## thrown away by the 4 kHz filter downstream anyway.
+##
+## - **Kick**: a sine whose pitch falls from 120 Hz to 48 Hz in the first 20 ms.
+##   That fall is the entire difference between a kick drum and a low beep.
+## - **Side stick**: a short tone around 1.7 kHz with a noise edge, gone in 60 ms.
+##   Woody rather than sharp.
+## - **Hat**: noise, shaped and very short.
+##
+## The noise is a small local generator seeded off the note's own position rather
+## than the track's `RandomNumberGenerator`. Two renders of one score have to be
+## byte-identical, and pulling from the shared stream inside a *voice* makes what
+## comes out depend on how many notes were rendered before it — so adding one hat
+## to bar 3 would change the noise in every drum after it.
+func _drum(buffer: PackedFloat32Array, at: int, midi: int, seconds: float,
+		gain: float, pan: float) -> void:
+	var length: int = int(seconds * float(RATE))
+	var frames: int = buffer.size() / 2
+	var left: float = gain * sqrt(clampf(0.5 - pan * 0.5, 0.0, 1.0))
+	var right: float = gain * sqrt(clampf(0.5 + pan * 0.5, 0.0, 1.0))
+	var noise: int = (at * 2654435761) & 0x7FFFFFFF
+	var phase: float = 0.0
+
+	for n: int in range(length):
+		var index: int = at + n
+		if index >= frames or index < 0:
+			continue
+		var t: float = float(n) / float(RATE)
+		noise = (noise * 1103515245 + 12345) & 0x7FFFFFFF
+		var white: float = float(noise) / 1073741823.5 - 1.0
+		var sample: float = 0.0
+		match midi:
+			KICK:
+				var hz: float = 48.0 + 72.0 * exp(-t * 55.0)
+				phase += TAU * hz / float(RATE)
+				sample = sin(phase) * exp(-t * 11.0)
+				# A trace of noise at the very front is the beater, not the drum.
+				sample += white * exp(-t * 320.0) * 0.10
+			RIM:
+				sample = sin(TAU * 1700.0 * t) * exp(-t * 42.0) * 0.7
+				sample += white * exp(-t * 90.0) * 0.35
+			HAT:
+				# Two poles of difference on white noise: a cheap high-pass, and
+				# all a closed hat needs before the tape filter dulls it again.
+				sample = white * exp(-t * 75.0)
+		buffer[index * 2] += sample * left
+		buffer[index * 2 + 1] += sample * right
 
 
 ## The melody voice: breathy and soft-edged, between a flute and a muted horn. A
@@ -681,9 +817,12 @@ const MIDI_DIR := "res://drafts/music/"
 ## second, nothing for the third. Three separate renders will phase (C-40).
 func _write_midi(name: String, spec: Dictionary, score: Array) -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(MIDI_DIR))
-	var parts: Array[String] = ["rhodes", "bass", "melody", "counter"]
 	var chunks: Array[PackedByteArray] = [_tempo_track(float(spec["bpm"]))]
-	for part: String in parts:
+	for part: String in PARTS:
+		# A campaign bed has no drums, and an empty track named `base — drums` in
+		# its `.mid` is an invitation to add some. Leave it out entirely.
+		if part == "drums" and not bool(spec.get("beat", false)):
+			continue
 		chunks.append(_part_track(part, score))
 
 	var out := PackedByteArray()
@@ -720,13 +859,15 @@ func _tempo_track(bpm: float) -> PackedByteArray:
 
 ## One track per part, named `stem — part` so the muting is obvious on sight.
 func _part_track(part: String, score: Array) -> PackedByteArray:
-	var channel: int = ["rhodes", "bass", "melody", "counter"].find(part)
+	var channel: int = DRUM_CHANNEL if part == "drums" else PARTS.find(part)
 	var label: String = "%s — %s" % [PART_STEM[part], part]
 	var body := PackedByteArray()
 	body.append_array(PackedByteArray([0x00, 0xFF, 0x03]))
 	_push_var(body, label.to_utf8_buffer().size())
 	body.append_array(label.to_utf8_buffer())
-	body.append_array(PackedByteArray([0x00, 0xC0 | channel, int(PART_PROGRAM[part])]))
+	if part != "drums":
+		body.append_array(PackedByteArray([0x00, 0xC0 | channel,
+			int(PART_PROGRAM[part])]))
 
 	# Note on and note off are two events at two times, so the track is built as a
 	# flat list and sorted — writing them in note order would put an off after an on

@@ -231,7 +231,7 @@ looking at a real board is still the test that matters.
 | Files | **13+** loops | 18 |
 | Length | 2–3 minutes, **seamlessly looping** | 2:03–2:14, seam measured |
 | Tempo | 70–85 BPM | 72–84, rising across the campaign |
-| Instrumentation | Warm pads, soft plucks. **No percussion in campaign** | lo-fi jazz: Rhodes + upright + tape noise, melody on the layer. No drums (C-42) |
+| Instrumentation | Warm pads, soft plucks. **No percussion in campaign** | lo-fi jazz: Rhodes + upright + tape noise, melody on the layer (C-42). No drums in the five chapter beds; the menu bed, which is not a campaign bed, has one |
 | Behaviour | Ducks −6 dB for 600 ms on the goal-reached sequence | done |
 | Loudness | −16 LUFS integrated, −1 dBTP (§15.3) | −16.6 LUFS on `base + layer`, peaks under −2 dBFS |
 
@@ -252,7 +252,7 @@ when the answer is "play it properly" rather than "change a number".
 
 | Tool | Cost | Use it when |
 |---|---|---|
-| **GarageBand** | free, already on a Mac | You want to *hear* it with real instruments. Drop the `.mid` in, put a Rhodes on the piano track and an upright on the bass, and it is a different thing immediately |
+| **GarageBand** | free, already on a Mac | You want to *hear* it with real instruments. Drop the `.mid` in, put **Classic Suitcase Mk IV** on the piano track and an upright on the bass, and it is a different thing immediately. `docs/MUSIC-HANDOFF.md` is the step-by-step |
 | **Reaper** | $60, unlimited evaluation | You want to keep working on it. Best per-track export in the business, which is exactly what this needs |
 | **Logic / Ableton / FL** | — | Any of them is fine. Nothing here is special |
 | **MuseScore** | free | You would rather read and write it as notation than as a piano roll |

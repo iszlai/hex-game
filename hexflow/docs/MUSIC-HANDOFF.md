@@ -64,17 +64,38 @@ swing will land in the wrong places and the loop length will be wrong.
 
 ### The tracks inside each file
 
-Four tracks, named after the stem they belong to so the muting is unambiguous:
+Tracks are named after the stem they belong to, so the muting is unambiguous:
 
-| Track name in the MIDI | Suggested instrument | Stem |
-|---|---|---|
-| `base — rhodes` | Electric piano (Rhodes) | base |
-| `base — bass` | Upright / acoustic bass | base |
-| `layer — melody` | Something soft: flute, muted horn, soft synth lead | layer |
-| `extra — counter` | Similar to the melody, darker or lower | extra |
+| Track name in the MIDI | Suggested instrument | Stem | In which files |
+|---|---|---|---|
+| `base — rhodes` | **Classic Suitcase Mk IV** — chosen and liked; use it | base | all six |
+| `base — bass` | Upright / acoustic bass | base | all six |
+| `base — drums` | Soft lo-fi kit — see below | base | **`menu.mid` only** |
+| `layer — melody` | **Vibraphone.** Not a wind instrument — see below | layer | all six |
+| `extra — counter` | The melody's instrument, darker or an octave lower | extra | all six |
 
-The melody deliberately never starts on a downbeat: it fades in while the player is mid-thought, and
-a line that begins on the "one" announces itself as something new.
+**On the two melodic tracks.** These used to open as flute and clarinet, which are two of the
+weakest patches in the General MIDI set; under lo-fi they read as a school orchestra and the first
+instinct is to delete both tracks. Don't — they are §15.1's adaptive music. `layer — melody` fades in
+mid-level once the player is past about 40% of par and fades out on undo; `extra — counter` is how
+endless mode marks every five goals. Re-voice them instead. Vibraphone is the idiomatic lo-fi
+answer; the same Suitcase Rhodes played higher also works. Both belong well **under** the comping —
+if you notice them, they are too loud.
+
+So `menu.mid` has five tracks and the five chapter files have four. That is not an
+omission — see §4.
+
+The drums track is written on **MIDI channel 10**, which is percussion in General
+MIDI, so it should land in GarageBand already playing a kit rather than a piano.
+If it opens as a melodic instrument, assign a drum kit by hand: the notes are
+36 (kick), 37 (side stick) and 42 (closed hat), which is the standard map.
+
+Keep it quiet and keep it dull. The kit should sound like it is coming through a
+wall — no bright cymbals, no crack on the backbeat, nothing that draws the ear.
+A side stick rather than a snare is most of that.
+
+The melody deliberately never starts on a downbeat: it fades in while the player is
+mid-thought, and a line that begins on the "one" announces itself as something new.
 
 ---
 
@@ -83,8 +104,12 @@ a line that begins on the "one" announces itself as something new.
 - It plays for **hours** under a quiet puzzle game. Nothing may demand attention.
 - Style is **lo-fi jazz**: electric piano comping sevenths and ninths, upright bass, tape noise,
   swung eighths, plenty of space.
-- **No drums in the campaign.** This is a hard constraint, not a preference. Vinyl crackle and hiss
-  are fine — they are texture, not a beat.
+- **No drums in the campaign.** This is a hard constraint, not a preference — §15.1 of the spec. An
+  hour of something countable while trying to think is what it is protecting against. Vinyl crackle
+  and hiss are fine: they are texture, not a beat.
+- **The menu bed is the exception, and the only one.** `menu.mid` plays behind the menus, endless and
+  the daily, none of which is the campaign, so it has a beat — lo-fi without one is just quiet jazz.
+  Do not add drums to a `chapter_*` file, however much it asks for them.
 - Tempo must stay in **70–85 BPM**.
 - The player can hear one piece for an hour. Sparse beats busy every time.
 
@@ -122,11 +147,18 @@ All three exports must use the same cycle region so the files are the same lengt
 5. Balance it. The piano and bass are the bed; the melody sits **under** them, not over.
 6. Export three times — `Share ▸ Export Song to Disk…`, **AIFF or WAV**, 44.1 kHz:
 
+For `menu.mid`, which has the drums track:
+
 | Export | Mute these tracks | Save as |
 |---|---|---|
 | 1 | `layer — melody`, `extra — counter` | `menu_base.wav` |
-| 2 | `base — rhodes`, `base — bass`, `extra — counter` | `menu_layer.wav` |
-| 3 | `base — rhodes`, `base — bass`, `layer — melody` | `menu_extra.wav` |
+| 2 | `base — rhodes`, `base — bass`, `base — drums`, `extra — counter` | `menu_layer.wav` |
+| 3 | `base — rhodes`, `base — bass`, `base — drums`, `layer — melody` | `menu_extra.wav` |
+
+For the five `chapter_*.mid` files, which have no drums track, drop `base — drums` from those lists.
+
+The rule underneath the table: **everything named `base — …` goes in export 1 and is muted for the
+other two.** If you remember that, you never have to read the table again.
 
 Do not change volume, tempo, effects or the cycle region between exports. Only mutes.
 
@@ -160,7 +192,20 @@ goal, and quiet is the point.
 
 ## 8. Getting the files into the game
 
-Encode each WAV to Ogg Vorbis and put it in `hexflow/assets/music/`:
+**The short way.** Put the exported WAVs in `hexflow/drafts/music/wav/` and run:
+
+```sh
+hexflow/tools/import_music.sh menu     # or no argument for every track it finds
+```
+
+It checks the things that are easy to get wrong and impossible to hear until later — that the three
+stems are the same length to the sample, that the length matches 48 bars at the right tempo (which
+catches GarageBand ignoring the project tempo), and §7's loudness and peak — then encodes to `.ogg`
+and installs them. It refuses and explains rather than installing something subtly wrong. Use
+`CHECK_ONLY=1` to measure without installing.
+
+**The long way**, if you would rather do it by hand. Encode each WAV to Ogg Vorbis and put it in
+`hexflow/assets/music/`:
 
 ```sh
 ffmpeg -i menu_base.wav -c:a libvorbis -q:a 4 -ar 44100 \
