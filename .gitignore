@@ -14,3 +14,9 @@
 
 # Godot's own import cache is ignored by hexflow/.gitignore, beside the project
 # it belongs to.
+
+# Where hand-made music lands on its way in (docs/MUSIC-HANDOFF.md §8). These are
+# 30 MB AIFFs per stem and the .ogg the script produces from them is what ships;
+# the DAW project they came out of is the thing worth keeping, and it does not
+# live here.
+hexflow/drafts/music/wav/

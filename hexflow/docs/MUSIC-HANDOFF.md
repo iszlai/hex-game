@@ -265,9 +265,10 @@ make import     # Godot picks up the new files
 make run        # play it
 ```
 
-> ⚠️ **Do not run `make music` afterwards.** It recomposes the beds and would overwrite the
-> hand-made files with generated ones. If the hand-made music is staying, say so — the tool should be
-> changed to refuse to overwrite, and that is a two-line change nobody has made yet.
+> **`make music` will not overwrite a hand-made bed.** Set `handmade: true` in that track's row in
+> `tools/make_music.gd` and the tool skips the synthesis for it. The `.mid` is still rewritten — it
+> is the source you work from and it has to keep up with the score — but the audio is left alone.
+> `menu` is already marked. Mark each of the others as its hand-made version lands.
 
 ---
 

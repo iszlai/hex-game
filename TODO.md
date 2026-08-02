@@ -693,6 +693,18 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       lo-fi without one is just quiet jazz. In the five chapter beds the vinyl remains the only
       texture, and it is one that cannot be counted. `beat` in the track's row is the switch, and only
       `menu` may set it.
+      **The menu bed is now played rather than synthesised** (2026-08-02). It went through
+      `MUSIC-HANDOFF.md` end to end — its own `.mid` opened in GarageBand, Classic Suitcase Mk IV on
+      the piano, an upright, two vibraphones and a soft kit, exported three times from one session and
+      brought back in through `tools/import_music.sh`. The five chapter beds are still the
+      synthesised ones, so the handoff is proven on one track and owed on five.
+      `handmade: true` in the menu row stops `make music` overwriting it — the `.mid` is still
+      rewritten, because it is the source, but the synthesis is skipped.
+      **It is 4 LU quieter than the chapter beds** — −20.2 LUFS against their −16.6 — and its layer
+      sits 11.6 LU under its base where the composed beds use about 5. Both are fader moves in the
+      DAW project, both were flagged and both were accepted as they are; entering a level from the
+      menu is audibly a step up in volume, and the melody that fades in mid-level is quieter than it
+      was designed to be. Fixing them means three fresh exports and nothing else.
       **What it rides had to change (C-41).** §15.1 says "board fill %", and measured over the shipped
       sixty a *completed* level reaches 40% fill in 0 of 12 levels in chapter 1 and 1 of 12 in chapter
       2 — a path is a line across a hex board, not a flood of it. Taken literally, the adaptive half of

@@ -225,7 +225,7 @@ looking at a real board is still the test that matters.
 
 | | Requirement | What ships |
 |---|---|---|
-| Tracks | 6 — one per chapter, plus a menu track | 6, composed by `tools/make_music.gd` |
+| Tracks | 6 — one per chapter, plus a menu track | 6. The menu bed is **played by hand** in GarageBand from its own `.mid`; the five chapter beds are composed by `tools/make_music.gd` |
 | Stems per track | 2 — `base` (always) and `layer` (fades in above 40% board fill, out below 30%, 1.5 s cross-fade) | 3 |
 | Extra | Endless takes a **third** stem, entering every 5 goals | shipped for every bed |
 | Files | **13+** loops | 18 |

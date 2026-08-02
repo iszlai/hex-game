@@ -128,6 +128,10 @@ const PENTATONIC: Array[int] = [0, 3, 5, 7, 10]
 ## style choice.
 const TRACKS := {
 	"menu": {
+		# Played by hand in GarageBand, 2026-08-02: Classic Suitcase Mk IV, upright,
+		# two vibraphones and a soft kit, from this score's own `.mid`. The synth
+		# below no longer renders it — see `handmade` in `_render_track`.
+		"handmade": true,
 		"root": 57, "bpm": 70, "bright": 0.45, "beat": true,   # A minor
 		"chords": [[2, "m7b5"], [7, "dom9"], [0, "min9"], [0, "min9"],
 			[5, "maj9"], [7, "dom9"], [0, "min9"], [10, "maj9"]],
@@ -191,6 +195,14 @@ func _initialize() -> void:
 	quit()
 
 
+## The track's own generator. Seeded off its name, so the score a `.mid` carries is
+## the same one the audio was rendered from however the two are produced.
+func _seeded(name: String) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _fnv1a(name)
+	return rng
+
+
 ## One pass over one score, three buffers out. Every note is written into the stem
 ## its part belongs to and into no other, so the three files are the same
 ## performance with parts muted — which is the whole point of the exercise.
@@ -211,8 +223,7 @@ func _render_track(name: String, spec: Dictionary) -> void:
 	# Deterministic, and seeded off the track's own name: two runs of this tool
 	# produce byte-identical files, which is what lets the output be committed and
 	# diffed rather than re-listened to (§19's argument, applied to audio).
-	var rng := RandomNumberGenerator.new()
-	rng.seed = _fnv1a(name)
+	var rng := _seeded(name)
 
 	var bright: float = float(spec["bright"])
 
@@ -224,6 +235,25 @@ func _render_track(name: String, spec: Dictionary) -> void:
 	# `_write_midi` writes the same list out as a `.mid`, so what a composer opens
 	# in a DAW is what the game is playing rather than a transcription of it.
 	var score: Array = _score(spec, rng)
+	_write_midi(name, spec, score)
+
+	# A bed somebody played by hand is not this tool's to overwrite.
+	#
+	# The `.mid` above is still rewritten, because it is the *source* a player works
+	# from and it has to keep up with the score. Only the synthesis is skipped, so a
+	# run of `make music` can no longer replace a performance with a placeholder.
+	#
+	# The return is *here*, after the score, rather than at the top of the function
+	# where it is shorter and wrong: `_write_vinyl` draws from the same generator,
+	# so a version that skipped it handed `_score` an RNG in a different state and
+	# quietly wrote a `.mid` full of different notes — a MIDI file that no longer
+	# describes the audio beside it, which is the one thing this file must never
+	# produce. There is no `--force`; the way back is to clear the flag in the row
+	# above, which is a decision that leaves a diff.
+	if bool(spec.get("handmade", false)):
+		print("%-10s hand-made — .mid rewritten, audio left alone" % name)
+		return
+
 	for entry: Variant in score:
 		var note: Dictionary = entry
 		var at: int = int((float(note["beat"]) * beat) * float(RATE))
@@ -246,8 +276,6 @@ func _render_track(name: String, spec: Dictionary) -> void:
 				# a kit is a map from note to sound, not a scale.
 				_drum(stems["base"], at, int(note["midi"]), seconds,
 					float(note["gain"]), float(note["pan"]))
-	_write_midi(name, spec, score)
-
 	for stem: String in STEMS:
 		stems[stem] = _saturate(_soften(_fold_tail(stems[stem])))
 	_normalise(stems)
