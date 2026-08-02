@@ -1082,15 +1082,20 @@ feedback removal.
 
 ### 15.1 Music
 
-One adaptive ambient bed per chapter (5 tracks + 1 menu track), 2–3 minute seamless loops, warm pads and
-soft plucks, 70–85 BPM, no percussion in campaign. Two stems per track: `base` (always) and `layer`
+One adaptive ambient bed per chapter (5 tracks + 1 menu track), 2–3 minute seamless loops, 70–85 BPM,
+**no percussion in campaign**. The palette is lo-fi jazz — electric piano comping sevenths and ninths,
+upright bass, tape noise, a sparse melody on the second stem — rather than the pads and plucks this
+line asked for until C-42: a chord that is held rather than struck reads as an organ, whatever it is
+voiced with. Two stems per track: `base` (always) and `layer`
 (fades in as board fill % rises above 40%, out below 30%, 1.5 s cross-fade). Endless adds a third stem
 that enters every 5 goals. Music ducks −6 dB for 600 ms on the goal-reached sequence.
 
 **The three stems are one performance in three files.** They are played together, so they must share a
 clock: three renders of "the same" piece are three performances and will phase. The shipped beds are
 composed and rendered by `tools/make_music.gd` in a single pass over one score (C-40), and any
-replacement has to arrive the same way — one session exported three times, not three variations.
+replacement has to arrive the same way — one session exported three times, not three variations. The
+same tool writes each piece out as `drafts/music/<track>.mid`, one track per part, so the score can be
+opened in a DAW and played with real instruments; `docs/ASSET-REQUIREMENTS.md` carries the mute list.
 
 **The layer rides progress, not coverage.** The 40%/30% thresholds are as written; the number measured
 against them is `placements / par`, not the fraction of the board the path occupies. A path is a line

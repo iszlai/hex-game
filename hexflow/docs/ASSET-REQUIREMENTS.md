@@ -244,6 +244,38 @@ generator will give you another variation and cannot give you the same take with
 score is at the top of `tools/make_music.gd` — six rows of key, tempo, chords and colour, which is
 also the thing to hand a composer.
 
+#### Editing it by hand
+
+Every render also writes `drafts/music/<track>.mid` — the same notes the game is playing, as a
+Standard MIDI File, one track per part, named after the stem it belongs to. That is the file to open
+when the answer is "play it properly" rather than "change a number".
+
+| Tool | Cost | Use it when |
+|---|---|---|
+| **GarageBand** | free, already on a Mac | You want to *hear* it with real instruments. Drop the `.mid` in, put a Rhodes on the piano track and an upright on the bass, and it is a different thing immediately |
+| **Reaper** | $60, unlimited evaluation | You want to keep working on it. Best per-track export in the business, which is exactly what this needs |
+| **Logic / Ableton / FL** | — | Any of them is fine. Nothing here is special |
+| **MuseScore** | free | You would rather read and write it as notation than as a piano roll |
+| **Audacity / ocenaudio** | free | You only want to top-and-tail or EQ the finished `.ogg` files. Not for arranging — it has no idea what a track is |
+
+**However you edit it, export it as one session, three times**, muting as you go:
+
+| File | Mute | Contains |
+|---|---|---|
+| `<track>_base.ogg` | `layer`, `extra` | The piano and the bass — always playing |
+| `<track>_layer.ogg` | `base`, `extra` | The melody — fades in as a level fills |
+| `<track>_extra.ogg` | `base`, `layer` | The counter-line — endless only, from five goals |
+
+Three separate *renders* will not do, however good each one sounds: the stems are played on top of
+each other and two renders of the same piece drift apart (C-40). One project, three exports, same
+length, same tempo.
+
+Then encode and drop them in:
+
+```sh
+ffmpeg -i base.wav -c:a vorbis -strict -2 -q:a 3 hexflow/assets/music/chapter_1_base.ogg
+```
+
 A commission or a licensed library is still the ceiling (C-6), and a written commercial licence would
 have to end up in the repository.
 

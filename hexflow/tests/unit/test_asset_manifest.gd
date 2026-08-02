@@ -140,3 +140,27 @@ func test_the_colour_desk_points_at_files_that_exist() -> void:
 	assert_true(DirAccess.dir_exists_absolute(
 		ProjectSettings.globalize_path("res://" + str(colour["dir"]))),
 		"colour.dir points at %s, which is not there" % colour["dir"])
+
+
+## §15.1's music, on the desk: three stems for every bed, named the way
+## [AudioDirector] looks for them.
+##
+## The manifest is what an outside composer is handed, and the thing they most need
+## from it is the *shape* of the delivery — three files per track, not one. A row
+## per stem is how that gets said, and a row that named a file the game does not
+## load would be a brief for the wrong deliverable.
+func test_the_music_desk_asks_for_three_stems_of_every_bed() -> void:
+	var paths: Dictionary = {}
+	for entry: Variant in (_manifest()["assets"] as Array):
+		var asset: Dictionary = entry
+		if str(asset["role"]).begins_with("music_"):
+			paths[str(asset["path"])] = true
+
+	for track: String in ["menu", "chapter_1", "chapter_2", "chapter_3", "chapter_4",
+			"chapter_5"]:
+		for stem: String in AudioDirector.STEMS:
+			var want: String = "assets/music/%s_%s.ogg" % [track, stem]
+			assert_true(paths.has(want), "the desk does not ask for %s" % want)
+			assert_true(FileAccess.file_exists("res://" + want), "%s does not ship" % want)
+	assert_eq(paths.size(), 6 * AudioDirector.STEMS.size(),
+		"six beds, three stems each, and nothing else on the music desk")

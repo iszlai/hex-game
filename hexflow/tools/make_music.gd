@@ -61,10 +61,15 @@ const OUT_DIR := "res://assets/music/"
 ## §15.1: `base` always, `layer` as the level fills, and a third for endless.
 const STEMS: Array[String] = ["base", "layer", "extra"]
 
-## Bars per loop. §15.1 asks for 2–3 minutes; at these tempos 40 bars lands between
-## 2:00 and 2:20, and 40 is 5 turns of an 8-bar progression, so the loop point never
-## falls mid-phrase.
-const BARS := 40
+## Bars per loop, and how long a chord is held.
+##
+## Two bars a chord rather than one: the single loudest thing you can do to make a
+## piece feel unhurried is to change the harmony half as often. Eight chords at two
+## bars each is a 16-bar cycle, so the loop is 48 bars — three turns, landing
+## between 2:30 and 2:45, inside §15.1's 2–3 minutes and never cutting a phrase in
+## half.
+const BARS := 48
+const BARS_PER_CHORD := 2
 const BEATS_PER_BAR := 4
 
 ## How long the last bar is allowed to ring past the end before being folded back
@@ -102,38 +107,38 @@ const PENTATONIC: Array[int] = [0, 3, 5, 7, 10]
 ## eight chords it turns on — `[semitones above the key root, quality]`.
 ##
 ## They are ii–V–i loops with the odd substitution, which is the harmony this style
-## is made of. Tempos stay inside §15.1's 70–85 BPM and rise across the campaign,
-## which is the cheapest way for five beds to feel like a sequence rather than a
-## set. `bright` is how much tine the Rhodes has: chapter 5 is the tense one and
-## gets the least.
+## is made of. Tempos sit at the bottom of §15.1's 70–85 BPM and rise a little
+## across the campaign, which is the cheapest way for five beds to feel like a
+## sequence rather than a set. `bright` is how much tine the Rhodes has: chapter 5
+## is the tense one and gets the least.
 const TRACKS := {
 	"menu": {
-		"root": 57, "bpm": 74, "bright": 0.55,          # A minor
+		"root": 57, "bpm": 70, "bright": 0.45,          # A minor
 		"chords": [[2, "m7b5"], [7, "dom9"], [0, "min9"], [0, "min9"],
 			[5, "maj9"], [7, "dom9"], [0, "min9"], [10, "maj9"]],
 	},
 	"chapter_1": {
-		"root": 60, "bpm": 72, "bright": 0.70,          # C major, warm
+		"root": 60, "bpm": 70, "bright": 0.55,          # C major, warm
 		"chords": [[0, "maj9"], [9, "min9"], [2, "min9"], [7, "dom9"],
 			[0, "maj9"], [9, "min9"], [5, "maj7"], [7, "dom9"]],
 	},
 	"chapter_2": {
-		"root": 58, "bpm": 76, "bright": 0.60,          # B♭ major
+		"root": 58, "bpm": 72, "bright": 0.48,          # B♭ major
 		"chords": [[2, "min9"], [7, "dom9"], [0, "maj9"], [5, "maj7"],
 			[2, "min9"], [7, "dom9"], [0, "maj9"], [9, "min7"]],
 	},
 	"chapter_3": {
-		"root": 55, "bpm": 78, "bright": 0.50,          # G minor
+		"root": 55, "bpm": 72, "bright": 0.40,          # G minor
 		"chords": [[0, "min9"], [5, "dom9"], [10, "maj9"], [3, "maj7"],
 			[2, "m7b5"], [7, "dom9"], [0, "min9"], [0, "min11"]],
 	},
 	"chapter_4": {
-		"root": 52, "bpm": 80, "bright": 0.42,          # E minor, darker
+		"root": 52, "bpm": 74, "bright": 0.34,          # E minor, darker
 		"chords": [[0, "min9"], [0, "min9"], [8, "maj9"], [10, "dom9"],
 			[2, "m7b5"], [7, "dom9"], [0, "min9"], [3, "maj7"]],
 	},
 	"chapter_5": {
-		"root": 50, "bpm": 84, "bright": 0.34,          # D minor, tense
+		"root": 50, "bpm": 76, "bright": 0.28,          # D minor, tense
 		"chords": [[0, "min9"], [7, "m7b5"], [10, "dom9"], [0, "min11"],
 			[5, "min7"], [10, "dom9"], [0, "min9"], [7, "dom9"]],
 	},
@@ -194,27 +199,37 @@ func _render_track(name: String, spec: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _fnv1a(name)
 
-	var root: int = int(spec["root"])
 	var bright: float = float(spec["bright"])
-	var chords: Array = spec["chords"]
 
 	# The tape underneath everything, laid down first because it is continuous and
-	# has no bars.
+	# has no bars — the one part of the piece that is not notes.
 	_write_vinyl(stems["base"], rng)
 
-	for bar: int in range(BARS):
-		var chord: Array = chords[bar % chords.size()]
-		var chord_root: int = root + int(chord[0])
-		var quality: String = str(chord[1])
-		var at: int = bar * _bar_samples
-
-		_write_comp(stems["base"], at, chord_root, quality, beat, bright, bar, rng)
-		_write_bass(stems["base"], at, chord_root, quality, beat, bar, rng)
-		_write_melody(stems["layer"], at, root, chord_root, quality, beat, bar, rng)
-		_write_counter(stems["extra"], at, chord_root, quality, beat, bar)
+	# Every note of the piece, decided once. The renderer below plays it and
+	# `_write_midi` writes the same list out as a `.mid`, so what a composer opens
+	# in a DAW is what the game is playing rather than a transcription of it.
+	var score: Array = _score(spec, rng)
+	for entry: Variant in score:
+		var note: Dictionary = entry
+		var at: int = int((float(note["beat"]) * beat) * float(RATE))
+		var hz: float = _hz(int(note["midi"]))
+		var seconds: float = float(note["ring"]) * beat
+		match str(note["part"]):
+			"rhodes":
+				_rhodes(stems["base"], at, hz, seconds,
+					float(note["gain"]), bright, float(note["pan"]))
+			"bass":
+				_pluck_bass(stems["base"], at, hz, seconds, float(note["gain"]))
+			"melody":
+				_reed(stems["layer"], at, hz, seconds,
+					float(note["gain"]), float(note["pan"]))
+			"counter":
+				_reed(stems["extra"], at, hz, seconds,
+					float(note["gain"]), float(note["pan"]))
+	_write_midi(name, spec, score)
 
 	for stem: String in STEMS:
-		stems[stem] = _saturate(_fold_tail(stems[stem]))
+		stems[stem] = _saturate(_soften(_fold_tail(stems[stem])))
 	_normalise(stems)
 
 	for stem: String in STEMS:
@@ -223,49 +238,112 @@ func _render_track(name: String, spec: Dictionary) -> void:
 		% [name, BARS, int(bpm), float(_total) / float(RATE)])
 
 
+# --- the score --------------------------------------------------------------------
+
+## Which stem each part belongs to. The reason the whole tool exists is on this
+## line: muting a part is muting a *file*, and the three files were played at once.
+const PART_STEM := {
+	"rhodes": "base", "bass": "base", "melody": "layer", "counter": "extra",
+}
+
+## General MIDI programs for the parts, for the `.mid` export. Nobody has to keep
+## these — a DAW will put a real Rhodes on the track — but a file that opens
+## playing something close to the intention is worth four numbers.
+const PART_PROGRAM := {"rhodes": 4, "bass": 32, "melody": 73, "counter": 71}
+
+
+## Every note in the piece: `{part, beat, midi, ring, gain, pan}`, with `beat`
+## counted from the start of the loop and `ring` in beats.
+##
+## Notes rather than samples, and one list rather than four passes, because two
+## different things have to read it — the synthesiser and the MIDI writer — and a
+## second walk of the same decisions would drift from the first the moment anything
+## random is involved. Both consumers see the same list, or the `.mid` is a lie
+## about what the game plays.
+func _score(spec: Dictionary, rng: RandomNumberGenerator) -> Array:
+	var out: Array = []
+	var root: int = int(spec["root"])
+	var chords: Array = spec["chords"]
+	for bar: int in range(BARS):
+		var chord: Array = chords[(bar / BARS_PER_CHORD) % chords.size()]
+		var chord_root: int = root + int(chord[0])
+		var quality: String = str(chord[1])
+		var at: float = float(bar * BEATS_PER_BAR)
+		out.append_array(_comp_notes(at, chord_root, quality, bar, rng))
+		out.append_array(_bass_notes(at, chord_root, quality, bar, rng))
+		out.append_array(_melody_notes(at, root, chord_root, quality, bar, rng))
+		out.append_array(_counter_notes(at, chord_root, quality, bar))
+	return out
+
+
+func _note(part: String, beat: float, midi: int, ring: float,
+		gain: float, pan: float = 0.0) -> Dictionary:
+	return {"part": part, "beat": beat, "midi": midi, "ring": ring,
+		"gain": gain, "pan": pan}
+
+
 # --- the parts ------------------------------------------------------------------
 
-## The Rhodes, comping the chord: on the beat and on the swung "and" of two, which
-## is the plainest jazz comping figure there is and the one that never gets in the
-## way. Every fourth bar drops the second hit, so the figure breathes.
+## The Rhodes, comping the chord: one strike where the chord changes, and a quiet
+## answer on the swung "and" of two — but only on the bar that starts a chord, so
+## the second bar of every chord is left to ring.
+##
+## Sparser than the plain jazz comping figure on purpose. What makes a bed feel
+## unhurried is the *gaps*: the chord is struck twice as often as the harmony
+## changes and no more, which leaves whole bars where nothing is played and the
+## tape and the decay are the only things happening.
 ##
 ## The voicing has no root in it — the bass has that — and no octave doubling. What
 ## is left is the third, the seventh and whatever colour the quality carries, which
 ## is the sound of the *chord* rather than the sound of a keyboard.
-func _write_comp(buffer: PackedFloat32Array, at: int, chord_root: int, quality: String,
-		beat: float, bright: float, bar: int, rng: RandomNumberGenerator) -> void:
+func _comp_notes(at: float, chord_root: int, quality: String, bar: int,
+		rng: RandomNumberGenerator) -> Array:
+	var out: Array = []
 	var voicing: Array[int] = _voicing(chord_root, quality)
-	var hits: Array[float] = [0.0]
-	if bar % 4 != 3:
-		hits.append(_eighth(beat, 3))
+	var opening: bool = bar % BARS_PER_CHORD == 0
+	var hits: Array[float] = []
+	if opening:
+		hits.append(0.0)
+		hits.append(_swung(3))
+	elif bar % 4 == 3:
+		# One late answer every other chord, so the held bar is not always empty.
+		hits.append(_swung(5))
 	for h: int in range(hits.size()):
-		var start: int = at + int(hits[h] * float(RATE))
-		var gain: float = 0.115 if h == 0 else 0.075
-		var ring: float = beat * (3.4 if h == 0 else 2.2)
+		var strong: bool = h == 0 and opening
 		for i: int in range(voicing.size()):
 			# Notes of a chord are never struck at exactly the same instant by a
 			# hand. A few milliseconds of spread is most of what separates a played
 			# chord from a triggered one.
-			var spread: int = int((0.004 * float(i) + rng.randf() * 0.006) * float(RATE))
+			var spread: float = 0.006 * float(i) + rng.randf() * 0.008
 			var pan: float = -0.22 + 0.44 * (float(i) / maxf(1.0, float(voicing.size() - 1)))
-			_rhodes(buffer, start + spread, _hz(voicing[i]), ring, gain, bright, pan)
+			out.append(_note("rhodes", at + hits[h] + spread, voicing[i],
+				4.6 if strong else 3.0, 0.115 if strong else 0.070, pan))
+	return out
 
 
 ## The upright, on one and three, a hair behind the beat — the whole feel of the
 ## style is the bass being late and the chord being later. Every other bar it walks
 ## a note into the chord that is coming, which is the difference between a bass
 ## line and a drone.
-func _write_bass(buffer: PackedFloat32Array, at: int, chord_root: int, quality: String,
-		beat: float, bar: int, rng: RandomNumberGenerator) -> void:
-	var root_hz: float = _hz(_in_octave(chord_root, 36, 47))
-	var late: float = 0.012 * float(RATE)
-	_pluck_bass(buffer, at + int(late), root_hz, beat * 1.5, 0.30)
-	_pluck_bass(buffer, at + int(beat * 2.0 * float(RATE) + late), root_hz, beat * 1.2, 0.24)
-	if bar % 2 == 1:
+func _bass_notes(at: float, chord_root: int, quality: String, bar: int,
+		rng: RandomNumberGenerator) -> Array:
+	var out: Array = []
+	var root: int = _in_octave(chord_root, 36, 47)
+	# Behind the beat, always. The whole feel of the style is the bass being late
+	# and the chord being later.
+	var late: float = 0.017
+	out.append(_note("bass", at + late, root, 2.4, 0.30))
+	# The third beat only on the bar the chord lands on, and a walking note only on
+	# the way into the next one. Two notes a bar was a bass *line*; this is a bass
+	# leaning on a wall.
+	if bar % BARS_PER_CHORD == 0:
+		out.append(_note("bass", at + 2.0 + late, root, 1.6, 0.21))
+	elif bar % BARS_PER_CHORD == BARS_PER_CHORD - 1:
 		var intervals: Array = QUALITIES[quality]
 		var step: int = int(intervals[rng.randi_range(1, 2)])
-		var walk: float = _hz(_in_octave(chord_root + step, 36, 47))
-		_pluck_bass(buffer, at + int(_eighth(beat, 7) * float(RATE)), walk, beat * 0.8, 0.19)
+		out.append(_note("bass", at + _swung(7), _in_octave(chord_root + step, 36, 47),
+			1.0, 0.17))
+	return out
 
 
 ## §15.1's layer: the tune. Three or four notes a bar at most, on the swung grid,
@@ -275,8 +353,9 @@ func _write_bass(buffer: PackedFloat32Array, at: int, chord_root: int, quality: 
 ## thinking about a move, and a melody that starts on the "one" announces itself as
 ## something new; one that starts off the beat is taken as something that was
 ## already there.
-func _write_melody(buffer: PackedFloat32Array, at: int, key_root: int, chord_root: int,
-		quality: String, beat: float, bar: int, rng: RandomNumberGenerator) -> void:
+func _melody_notes(at: float, key_root: int, chord_root: int, quality: String,
+		bar: int, rng: RandomNumberGenerator) -> Array:
+	var out: Array = []
 	var pool: Array[int] = []
 	for step: int in PENTATONIC:
 		pool.append(key_root + step + 12)
@@ -287,29 +366,35 @@ func _write_melody(buffer: PackedFloat32Array, at: int, key_root: int, chord_roo
 	pool.append(_in_octave(chord_root + int(intervals[intervals.size() - 1]), 72, 84))
 
 	for slot: int in range(1, BEATS_PER_BAR * 2):
-		if rng.randf() > (0.30 if bar % 2 == 0 else 0.22):
+		if rng.randf() > (0.20 if bar % 2 == 0 else 0.11):
 			continue
 		var midi: int = pool[rng.randi_range(0, pool.size() - 1)]
-		var start: int = at + int(_eighth(beat, slot) * float(RATE))
-		var length: float = beat * (1.8 if rng.randf() < 0.4 else 0.9)
+		var start: float = at + _swung(slot)
+		# Long notes rather than short ones: a held note is a phrase, and four short
+		# ones in a bar is a solo. Nobody wants to be soloed at while they think.
+		var length: float = 2.6 if rng.randf() < 0.55 else 1.4
 		var pan: float = -0.25 + 0.5 * rng.randf()
-		_reed(buffer, start, _hz(midi), length, 0.085, pan)
-		_reed(buffer, start + int(beat * 0.75 * float(RATE)), _hz(midi),
-			length * 0.8, 0.030, -pan)
+		out.append(_note("melody", start, midi, length, 0.072, pan))
+		# The echo, written as a second quiet note a dotted eighth later rather than
+		# run as a delay line: one pass, no state, and it exports to MIDI as what it
+		# is — a note somebody played.
+		out.append(_note("melody", start + 0.75, midi, length * 0.8, 0.026, -pan))
+	return out
 
 
 ## §15.1's third stem, for endless: a second voice under the tune, moving half as
 ## often. It has to be recognisable on its own — the player is told a fifth goal
 ## happened by hearing it — and plain enough that it never argues with the melody.
-func _write_counter(buffer: PackedFloat32Array, at: int, chord_root: int, quality: String,
-		beat: float, bar: int) -> void:
+func _counter_notes(at: float, chord_root: int, quality: String, bar: int) -> Array:
 	if bar % 2 == 1:
-		return
+		return []
 	var intervals: Array = QUALITIES[quality]
 	var third: int = _in_octave(chord_root + int(intervals[1]), 60, 71)
 	var seventh: int = _in_octave(chord_root + int(intervals[intervals.size() - 2]), 60, 71)
-	_reed(buffer, at + int(_eighth(beat, 2) * float(RATE)), _hz(third), beat * 2.4, 0.075, -0.3)
-	_reed(buffer, at + int(_eighth(beat, 5) * float(RATE)), _hz(seventh), beat * 2.0, 0.060, 0.3)
+	return [
+		_note("counter", at + _swung(2), third, 2.4, 0.075, -0.3),
+		_note("counter", at + _swung(5), seventh, 2.0, 0.060, 0.3),
+	]
 
 
 ## The tape the whole thing is playing off: a dull hiss with a slow wobble in it,
@@ -356,7 +441,7 @@ func _rhodes(buffer: PackedFloat32Array, at: int, hz: float, seconds: float,
 	var frames: int = buffer.size() / 2
 	var left: float = gain * sqrt(clampf(0.5 - pan * 0.5, 0.0, 1.0))
 	var right: float = gain * sqrt(clampf(0.5 + pan * 0.5, 0.0, 1.0))
-	var attack: int = maxi(1, int(0.004 * float(RATE)))
+	var attack: int = maxi(1, int(0.009 * float(RATE)))
 
 	for n: int in range(length):
 		var index: int = at + n
@@ -367,9 +452,11 @@ func _rhodes(buffer: PackedFloat32Array, at: int, hz: float, seconds: float,
 		# Inaudible as pitch, audible as *tape*.
 		var drift: float = 1.0 + 0.0016 * sin(TAU * 0.6 * t) + 0.0007 * sin(TAU * 5.7 * t)
 		var phase: float = TAU * hz * drift * t
-		var bark: float = exp(-t * 34.0) * (1.2 + bright)
-		var sample: float = sin(phase + bark * sin(phase * 7.0)) * exp(-t * 1.15)
-		sample += sin(phase * 4.0) * exp(-t * 4.6) * (0.10 + 0.14 * bright)
+		# A softer strike and a longer body than a real Rhodes has: the bark is what
+		# says "struck", and past a certain amount it also says "loud".
+		var bark: float = exp(-t * 30.0) * (0.55 + bright * 0.8)
+		var sample: float = sin(phase + bark * sin(phase * 7.0)) * exp(-t * 0.78)
+		sample += sin(phase * 4.0) * exp(-t * 4.2) * (0.06 + 0.10 * bright)
 		if n < attack:
 			sample *= float(n) / float(attack)
 		buffer[index * 2] += sample * left
@@ -430,10 +517,13 @@ func _reed(buffer: PackedFloat32Array, at: int, hz: float, seconds: float,
 
 # --- the grid and the harmony -------------------------------------------------------
 
-## When the [param slot]-th eighth of a bar happens, in seconds, swung.
-func _eighth(beat: float, slot: int) -> float:
-	var whole: int = slot / 2
-	return float(whole) * beat + (SWING * beat if slot % 2 == 1 else 0.0)
+## Where the [param slot]-th eighth of a bar falls, **in beats**, swung.
+##
+## Beats rather than seconds so one number serves the renderer and the MIDI file: a
+## `.mid` carries a tempo and positions in ticks, and swing baked into seconds
+## would arrive in a DAW as notes slightly off the grid rather than as a shuffle.
+func _swung(slot: int) -> float:
+	return float(slot / 2) + (SWING if slot % 2 == 1 else 0.0)
 
 
 ## A rootless voicing: everything above the root, packed into the octave and a half
@@ -483,6 +573,28 @@ func _fold_tail(buffer: PackedFloat32Array) -> PackedFloat32Array:
 	for i: int in range(_tail_samples * 2):
 		out[i] += buffer[_total * 2 + i]
 	return out
+
+
+## The cassette: one pole of low-pass, per channel, rolling off above about 4 kHz.
+##
+## The last of the five things that make a bed sound relaxed, and the one that is
+## purely a filter: brightness reads as *effort*. A Rhodes with all its top end is
+## a Rhodes being played at you; the same take with the air taken off is one being
+## played in the next room, which is where a bed belongs.
+##
+## Applied before the saturation, in the order a tape machine would: the signal is
+## dulled on the way to the head, not after it.
+func _soften(buffer: PackedFloat32Array) -> PackedFloat32Array:
+	# One-pole coefficient for a ~4 kHz corner at this rate.
+	var a: float = 1.0 - exp(-TAU * 4000.0 / float(RATE))
+	var left: float = 0.0
+	var right: float = 0.0
+	for i: int in range(0, buffer.size(), 2):
+		left += (buffer[i] - left) * a
+		right += (buffer[i + 1] - right) * a
+		buffer[i] = left
+		buffer[i + 1] = right
+	return buffer
 
 
 ## Tape, as arithmetic: a gentle `tanh` curve that rounds the peaks and adds a
@@ -541,6 +653,151 @@ func _normalise(stems: Dictionary) -> void:
 		var buffer: PackedFloat32Array = stems[stem]
 		for i: int in range(buffer.size()):
 			buffer[i] *= scale
+
+
+# --- the MIDI export ----------------------------------------------------------------
+
+## Ticks per quarter note in the exported `.mid`. 480 is what every DAW opens with,
+## and it divides the swing cleanly: 0.60 of a beat is 288 ticks exactly, so the
+## shuffle arrives as a shuffle rather than as notes a hair off the grid.
+const TICKS := 480
+
+## Where the editable copies go. Outside `src/`, so nothing ships them, and
+## alongside the hand-drawn level drafts for the same reason: this is the file you
+## open when you want to *change* the music rather than play it.
+const MIDI_DIR := "res://drafts/music/"
+
+## Writes the piece as a Standard MIDI File — one track per part, at the score's
+## own tempo, with the parts named after the stem they belong to.
+##
+## This is the door out of this file. The synthesiser here is a placeholder and
+## always was; the *notes* are the thing worth keeping, and a `.mid` is what a
+## person opens in GarageBand, Reaper, Logic or MuseScore to put a real Rhodes on
+## the piano track and a real bass under it.
+##
+## The track names carry the rule that matters, because it is the rule the whole
+## arrangement depends on: whatever comes back has to be **one session exported
+## three times**, muting `layer` and `extra` for the first file, `extra` for the
+## second, nothing for the third. Three separate renders will phase (C-40).
+func _write_midi(name: String, spec: Dictionary, score: Array) -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(MIDI_DIR))
+	var parts: Array[String] = ["rhodes", "bass", "melody", "counter"]
+	var chunks: Array[PackedByteArray] = [_tempo_track(float(spec["bpm"]))]
+	for part: String in parts:
+		chunks.append(_part_track(part, score))
+
+	var out := PackedByteArray()
+	out.append_array("MThd".to_ascii_buffer())
+	_push32(out, 6)
+	_push16(out, 1)                  # format 1: parallel tracks, one tempo map
+	_push16(out, chunks.size())
+	_push16(out, TICKS)
+	for chunk: PackedByteArray in chunks:
+		out.append_array(chunk)
+
+	var f := FileAccess.open("%s%s.mid" % [MIDI_DIR, name], FileAccess.WRITE)
+	if f == null:
+		push_error("cannot write the midi for " + name)
+		return
+	f.store_buffer(out)
+	f.close()
+
+
+## Track 0: the tempo and the time signature, which is where format 1 keeps them.
+func _tempo_track(bpm: float) -> PackedByteArray:
+	var body := PackedByteArray()
+	var microseconds: int = int(60_000_000.0 / bpm)
+	body.append_array(PackedByteArray([0x00, 0xFF, 0x51, 0x03]))
+	body.append((microseconds >> 16) & 0xFF)
+	body.append((microseconds >> 8) & 0xFF)
+	body.append(microseconds & 0xFF)
+	# 4/4, 24 clocks per beat, 8 demisemiquavers per quarter — the defaults, stated
+	# rather than left out, because a DAW that has to guess draws the bars wrong.
+	body.append_array(PackedByteArray([0x00, 0xFF, 0x58, 0x04, 0x04, 0x02, 0x18, 0x08]))
+	body.append_array(PackedByteArray([0x00, 0xFF, 0x2F, 0x00]))
+	return _chunk(body)
+
+
+## One track per part, named `stem — part` so the muting is obvious on sight.
+func _part_track(part: String, score: Array) -> PackedByteArray:
+	var channel: int = ["rhodes", "bass", "melody", "counter"].find(part)
+	var label: String = "%s — %s" % [PART_STEM[part], part]
+	var body := PackedByteArray()
+	body.append_array(PackedByteArray([0x00, 0xFF, 0x03]))
+	_push_var(body, label.to_utf8_buffer().size())
+	body.append_array(label.to_utf8_buffer())
+	body.append_array(PackedByteArray([0x00, 0xC0 | channel, int(PART_PROGRAM[part])]))
+
+	# Note on and note off are two events at two times, so the track is built as a
+	# flat list and sorted — writing them in note order would put an off after an on
+	# that has not happened yet.
+	var events: Array = []
+	for entry: Variant in score:
+		var note: Dictionary = entry
+		if str(note["part"]) != part:
+			continue
+		var on: int = int(round(float(note["beat"]) * float(TICKS)))
+		# A ring of several beats is how long the *sound* lasts, which is not how
+		# long a key is held. Held notes are capped so a DAW's piano roll reads like
+		# a performance rather than like a wall.
+		var off: int = on + int(round(minf(float(note["ring"]), 2.0) * float(TICKS)))
+		events.append([on, 0x90 | channel, int(note["midi"]), _velocity(float(note["gain"]))])
+		events.append([off, 0x80 | channel, int(note["midi"]), 0])
+	events.sort_custom(func(a: Array, b: Array) -> bool:
+		# Offs before ons at the same tick, so a repeated note is re-struck rather
+		# than silenced by the tail of the one before it.
+		return a[0] < b[0] if a[0] != b[0] else (a[1] & 0xF0) < (b[1] & 0xF0))
+
+	var last: int = 0
+	for entry: Variant in events:
+		var e: Array = entry
+		_push_var(body, int(e[0]) - last)
+		last = int(e[0])
+		body.append(int(e[1]))
+		body.append(int(e[2]))
+		body.append(int(e[3]))
+	body.append_array(PackedByteArray([0x00, 0xFF, 0x2F, 0x00]))
+	return _chunk(body)
+
+
+## The renderer's gain as a MIDI velocity. The curve is rough on purpose: what a
+## sampled Rhodes does with velocity has nothing to do with what the sine stack
+## here does with amplitude, and a composer will re-balance anyway.
+func _velocity(gain: float) -> int:
+	return clampi(int(round(gain * 620.0)) + 24, 20, 110)
+
+
+func _chunk(body: PackedByteArray) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.append_array("MTrk".to_ascii_buffer())
+	_push32(out, body.size())
+	out.append_array(body)
+	return out
+
+
+## MIDI's variable-length quantity: seven bits at a time, high bit set on every
+## byte but the last.
+func _push_var(into: PackedByteArray, value: int) -> void:
+	var v: int = maxi(0, value)
+	var stack: Array[int] = [v & 0x7F]
+	v >>= 7
+	while v > 0:
+		stack.push_front((v & 0x7F) | 0x80)
+		v >>= 7
+	for byte: int in stack:
+		into.append(byte)
+
+
+func _push16(into: PackedByteArray, value: int) -> void:
+	into.append((value >> 8) & 0xFF)
+	into.append(value & 0xFF)
+
+
+func _push32(into: PackedByteArray, value: int) -> void:
+	into.append((value >> 24) & 0xFF)
+	into.append((value >> 16) & 0xFF)
+	into.append((value >> 8) & 0xFF)
+	into.append(value & 0xFF)
 
 
 ## The same hash the generator seeds off (§19, C-12), so a track's music is as

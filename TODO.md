@@ -677,6 +677,11 @@ fallback view; since `level.tscn` no longer instantiates it, it keeps its own te
       thresholds, because one at 40% would fade the layer in and out on every placement made near it.
       Endless brings the third stem in at 5 goals and leaves it there. `make music`, and the score is
       six rows at the top of the tool.
+      **The score exports as MIDI.** Every render writes `drafts/music/<track>.mid` — the same notes,
+      one track per part, named after the stem it belongs to — so the piece can be opened in
+      GarageBand, Reaper or MuseScore and played with real instruments. `drafts/` is outside the
+      export filter, so nothing ships them. What comes back has to be one session exported three
+      times; the track names say so, and `docs/ASSET-REQUIREMENTS.md` has the mute list.
       **The style is lo-fi jazz (C-42).** The first pass was pads and read as an organ, which is
       structural rather than a matter of voicing: a chord that starts and does not stop *is* an organ.
       Every voice decays now — a Rhodes comping sevenths and ninths over an upright, tape hiss and

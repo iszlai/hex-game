@@ -184,7 +184,7 @@ sfx: check ## Re-render §15.2's sixteen effects into assets/sfx/ (commit the ou
 # each into the .ogg the game loads. The WAVs are deleted — they are an
 # intermediate, and the score in tools/make_music.gd is the source that matters.
 # TRACK=chapter_3 re-renders one bed; it takes about 50 s each.
-music: check ## Recompose §15.1's beds and their three stems (commit the .ogg)
+music: check ## Recompose §15.1's beds: three stems each, plus a .mid to edit by hand
 	@command -v ffmpeg >/dev/null || { echo "music needs ffmpeg on PATH"; exit 1; }
 	@$(RUN_CMD) --headless -s res://tools/make_music.gd -- $(TRACK)
 	@cd $(PROJECT)/assets/music && for w in *.wav; do \
@@ -193,6 +193,7 @@ music: check ## Recompose §15.1's beds and their three stems (commit the .ogg)
 	    && rm -f "$$w" "$$w.import"; done
 	@echo
 	@echo "beds are committed assets — commit the .ogg files"
+	@echo "editable copies: $(PROJECT)/drafts/music/*.mid — open one in a DAW"
 
 art: check ## Re-render §13.7's backdrops and panel surfaces into assets/art/ (commit the output)
 	@$(RUN_CMD) --headless -s res://tools/make_art.gd
