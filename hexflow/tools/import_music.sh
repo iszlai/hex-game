@@ -43,6 +43,16 @@ STEMS="base layer extra"
 
 command -v ffmpeg >/dev/null || { echo "needs ffmpeg on PATH"; exit 1; }
 
+# Godot cannot write Vorbis, so this is the encoder either way — but which one is
+# available depends on how the local ffmpeg was built. Homebrew's has shipped both
+# with and without libvorbis; the built-in encoder is always there and is what the
+# Makefile's `music` target already uses.
+if ffmpeg -hide_banner -encoders 2>/dev/null | grep -q ' libvorbis'; then
+  VORBIS="-c:a libvorbis -q:a 4"
+else
+  VORBIS="-c:a vorbis -strict -2 -q:a 3"
+fi
+
 fail=0
 note() { printf '  %s\n' "$*"; }
 bad()  { printf '  ✗ %s\n' "$*"; fail=1; }
@@ -70,6 +80,13 @@ samples_of() {
 # Integrated loudness and true peak of any number of inputs mixed together,
 # which is how the player hears them. normalize=0 keeps amix from scaling the
 # sum down and reporting a level nobody will hear.
+## Integrated loudness of one file, or nothing if there is no file.
+loudness_of() {
+  [ -n "${1:-}" ] && [ -f "${1:-}" ] || return 0
+  ffmpeg -hide_banner -nostats -i "$1" -af ebur128 -f null - 2>&1 \
+    | tail -14 | sed -n 's/.*I: *\(-*[0-9.]*\).*/\1/p' | tail -1
+}
+
 measure() {
   local args=() i
   for i in "$@"; do args+=(-i "$i"); done
@@ -183,6 +200,28 @@ for track in ${1:-$TRACKS}; do
     note "GarageBand ▸ Settings ▸ Advanced ▸ untick \"Auto Normalize\", then export all three again"
   fi
 
+  # Is the layer actually going to be audible when it arrives?
+  #
+  # Not a loudness check — a *balance* one, and the only thing here that judges the
+  # mix rather than the file. The `layer` fades in mid-level and is the game's main
+  # signal that a run is getting somewhere; buried, the adaptive half of §15.1 is
+  # built, shipped, and silent, which is the state it spent most of its life in.
+  #
+  # The brief says the melody sits under the bed, and it is easy to read that as
+  # "as far under as possible". The composed beds put it about 5 LU down. Past
+  # about 8 the fade-in stops registering as an event.
+  lb=$(loudness_of "$(trimmed_stem base || true)")
+  ll=$(loudness_of "$(trimmed_stem layer || true)")
+  if [ -n "$lb" ] && [ -n "$ll" ]; then
+    drop=$(awk -v b="$lb" -v l="$ll" 'BEGIN{printf "%.1f", b-l}')
+    if awk -v d="$drop" 'BEGIN{exit !(d > 8.0)}'; then
+      note "⚠ layer is ${drop} LU below base — the composed beds use about 5"
+      note "  it will fade in mid-level and the player will not notice. Raise it"
+    else
+      ok "layer sits ${drop} LU under the bed"
+    fi
+  fi
+
   # §7's levels, reached the way tools/make_music.gd reaches them: **one** gain,
   # applied to all three stems.
   #
@@ -218,7 +257,7 @@ for track in ${1:-$TRACKS}; do
     for f in "${trimmed[@]}"; do
       out="$dst/$(basename "${f%.*}").ogg"
       ffmpeg -hide_banner -loglevel error -y -i "$f" \
-        -af "volume=${gain}dB" -c:a libvorbis -q:a 4 -ar 44100 "$out"
+        -af "volume=${gain}dB" $VORBIS -ar 44100 "$out"
       ok "→ ${out#$here/}"
     done
   fi
